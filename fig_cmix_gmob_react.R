@@ -16,7 +16,6 @@ cols = c("#8EC3F3", "#7EA59E")
 
 gmob <- qs::qread('data/gm_for_analysis.qs')
 tier_data <- read.csv('data/england_ltla_covid_tiers_2020_12_20.csv')
-head(tier_data)
 
 gmob_tier <- merge(gmob, tier_data, by.x = "lad_nm", by.y = "LAD20NM")
 
