@@ -1,5 +1,3 @@
-# Added 29 Nov 2020
-
 library(data.table)
 library(ggplot2)
 library(zoo)
@@ -24,7 +22,7 @@ gm_match[, country := str_sub(rgn, 1, 1)];
 gm_match[, rgn := NULL];
 gm_match[, pop2019 := ogwhat(code, "pop2019")];
 gm_match[, nhs := ogwhat(code, "nhser")];
-gm_match[nhs %like% "^E", nhs := ogwhat(nhs)];
+gm_match[nhs %like% "^E", nhsname := ogwhat(nhs)];
 gm = merge(gm, gm_match, by = "name");
 gm = gm[, .SD, .SDcols = c(1, 16, 17, 18, 19, 9:15)];
 
