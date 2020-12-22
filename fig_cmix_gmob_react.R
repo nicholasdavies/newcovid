@@ -81,29 +81,6 @@ plot.dt[,
       )))
 ]
 
-#--- OLD VERSION
-# p_var <- ggplot(plot.dt[newvariant == TRUE & area != "ZAF"]) + aes(date) +
-#     annotate(geom = "rect", xmin = as.Date("2020-11-04"), xmax = as.Date("2020-12-02"), ymin=-Inf, ymax=Inf, col = "lightgrey", alpha = 0.2) +
-#     geom_vline(aes(xintercept = as.Date("2020-11-04")), linetype = 2) +
-#     geom_vline(aes(xintercept = as.Date("2020-12-02")), linetype = 2) +
-#     facet_grid() +
-#     geom_ribbon(aes(ymin = lo95, ymax = hi95, fill =area), alpha = 0.1) +
-#     geom_ribbon(aes(ymin = lo50, ymax = hi50, fill=area), alpha = 0.2) +
-#     geom_line(aes(y=N/total, col = area)) +
-#     scale_x_date(
-#         name = NULL,
-#         date_breaks = "months", date_minor_breaks = "weeks",
-#         date_labels = "%b"
-#     ) +
-#     scale_color_manual(values = cols_3, name = "") +
-#     scale_fill_manual(values = cols_3, name = "") +
-#     scale_y_continuous("Novel Variant Fraction", expand = expansion(0)) +
-#     coord_cartesian(ylim = c(0, 1), xlim = c(as.Date("2020-10-01"), NA)) +
-#     theme(
-#     )
-
-
-#--- Tims version
 p_var <- plot.dt[newvariant == TRUE & area != "ZAF" & date <= "2020-12-01"] %>%
   ggplot(aes(x = date)) +
   geom_line(aes(y=N/total, col = area)) +
@@ -118,9 +95,9 @@ p_var <- plot.dt[newvariant == TRUE & area != "ZAF" & date <= "2020-12-01"] %>%
     date_breaks = "months", date_minor_breaks = "weeks",
     date_labels = "%b"
   ) +
-  scale_color_manual(values = cols_3, name = "", labels = c("East of England,\nLondon and South\nEast regions",
+  scale_color_manual(values = cols_2, name = "", labels = c("East of England,\nLondon and South\nEast regions",
                                                             "Rest of England")) +
-  scale_fill_manual(values = cols_3, name = "", labels = c("East of England,\nLondon and South\nEast regions",
+  scale_fill_manual(values = cols_2, name = "", labels = c("East of England,\nLondon and South\nEast regions",
                                                            "Rest of England")) +
   scale_y_continuous("Novel variant proportion", expand = expansion(0)) +
   coord_cartesian(xlim = c(as.Date("2020-10-01"), as.Date("2020-12-01"))) + 
@@ -181,8 +158,9 @@ by_ltla_rt <- by_ltla %>%
 p_corr <- by_ltla_rt %>% 
   filter(week_infection == max(week_infection)) %>%
   #mutate(cases = cases*0.01) %>%
-  ggplot(aes(x = prop_variant, y = rt_mean, fill = nhser_name, size = cases), scale_size = 0.25) +
+  ggplot(aes(x = prop_variant, y = rt_mean, fill = nhser_name, size = cases)) +
   geom_jitter(pch = 21) +
+  scale_size_continuous(range = c(0.5, 3)) +
   scale_fill_brewer("", palette = "Set1") +
   xlab("Proportion with S gene dropped") +
   ylab("Mean reproduction number") +
@@ -261,9 +239,9 @@ p_cmix <- avg_contacts[!age %in% c("All", "Adult")] %>%
   labs(title = "B", y = "Mean contacts", x = "") +
   facet_grid(setting ~ age , scales = "free_y") +
   scale_y_continuous(expand = expansion(0)) +
-  scale_color_manual(values = cols_3, name = "", labels = c("East of England,\nLondon and South\nEast regions",
+  scale_color_manual(values = cols_3, name = "", labels = c("East of England,\nLondon and South\nEast\nTier 4 areas*",
                                                             "Rest of England")) +
-  scale_fill_manual(values = cols_3, name = "", labels = c("East of England,\nLondon and South\nEast regions",
+  scale_fill_manual(values = cols_3, name = "", labels = c("East of England,\nLondon and South\nEast\nTier 4 areas*",
                                                            "Rest of England")) +
   theme(text = element_text(size = 8)) +
   scale_x_date(breaks = "2 week", date_labels = "%d-%b") +
@@ -308,8 +286,7 @@ layout <- "
     CCDD
     CCDD
     CCDD
-    CCDD
-    CCDD
+    EEEE
     EEEE
     EEEE
     "
@@ -318,7 +295,12 @@ plot_final <- p_var + p_corr + p_gmob + p_cmix + p_r0 +  plot_layout(design = la
 
 plot_final
 
-ggsave(filename = "figure_1_draft.pdf", 
+ggsave(filename = "ouputs/figure_1.pdf", 
        plot_final,
-       width = 8,
-       height = 8)
+       width = 10,
+       height = 15)
+
+ggsave(filename = "ouputs/figure_1.png", 
+       plot_final,
+       width = 10,
+       height = 12)
