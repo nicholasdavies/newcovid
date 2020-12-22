@@ -12,21 +12,48 @@ theme_set(cowplot::theme_cowplot(font_size = 8) + theme(strip.background = eleme
 
 cols = c("#8EC3F3", "#7EA59E")
 
-# Mobility data -----------------------------------------------------------
 
+
+# Mappings ----------------------------------------------------------------
+
+map_mobility <- c(
+    "grocery_and_pharmacy" = "Grocery and pharmacy",
+    "parks" = "Parks",
+    "residential" = "Residential",
+    "retail_and_recreation" = "Retail and recreation",
+    "transit_stations" = "Transit stations",
+    "workplaces" = "Workplaces"  
+)
+
+# Mobility data -----------------------------------------------------------
+table(gmob$variable)
 gmob <- qs::qread('data/gm_for_analysis.qs')
 tier_data <- read.csv('data/england_ltla_covid_tiers_2020_12_20.csv')
-
+tier_data <-  as.data.table(tier_data)
+tier_data[,  table(RGN19NM, Tier == 4)]
 gmob_tier <- merge(gmob, tier_data, by.x = "lad_nm", by.y = "LAD20NM")
 
+
+gmob_tier[, variable := map_mobility[variable]]
 gmob_tier[, t4  := fifelse(Tier == 4, "Tier 4", "Not Tier 4")]
 gmob_tier[, t4  := factor(t4, levels = c("Tier 4", "Not Tier 4"), label = c("Enters Tier 4", "Outside of Tier 4"))]
 
-plot_a <- ggplot(gmob_tier[date > as.Date("2020-09-01")]) +
-    geom_rect(aes(xmin = as.Date("2020-11-04"), xmax = as.Date("2020-12-05"), ymin=-Inf, ymax=Inf), col = "lightgrey", alpha = 0.01) +
+gmob_tier[RGN19NM %in% c("South East", "East of England", "London") | t4 == TRUE, area := "South East\nEast of England,\nand London\nTier 4 areas*"]
+gmob_tier[!RGN19NM %in% c("South East", "East of England", "London") | t4 == FALSE, area := "Rest of England"]
+
+gmob_tier[, variable := factor(variable, levels = c(
+                                "Residential",
+                               "Workplaces" ,
+                               "Grocery and pharmacy",
+                               "Retail and recreation",
+                               "Transit stations",
+                               "Parks"))]
+
+plot_a <- ggplot(gmob_tier[date > as.Date("2020-09-01")], aes(x = date)) +
+    annotate(geom = "rect", xmin = as.Date("2020-11-04"), xmax = as.Date("2020-12-02"), ymin=-Inf, ymax=Inf, col = "lightgrey", alpha = 0.2) +
     geom_vline(aes(xintercept = as.Date("2020-11-04")), linetype = 2) +
-    geom_vline(aes(xintercept = as.Date("2020-12-05")), linetype = 2) +
-    geom_smooth(aes(x = date, y = value, col = t4, fill = t4)) +
+    geom_vline(aes(xintercept = as.Date("2020-12-02")), linetype = 2) +
+    geom_smooth(aes(y = value, col = area, fill = area)) +
     facet_wrap(variable ~. , scales = "free_y", ncol = 1) +
     scale_x_date(breaks = "2 week", date_labels = "%d-%b", expand = expansion(0)) +
     scale_color_manual(values = cols, name = "") +
@@ -35,21 +62,22 @@ plot_a <- ggplot(gmob_tier[date > as.Date("2020-09-01")]) +
     labs(title = "A", y = "% change in mobility", x = "") +
     geom_hline(aes(yintercept = 0), linetype = 2) +
     theme(
-        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        legend.key = element_rect(size = 6, fill = "white", colour = NA), legend.key.size = unit(1, "cm")
     )
-
+plot_a
 # Average contacts over time ----------------------------------------------
 
 
-avg_cnts <- qs::qread("data/cmix_avg_cnts.qs")
+avg_contacts <- qs::qread("data/cmix_avg_cnts.qs")
 
-avg_cnts[, area := factor(area,  levels = c("Tier 4", "Not Tier 4"), label = c("Entry to Tier 4", "Outside of Tier 4"))]
+avg_contacts[, area := factor(area,  levels = c("Tier 4", "Not Tier 4"), label = c("Entry to Tier 4", "Outside of Tier 4"))]
 
 plot_b <-  
-    ggplot(avg_cnts[!age %in% c("All", "Adult")], aes(x = start_date)) +
-    geom_rect(aes(xmin = as.Date("2020-11-04"), xmax = as.Date("2020-12-05"), ymin=-Inf, ymax=Inf), col = "lightgrey", alpha = 0.01) +
+    ggplot(avg_contacts[!age %in% c("All", "Adult")], aes(x = start_date)) +
+    annotate(geom = "rect", xmin = as.Date("2020-11-04"), xmax = as.Date("2020-12-02"), ymin=-Inf, ymax=Inf, col = "lightgrey", alpha = 0.2) +
     geom_vline(aes(xintercept = as.Date("2020-11-04")), linetype = 2) +
-    geom_vline(aes(xintercept = as.Date("2020-12-05")), linetype = 2) +
+    geom_vline(aes(xintercept = as.Date("2020-12-02")), linetype = 2) +
     expand_limits(y = 0) +
     geom_ribbon(aes(ymin = lci, ymax = uci, fill =area), alpha = 0.3) +
     geom_line( aes(y = med, col = area)) +
@@ -60,7 +88,7 @@ plot_b <-
     scale_y_continuous(expand = expansion(0)) +
     scale_fill_manual(values = cols, name = "") +
     scale_color_manual(values = cols, name = "") +
-    theme(text = element_text(size = 12)) +
+    theme(text = element_text(size = 8)) +
     scale_x_date(breaks = "2 week", date_labels = "%d-%b") +
     expand_limits(x = as.Date("2020-10-01")) + 
     theme(
