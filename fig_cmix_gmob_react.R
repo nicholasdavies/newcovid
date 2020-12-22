@@ -88,7 +88,6 @@ p_var <- plot.dt[newvariant == TRUE & area != "ZAF" & date <= "2020-12-01"] %>%
   geom_ribbon(aes(ymin = lo50, ymax = hi50, fill = area), alpha = 0.2) +
   annotate(geom = "rect", xmin = as.Date("2020-11-04"), xmax = as.Date("2020-12-01"), 
            ymin = -Inf, ymax = Inf, col = "lightgrey", alpha = 0.2) +
-  geom_vline(aes(xintercept = as.Date("2020-11-04")), linetype = 2) +
   facet_grid() +
   scale_x_date(
     name = NULL,
@@ -198,8 +197,6 @@ gmob_tier[, setattr(area, "levels", c("South East\nEast of England,\nand London\
 p_gmob <- gmob_tier[date > as.Date("2020-09-01")] %>% 
   ggplot(aes(x = date)) +
   geom_smooth(aes(y = value, col = area, fill = area)) +
-  geom_vline(aes(xintercept = as.Date("2020-11-04")), linetype = 2) +
-  geom_vline(aes(xintercept = as.Date("2020-12-02")), linetype = 2) +
   annotate(geom = "rect", xmin = as.Date("2020-11-04"), xmax = as.Date("2020-12-02"), ymin=-Inf, ymax=Inf, col = "lightgrey", alpha = 0.2) +
   facet_wrap(variable ~. , scales = "free_y", ncol = 1) +
   scale_x_date(breaks = "2 week", date_labels = "%d-%b", expand = expansion(0)) +
@@ -229,8 +226,6 @@ avg_contacts[, area := factor(area,  levels = c("Tier 4", "Not Tier 4"), label =
 p_cmix <- avg_contacts[!age %in% c("All", "Adult")] %>%
   ggplot(aes(x = start_date)) +
   annotate(geom = "rect", xmin = as.Date("2020-11-04"), xmax = as.Date("2020-12-02"), ymin=-Inf, ymax=Inf, col = "lightgrey", alpha = 0.2) +
-  geom_vline(aes(xintercept = as.Date("2020-11-04")), linetype = 2) +
-  geom_vline(aes(xintercept = as.Date("2020-12-02")), linetype = 2) +
   expand_limits(y = 0) +
   geom_ribbon(aes(ymin = lci, ymax = uci, fill =area), alpha = 0.3) +
   geom_line( aes(y = med, col = area)) +
