@@ -65,7 +65,6 @@ plot_a <- ggplot(gmob_tier[date > as.Date("2020-09-01")], aes(x = date)) +
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
         legend.key = element_rect(size = 6, fill = "white", colour = NA), legend.key.size = unit(1, "cm")
     )
-plot_a
 # Average contacts over time ----------------------------------------------
 
 
