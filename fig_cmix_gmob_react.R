@@ -47,6 +47,8 @@ uk.dt <- uk.dt[!nhs_name %in% c("Northern Ireland", "Scotland", "Wales")]
 uk.dt[nhs_name%in% c("East of England", "London", "South East"), area := "EOE, Lon, SE"]
 uk.dt[!nhs_name %in% c("East of England", "London", "South East"), area := "Rest of England"]
 
+
+
 uk.dt[, table(country, nhs_name)]
 plot.dt <- rbind(
     rsa.dt[,
@@ -60,6 +62,9 @@ plot.dt <- rbind(
 )
 
 plot.dt[, total := sum(N), by=.(date, iso3c, area) ]
+
+
+plot.dt[, area := factor(area, levels = c("EOE, Lon, SE", "Rest of England", "ZAF"))]
 
 plot.dt[,
         c("lo95","hi95") := 
@@ -75,8 +80,11 @@ plot.dt[,
       )))
 ]
 
-p_var <- ggplot(plot.dt[newvariant == TRUE]) + aes(date) +
-    facet_grid(. ~ area) +
+p_var <- ggplot(plot.dt[newvariant == TRUE & area != "ZAF"]) + aes(date) +
+    annotate(geom = "rect", xmin = as.Date("2020-11-04"), xmax = as.Date("2020-12-02"), ymin=-Inf, ymax=Inf, col = "lightgrey", alpha = 0.2) +
+    geom_vline(aes(xintercept = as.Date("2020-11-04")), linetype = 2) +
+    geom_vline(aes(xintercept = as.Date("2020-12-02")), linetype = 2) +
+    facet_grid() +
     geom_ribbon(aes(ymin = lo95, ymax = hi95, fill =area), alpha = 0.1) +
     geom_ribbon(aes(ymin = lo50, ymax = hi50, fill=area), alpha = 0.2) +
     geom_line(aes(y=N/total, col = area)) +
@@ -88,10 +96,36 @@ p_var <- ggplot(plot.dt[newvariant == TRUE]) + aes(date) +
     scale_color_manual(values = cols_3, name = "") +
     scale_fill_manual(values = cols_3, name = "") +
     scale_y_continuous("Novel Variant Fraction", expand = expansion(0)) +
-    coord_cartesian(ylim = c(0, 1), xlim = c(as.Date("2020-10-01"), NA))
+    coord_cartesian(ylim = c(0, 1), xlim = c(as.Date("2020-10-01"), NA)) +
+    theme(
+    )
 p_var
 
 
+
+# Rt corr plot ------------------------------------------------------------
+
+p_corr <- ggplot(plot.dt[newvariant == TRUE & area == "ZAF"]) + aes(date) +
+  annotate(geom = "rect", xmin = as.Date("2020-11-04"), xmax = as.Date("2020-12-02"), ymin=-Inf, ymax=Inf, col = "lightgrey", alpha = 0.2) +
+  geom_vline(aes(xintercept = as.Date("2020-11-04")), linetype = 2) +
+  geom_vline(aes(xintercept = as.Date("2020-12-02")), linetype = 2) +
+  facet_grid() +
+  geom_ribbon(aes(ymin = lo95, ymax = hi95, fill =area), alpha = 0.1) +
+  geom_ribbon(aes(ymin = lo50, ymax = hi50, fill=area), alpha = 0.2) +
+  geom_line(aes(y=N/total, col = area)) +
+  scale_x_date(
+    name = NULL,
+    date_breaks = "months", date_minor_breaks = "weeks",
+    date_labels = "%b"
+  ) +
+  scale_color_manual(values = "#000000", name = "") +
+  scale_fill_manual(values = "#000000", name = "") +
+  scale_y_continuous("Novel Variant Fraction", expand = expansion(0)) +
+  coord_cartesian(ylim = c(0, 1), xlim = c(as.Date("2020-10-01"), NA)) +
+  theme(
+    legend.position = "none"
+  )
+p_corr
 
 
 
@@ -198,14 +232,17 @@ p_r0 <- ggplot(cmix_eng) +
         legend.title = element_text(size = 10)
     )
 
+layout <- "
+    AABB
+    CCDD
+    CCDD
+    EEEE
+    "
+plot_final <- p_var + p_corr + p_gmob + p_cmix + p_r0 +  plot_layout(design = layout)
 
-p_mix <- (p_gmob | p_cmix) + plot_layout(guides = "collect")
-
-plot_all <- (p_var / p_mix / p_r0) + plot_layout(heights = c(1,2,1))
-plot_all
 
 
 
-p2 <- p / plot_abc
-p2
+plot_final
+
 #ggsave(filename = "outputs/Figure_1.png", plot_abc, width = 20, height = 12)
