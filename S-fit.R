@@ -16,7 +16,7 @@ REP_END = 10
 BURN_IN = 1500
 BURN_IN_FINAL = 2500
 ITER = 500
-which_pops = c(3, 1, 9)
+which_pops = c(3, 1, 9) # (fit in two stages, fit London earlier...)
 
 uk_covid_data_path = "./fitting_data/";
 datapath = function(x) paste0(uk_covid_data_path, x)
@@ -83,7 +83,7 @@ covy = unname(rep(colMeans(covid_scenario[, 13:20]), each = 2));
 
 for (i in seq_along(params$pop)) {
     params$pop[[i]]$u = covu / mean(covu);
-    params$pop[[i]]$u2 = covu / mean(covu);
+    params$pop[[i]]$u2 = c(params$pop[[i]]$u[1:4], rep(1.15, 12)); # 1.15 is mean of u[5:16]
     params$pop[[i]]$y = covy;
     params$pop[[i]]$y2 = covy;
 }
@@ -140,7 +140,7 @@ priorsI = list(
     cfr_rel2 = "N 0.45 0.1 T 0 1", # <<<
     sep_when = "U 224 264",
     v2_when = "U 144 365",
-    v2_latent = "N 1 0.2 T 0.1 2",
+    v2_kids = "U 0 1",
     v2_hosp_rlo = "N 0 0.1 T -2 2", # hosp x[20]
     v2_cfr_rel = "N 1 0.1 T 0.1 4" # cfr_rel x[21]
 )
@@ -159,6 +159,8 @@ if (file.exists(existing_file)) {
     parametersI = saved[[2]]
     rm(saved)
 }
+
+theme_set(cowplot::theme_cowplot(font_size = 10) + theme(strip.background = element_blank()))
 
 for (replic in REP_START:REP_END)
 {
@@ -238,7 +240,7 @@ for (replic in REP_START:REP_END)
         cm_source_backend(
             user_defined = list(
                 model_v2 = list(
-                    cpp_changes = cpp_chgI_LatentPeriod(),
+                    cpp_changes = cpp_chgI_Kids(),
                     cpp_loglikelihood = cpp_likI(paramsI, ldI, sitrepsI, seroI, virusI, variantI, p),
                     cpp_observer = cpp_obsI(P.death)
                 )
@@ -249,6 +251,9 @@ for (replic in REP_START:REP_END)
         if (init_previous) {
             for (k in seq_along(priorsI2)) {
                 pname = names(priorsI2)[k];
+                # if (p == 3 && (pname == "v2_when" || pname == "v2_relu")) {
+                #     next;
+                # }
                 if (length(posteriorsI) >= p && pname %in% names(posteriorsI[[p]])) {
                     init_values = quantile(posteriorsI[[p]][[pname]], c(0.25, 0.75));
                     cat(paste0("Using IQR ", init_values[1], " - ", init_values[2], " for initial values of parameter ", pname, 
@@ -278,7 +283,7 @@ for (replic in REP_START:REP_END)
         # dynamicsI[[p]] = test
     
         parametersI[[p]] = rlang::duplicate(paramsI)
-        qsave(rlang::duplicate(list(posteriorsI, parametersI)), paste0("./fits/LatentPeriod-pp", replic, "-progress.qs"))
+        qsave(rlang::duplicate(list(posteriorsI, parametersI)), paste0("./fits/S-pp", replic, "-progress.qs"))
     
         print(p)
     }
@@ -288,11 +293,14 @@ for (replic in REP_START:REP_END)
     print(time2-time1)
     # 45 mins for England
 
-    qsave(rlang::duplicate(list(posteriorsI, parametersI)), paste0("./fits/LatentPeriod-pp", replic, ".qs"))
+    qsave(rlang::duplicate(list(posteriorsI, parametersI)), paste0("./fits/S-pp", replic, ".qs"))
+    
+    cat("TEMP: restoring which_pos to 3, 1, 9")
+    which_pops = c(3, 1, 9)
     
     # Generate SPI-M output
     # Sample dynamics from fit
-    # load_fit("./fits/LatentPeriod-pp10.qs")
+    # load_fit("./fits/S-pp10.qs")
     dynamicsI = list()
     dynamics0 = list()
     for (p in which_pops)  { ### 1:12
@@ -302,7 +310,7 @@ for (replic in REP_START:REP_END)
         cm_source_backend(
             user_defined = list(
                 model_v2 = list(
-                    cpp_changes = cpp_chgI_LatentPeriod(),
+                    cpp_changes = cpp_chgI_Kids(),
                     cpp_loglikelihood = "",
                     cpp_observer = cpp_obsI(P.death)
                 )
@@ -322,7 +330,7 @@ for (replic in REP_START:REP_END)
         posteriors0 = copy(posteriorsI[[p]]);
         posteriors0[, v2_when := 9999];
         test0 = cm_backend_sample_fit_test(cm_translate_parameters(paramsI2), posteriors0, 100, seed = 0);
-        
+
         test0 = rbindlist(test0)
         test0[, population := p]
         dynamics0[[p]] = test0
@@ -348,22 +356,22 @@ for (replic in REP_START:REP_END)
         facet_wrap(~nhs_name) +
         labs(x = NULL, y = "Relative frequency of\nVOC 202012/01") +
         scale_x_date(date_breaks = "1 month", date_labels = "%b")
-    ggsave(paste0("./output/LatentPeriod-variant_check_", replic, ".pdf"), plot1, width = 20, height = 6, units = "cm", useDingbats = FALSE)
+    ggsave(paste0("./output/S-variant_check_", replic, ".pdf"), plot1, width = 20, height = 6, units = "cm", useDingbats = FALSE)
     
     # Posteriors of interest
     post = rbindlist(posteriorsI[which_pops], idcol = "population")
     post[, D := -2 * ll]
-    post[, 0.5 * var(D) + mean(D), by = population][, mean(V1)]
+    fwrite(list(post[, 0.5 * var(D) + mean(D), by = population][, mean(V1)]), "./output/S-DIC.txt")
     post[, population := nhs_regions[which_pops[population]]]
-    post = melt(post, id.vars = 1, measure.vars = c("v2_latent", "v2_hosp_rlo", "v2_cfr_rel"))
-    post[variable == "v2_latent", variable := "Relative length of latent\nperiod for VOC 202012/01"]
+    post = melt(post, id.vars = 1, measure.vars = c("v2_kids", "v2_hosp_rlo", "v2_cfr_rel"))
+    post[variable == "v2_kids", variable := "Increased susceptibility in children"]
     post[variable == "v2_hosp_rlo", value := exp(value)]
     post[variable == "v2_hosp_rlo", variable := "Associated OR of hospitalisation"]
     post[variable == "v2_cfr_rel", variable := "Associated RR of death"]
     
-    prior = data.table(x = rep(seq(0.7, 1.3, 0.03), 3), 
-        variable = rep(c("Relative length of latent\nperiod for VOC 202012/01", "Associated OR of hospitalisation", "Associated RR of death"), each = 21))
-    prior[variable == "Relative length of latent\nperiod for VOC 202012/01", y := dnorm(x, 1, 0.2)]
+    prior = data.table(x = rep(seq(0, 1.32, 0.03), 3), 
+        variable = rep(c("Increased susceptibility in children", "Associated OR of hospitalisation", "Associated RR of death"), each = 45))
+    prior[variable == "Increased susceptibility in children", y := dbeta(x, 2, 1)]
     prior[variable == "Associated OR of hospitalisation", y := dlnorm(x, 0, 0.1)]
     prior[variable == "Associated RR of death", y := dnorm(x, 1, 0.1)]
     plot2 = ggplot(post) +
@@ -374,15 +382,15 @@ for (replic in REP_START:REP_END)
         theme(legend.position = c(0.01, 0.9)) +
         labs(x = NULL, y = NULL, colour = NULL) +
         expand_limits(x = 1)
-    ggsave(paste0("./output/LatentPeriod-variant_stats_", replic, ".pdf"), plot2, width = 20, height = 6, units = "cm", useDingbats = FALSE)
+    ggsave(paste0("./output/S-variant_stats_", replic, ".pdf"), plot2, width = 20, height = 6, units = "cm", useDingbats = FALSE)
     
-    qsave(plot1, "./output/cog-plot-LatentPeriod.qs")
-    qsave(plot2, "./output/post-plot-LatentPeriod.qs")
+    qsave(plot1, "./output/cog-plot-S.qs")
+    qsave(plot2, "./output/post-plot-S.qs")
 
 
     # Visually inspect fit
     plot_a = check_fit(test0, ld, sitreps, virus, sero, nhs_regions[which_pops])
     plot_b = check_fit(test, ld, sitreps, virus, sero, nhs_regions[which_pops])
     plot3 = cowplot::plot_grid(plot_a, plot_b, nrow = 1, labels = letters)
-    ggsave(paste0("./output/LatentPeriod-fit_", replic, ".pdf"), plot3, width = 30, height = 25, units = "cm", useDingbats = FALSE)
+    ggsave(paste0("./output/S-fit_", replic, ".pdf"), plot3, width = 30, height = 25, units = "cm", useDingbats = FALSE)
 }

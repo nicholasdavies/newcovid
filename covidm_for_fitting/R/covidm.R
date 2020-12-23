@@ -69,3 +69,5 @@ cm_populations  = readRDS(paste0(cm_path_, "/data/wpp2019_pop2020.rds"));
 cm_structure_UK = readRDS(paste0(cm_path_, "/data/structure_UK.rds"));
 cm_highrisk     = readRDS(paste0(cm_path_, "/data/prevalence_morbidities.rds"))
 
+packageStartupMessage("Caution - because of the late addition of the L compartment, some process sources are confusingly named.")
+

@@ -161,6 +161,18 @@ ggplot(varfreq[, sum(var1 > 0 | var2 > 0) / .N, by = .(date, nhs_name)]) +
     geom_vline(aes(xintercept = ymd("2020-11-25"))) +
     facet_wrap(~nhs_name)
 
+data_site = newlin[, .(all = .N, var2 = sum(var2)), keyby = .(site, sample_date, nhs_name)]
+data_site[, site2 := as.numeric(match(site, unique(site))), by = nhs_name]
+data_site[, site2 := site2 / max(site2), by = nhs_name]
+ggplot(data_site[sample_date > "2020-10-01"]) +
+    geom_col(aes(x = sample_date, y = all, fill = site2), colour = "black", size = 0.2, position = "fill") +
+    facet_wrap(~nhs_name) +
+    theme(legend.position = "none") +
+    scale_fill_gradientn(colours = c("red", "yellow", "green", "blue", "violet")) +
+    geom_vline(aes(xintercept = ymd("2020-12-01"))) +
+    labs(x = "Sample date", y = "Proportion of COG-UK samples from each site")
+
+
 ggplot(varfreq[, sum(var1 + var2), by = .(date, nhs_name)]) + 
     geom_line(aes(date, V1, colour = nhs_name)) +
     geom_vline(aes(xintercept = ymd("2020-11-25"))) +

@@ -11,12 +11,14 @@ library(mgcv)
 library(binom)
 
 N_THREADS = 36
-REP_START = 10
-REP_END = 10
+REP_START = 11
+REP_END = 11
 BURN_IN = 1500
 BURN_IN_FINAL = 2500
 ITER = 500
-which_pops = c(3, 1, 9)
+
+which_pops = c(1, 3, 4, 5, 6, 9, 10)
+v2_pops = c(1, 3, 9)
 
 uk_covid_data_path = "./fitting_data/";
 datapath = function(x) paste0(uk_covid_data_path, x)
@@ -158,6 +160,19 @@ if (file.exists(existing_file)) {
     posteriorsI = saved[[1]]
     parametersI = saved[[2]]
     rm(saved)
+    
+    # Ensure newly added parameters are in parametersI
+    for (p in seq_along(parametersI))
+    {
+        if (!is.null(parametersI[[p]])) {
+            if (is.null(parametersI[[p]]$pop[[1]]$ed_vi)) {
+                parametersI[[p]]$pop[[1]]$ed_vi = rep(0, 16);
+            }
+            if (is.null(parametersI[[p]]$pop[[1]]$ed_vi2)) {
+                parametersI[[p]]$pop[[1]]$ed_vi2 = rep(0, 16);
+            }
+        }
+    }
 }
 
 for (replic in REP_START:REP_END)
@@ -238,7 +253,7 @@ for (replic in REP_START:REP_END)
         cm_source_backend(
             user_defined = list(
                 model_v2 = list(
-                    cpp_changes = cpp_chgI(),
+                    cpp_changes = cpp_chgI(p %in% v2_pops),
                     cpp_loglikelihood = cpp_likI(paramsI, ldI, sitrepsI, seroI, virusI, variantI, p),
                     cpp_observer = cpp_obsI(P.death)
                 )
@@ -295,6 +310,7 @@ for (replic in REP_START:REP_END)
     
     # Generate SPI-M output
     # Sample dynamics from fit
+    # load_fit("./fits/pp10.qs")
     dynamicsI = list()
     dynamics0 = list()
     for (p in which_pops)  { ### 1:12
@@ -342,19 +358,22 @@ for (replic in REP_START:REP_END)
     vmodel = test[, .(p2 = sum(Ip2 + Is2 + Ia2) / sum(Ip + Is + Ia + Ip2 + Is2 + Ia2)), by = .(t, population, run)]
     vmodel[is.nan(p2), p2 := 0]
     vmodel = vmodel[, as.list(quantile(p2, c(0.025, 0.5, 0.975))), by = .(t, nhs_name = population)]
-    plot = ggplot(variant[(pid + 1) %in% which_pops]) +
+    plot1 = ggplot(variant[(pid + 1) %in% which_pops]) +
         geom_ribbon(aes(x = sample_date, ymin = qlo, ymax = qhi), fill = "black", alpha = 0.1) +
         geom_ribbon(data = vmodel[t + ymd("2020-01-01") >= "2020-10-01"], 
             aes(x = ymd("2020-01-01") + t, ymin = `2.5%`, ymax = `97.5%`), fill = "darkorchid", alpha = 0.5) +
         geom_line(aes(x = sample_date, y = var2 / all), size = 0.25) +
         facet_wrap(~nhs_name) +
-        labs(x = NULL, y = "Frequency of\nSARS-CoV-2 variant") +
+        labs(x = NULL, y = "Relative frequency of\nVOC 202012/01") +
         scale_x_date(date_breaks = "1 month", date_labels = "%b")
-    ggsave(paste0("./output/variant_check_", replic, ".pdf"), plot, width = 20, height = 6, units = "cm", useDingbats = FALSE)
-    ggsave(paste0("./output/variant_check_", replic, ".png"), plot, width = 20, height = 6, units = "cm")
+    ggsave(paste0("./output/variant_check_", replic, ".pdf"), plot1, width = 20, height = 6, units = "cm", useDingbats = FALSE)
+    ggsave(paste0("./output/variant_check_", replic, ".png"), plot1, width = 20, height = 6, units = "cm")
     
     # Posteriors of interest
     post = rbindlist(posteriorsI[which_pops], idcol = "population")
+    post[, D := -2 * ll]
+    post[, 0.5 * var(D) + mean(D), by = population][, mean(V1)]
+    
     post[, population := nhs_regions[which_pops[population]]]
     post = melt(post, id.vars = 1, measure.vars = c("v2_relu", "v2_hosp_rlo", "v2_cfr_rel"))
     post[variable == "v2_relu", variable := "Relative transmission rate"]
@@ -367,7 +386,7 @@ for (replic in REP_START:REP_END)
     prior[variable == "Relative transmission rate", y := dlnorm(x, 0, 0.2)]
     prior[variable == "Associated OR of hospitalisation", y := dlnorm(x, 0, 0.1)]
     prior[variable == "Associated RR of death", y := dnorm(x, 1, 0.1)]
-    plot = ggplot(post) +
+    plot2 = ggplot(post) +
         geom_line(data = prior, aes(x, y), colour = "#888888") +
         geom_density(aes(value, colour = population), adjust = 4) +
         #geom_histogram(aes(value, colour = population), bins = 20) +
@@ -375,31 +394,31 @@ for (replic in REP_START:REP_END)
         theme(legend.position = c(0.06, 0.9)) +
         labs(x = NULL, y = NULL, colour = NULL) +
         expand_limits(x = 1)
-    ggsave(paste0("./output/variant_stats_", replic, ".pdf"), plot, width = 20, height = 6, units = "cm", useDingbats = FALSE)
-    ggsave(paste0("./output/variant_stats_", replic, ".png"), plot, width = 20, height = 6, units = "cm")
+    ggsave(paste0("./output/variant_stats_", replic, ".pdf"), plot2, width = 20, height = 6, units = "cm", useDingbats = FALSE)
+    ggsave(paste0("./output/variant_stats_", replic, ".png"), plot2, width = 20, height = 6, units = "cm")
+
+    qsave(plot1, "./output/cog-plot-0.qs")
+    qsave(plot2, "./output/post-plot-0.qs")
+    
+    
     
     post[variable == "Relative transmission rate", quantile(value, c(0.025, 0.5, 0.975))]
 
     # Visually inspect fit
-    plot_a = check_fit(test0, ld, sitreps, virus, sero, nhs_regions[which_pops])
-    plot_b = check_fit(test, ld, sitreps, virus, sero, nhs_regions[which_pops])
-    plot = cowplot::plot_grid(plot_a, plot_b, nrow = 1, labels = letters)
-    ggsave(paste0("./output/fit_", replic, ".pdf"), plot, width = 30, height = 25, units = "cm", useDingbats = FALSE)
-    ggsave(paste0("./output/fit_", replic, ".png"), plot, width = 30, height = 25, units = "cm")
+    plot_a = check_fit(test0, ld, sitreps, virus, sero, nhs_regions[which_pops], "2020-12-18")
+    plot_b = check_fit(test, ld, sitreps, virus, sero, nhs_regions[which_pops], "2020-12-18")
+    plot3 = cowplot::plot_grid(plot_a, plot_b, nrow = 1, labels = LETTERS)
+    ggsave(paste0("./output/fit_", replic, ".pdf"), plot3, width = 30, height = 25, units = "cm", useDingbats = FALSE)
+    ggsave(paste0("./output/fit_", replic, ".png"), plot3, width = 30, height = 25, units = "cm")
 
-    # # Generate SPI-M output
-    # ## UPDATE (creation year, creation month, creation day, forecast start date, forecast end date)
-    # mtp_output = SPIM_output_full(test[!population %in% c("England", "United Kingdom")], 2020, 12, 15, "2020-12-15", "2021-01-28")
-    # 
-    # # Inspect output
-    # plot = ggplot(mtp_output[AgeBand == "All"], aes(x = make_date(`Year of Value`, `Month of Value`, `Day of Value`))) +
-    #     geom_ribbon(aes(ymin = `Quantile 0.05`, ymax = `Quantile 0.95`, fill = `Geography`)) +
-    #     facet_grid(ValueType ~ Geography, scales = "free") +
-    #     theme(legend.position = "none")
-    # 
-    # ggsave(paste0("./output/mtp_check_spim_", replic, ".pdf"), plot, width = 25, height = 20, units = "cm", useDingbats = FALSE)
-    # 
-    # 
-    # # Save output
-    # fwrite(mtp_output, paste0("./output/SPIM_mtp_", replic, ".csv"))
+    plot_a = check_fit(test0, ld, sitreps, virus, sero, nhs_regions[which_pops], "2020-12-18", "2020-09-01")
+    plot_b = check_fit(test, ld, sitreps, virus, sero, nhs_regions[which_pops], "2020-12-18", "2020-09-01")
+    plot3L = cowplot::plot_grid(plot_a, plot_b, nrow = 1, labels = LETTERS)
+    ggsave(paste0("./output/fitL_", replic, ".pdf"), plot3L, width = 30, height = 25, units = "cm", useDingbats = FALSE)
+    ggsave(paste0("./output/fitL_", replic, ".png"), plot3L, width = 30, height = 25, units = "cm")
+    
+    # england_pops = c(1, 3, 4, 5, 6, 9, 10)
+    # plot = compare_fit(test, test0, ld, sitreps, virus, sero, nhs_regions[which_pops], nhs_regions[england_pops], "2020-12-18")
+    # ggsave(paste0("./output/fitboth_", replic, ".pdf"), plot, width = 30, height = 25, units = "cm", useDingbats = FALSE)
+    # ggsave(paste0("./output/fitboth_", replic, ".png"), plot, width = 30, height = 25, units = "cm")
 }

@@ -2,27 +2,92 @@
 source("./projections_setup.R")
 source("./define_tiers.R")
 
+# Get variant 2 quantities for other regions which were not fitted because of insufficient data.
+variant_pops = c(1, 3, 9)
+variant_posterior = rbindlist(posteriorsI[variant_pops])
 
-which_pops = c(1, 3, 9)
-proj_00 = project(which_pops, tiers = FALSE, cb_date = NA,           cb_duration = NA, lockdown = NA)
-proj_No = project(which_pops, tiers = FALSE, cb_date = "2020-12-20", cb_duration = 28, lockdown = lockdownN,  se = seN,  close_schools = FALSE)
-proj_Wo = project(which_pops, tiers = FALSE, cb_date = "2020-12-20", cb_duration = 28, lockdown = lockdownW,  se = seW,  close_schools = FALSE)
-proj_Eo = project(which_pops, tiers = FALSE, cb_date = "2020-12-20", cb_duration = 28, lockdown = lockdownER, se = seER, close_schools = FALSE)
-proj_Nc = project(which_pops, tiers = FALSE, cb_date = "2020-12-20", cb_duration = 28, lockdown = lockdownN,  se = seN,  close_schools = TRUE)
-proj_Wc = project(which_pops, tiers = FALSE, cb_date = "2020-12-20", cb_duration = 28, lockdown = lockdownW,  se = seW,  close_schools = TRUE)
-proj_Ec = project(which_pops, tiers = FALSE, cb_date = "2020-12-20", cb_duration = 28, lockdown = lockdownER, se = seER, close_schools = TRUE)
+variant_posterior[, mean(v2_when)]
 
-plot_projection(list(proj_00, proj_Ec, proj_Eo), list("Nothing", "England lockdown / schools closed", "England lockdown / schools open"), "2020-10-01", "Dark2")
+for (p in setdiff(england_pops, variant_pops))
+{
+    which_rows = sample(nrow(variant_posterior), nrow(posteriorsI[[p]]), replace = TRUE)
+    posteriorsI[[p]][, v2_when     := rnorm(.N, 290, 5)]
+    posteriorsI[[p]]$v2_relu     = variant_posterior[which_rows, v2_relu]
+    posteriorsI[[p]]$v2_hosp_rlo = variant_posterior[which_rows, v2_hosp_rlo]
+    posteriorsI[[p]]$v2_cfr_rel  = variant_posterior[which_rows, v2_cfr_rel]
+}
 
+# Vaccine targeting
+targeting_old_to_young = 
+    list(c(0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,1,1)*0.85,
+         c(0,0,0,0, 0,0,0,0, 0,0,0,0, 1,1,1,1)*0.85,
+         c(0,0,0,0, 0,0,0,0, 0,0,1,1, 1,1,1,1)*0.85,
+         c(0,0,0,0, 0,0,0,0, 1,1,1,1, 1,1,1,1)*0.85,
+         c(0,0,0,0, 0,0,1,1, 1,1,1,1, 1,1,1,1)*0.85,
+         c(0,0,0,0, 1,1,1,1, 1,1,1,1, 1,1,1,1)*0.85,
+         c(0,0,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1)*0.85,
+         c(1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1)*0.85)
+
+targeting_young_to_old = 
+    list(c(0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,1,1)*0.85,
+         c(0,0,0,0, 0,0,0,0, 0,0,0,0, 1,1,1,1)*0.85,
+         c(1,1,0,0, 0,0,0,0, 0,0,0,0, 1,1,1,1)*0.85,
+         c(1,1,1,1, 0,0,0,0, 0,0,0,0, 1,1,1,1)*0.85,
+         c(1,1,1,1, 1,1,0,0, 0,0,0,0, 1,1,1,1)*0.85,
+         c(1,1,1,1, 1,1,1,1, 0,0,0,0, 1,1,1,1)*0.85,
+         c(1,1,1,1, 1,1,1,1, 1,1,0,0, 1,1,1,1)*0.85,
+         c(1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1)*0.85)
+
+lockdown_dates = rep("2020-12-26", 12)
+lockdown_dates[variant_pops] = "2020-12-20"
+lockdown_durations = rep(36, 12)
+lockdown_durations[variant_pops] = 42
+
+school_breaks_o = c("2020-12-19", "2021-01-04")
+school_breaks_c = c("2020-12-19", "2021-02-01")
+
+proj_00    = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = NA,             cb_duration = NA,                 lockdown = NA, school_breaks = school_breaks_o)
+proj_Eo    = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, school_breaks = school_breaks_o, cb_behaviour = "default")
+proj_Ec    = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, school_breaks = school_breaks_c, cb_behaviour = "default")
+proj_Ec_Vl = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, school_breaks = school_breaks_c, cb_behaviour = "default",
+    vacc = make_vaccine_schedule("2021-01-01", rep( 200000, 365), targeting_old_to_young, england_pops), ei_v = rep(0.6, 16), ed_vi = rep(0.875, 16))
+proj_Ec_Vh = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, school_breaks = school_breaks_c, cb_behaviour = "default",
+    vacc = make_vaccine_schedule("2021-01-01", rep(2000000, 365), targeting_old_to_young, england_pops), ei_v = rep(0.6, 16), ed_vi = rep(0.875, 16))
+
+# 23 Dec 16:06 RUN ALL THIS BELOW
+tb00 = summarize_projection(proj_00, "2020-12-15", popsize)
+fwrite(tb00, "./output/table_00.csv");
+tbEo = summarize_projection(proj_Eo, "2020-12-15", popsize)
+fwrite(tbEo, "./output/table_Eo.csv");
+tbEc = summarize_projection(proj_Ec, "2020-12-15", popsize)
+fwrite(tbEc, "./output/table_Ec.csv");
+tbEcVl = summarize_projection(proj_Ec_Vl, "2020-12-15", popsize)
+fwrite(tbEcVl, "./output/table_EcVl.csv");
+tbEcVh = summarize_projection(proj_Ec_Vh, "2020-12-15", popsize)
+fwrite(tbEcVh, "./output/table_EcVh.csv");
+
+tbEngland = england_only(list(tb00, tbEo, tbEc, tbEcVl, tbEcVh), 
+    c("Tiers 1-3 only", "Tier 4, schools open", "Tier 4, schools closed", "Plus 200k immunised per week", "Plus 2M immunised per week"))
+fwrite(tbEngland, "./output/table_england.csv");
+
+# plot_projection(list(proj_00), list("Nothing"), "2020-10-01", "Dark2") + geom_vline(aes(xintercept = ymd("2020-12-19")))
+# plot_projection(list(proj_Eo), list("England lockdown / schools open"), "2020-10-01", "Dark2")
+
+plot_projection_2parts(list(proj_00, proj_Eo, proj_Ec), list("Tiers 1-3 only", "Tier 4, schools open", "Tier 4, schools closed"), 
+    "2020-10-01", c("#b66353", "#5679a3", "#31a1b3"), c("East of England", "London", "South East"))
 replic = 10
-ggsave(paste0("./output/proj_", replic, ".pdf"), width = 30, height = 25, units = "cm", useDingbats = FALSE)
-ggsave(paste0("./output/proj_", replic, ".png"), width = 30, height = 25, units = "cm")
+ggsave(paste0("./output/proj_", replic, ".pdf"), width = 34, height = 16, units = "cm", useDingbats = FALSE)
+ggsave(paste0("./output/proj_", replic, ".png"), width = 34, height = 16, units = "cm")
 
-plot_projection(list(proj_00, proj_Wc, proj_Wo), list("Nothing", "Wales firebreak / schools closed", "Wales firebreak / schools open"), "2020-10-01", "Dark2")
-
+plot_projection_2parts(list(proj_Ec, proj_Ec_Vl, proj_Ec_Vh), list("Tier 4, schools closed", "Plus 200k immunised per week", "Plus 2M immunised per week"), 
+    "2020-10-01", c("#31a1b3", "#f47942", "#59a14f"), c("East of England", "London", "South East"))
 replic = 10
-ggsave(paste0("./output/projW_", replic, ".pdf"), width = 30, height = 25, units = "cm", useDingbats = FALSE)
-ggsave(paste0("./output/projW_", replic, ".png"), width = 30, height = 25, units = "cm")
+ggsave(paste0("./output/proj_vacc_", replic, ".pdf"), width = 34, height = 16, units = "cm", useDingbats = FALSE)
+ggsave(paste0("./output/proj_vacc_", replic, ".png"), width = 34, height = 16, units = "cm")
+
+# TO HERE - replace Table 1, Fig 4, Fig 5
+
+# Note for vaccination without new strain, or scenarios without new strain, can set all v2_when in posteriorsI to 9999
 
 trace = function(proj)
 {
@@ -44,6 +109,11 @@ trace = function(proj)
 
 trace(proj_00)
 
+proj_Ec_Vo = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, school_breaks = school_breaks_c, cb_behaviour = "default",
+    vacc = make_vaccine_schedule("2021-01-01", rep(2000000, 365), targeting_old_to_young, england_pops), ei_v = rep(0.6, 16), ed_vi = rep(0.875, 16))
+proj_Ec_Vy = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, school_breaks = school_breaks_c, cb_behaviour = "default",
+    vacc = make_vaccine_schedule("2021-01-01", rep(2000000, 365), targeting_young_to_old, england_pops), ei_v = rep(0.6, 16), ed_vi = rep(0.875, 16))
+
 
 # Test
 proj_basic = project(3, tiers = FALSE, tier2 = tier2, tier3 = tier3, cb_date = NA,           cb_duration = NA, lockdown = NA,                  close_schools = FALSE, cb_behaviour = "default")
@@ -56,12 +126,10 @@ proj_ldE4c = project(which_pops, tiers =  TRUE, tier2 = tier2, tier3 = tier3, cb
 # 
 
 
-# get ldW4o parameters
-params_ldW4o = project(england_pops, tiers =  TRUE, tier2 = tier2, tier3 = tier3, cb_date = "2020-11-05", cb_duration = 27, lockdown = lockdownW, se = seW, close_schools = FALSE, cb_behaviour = "default", expire = "2020-10-13", parameters_only = TRUE)
-qsave(params_ldW4o, "./figures/params_ldW4o.qs")
-# get ldE4o parameters
-params_ldE4o = project(england_pops, tiers =  TRUE, tier2 = tier2, tier3 = tier3, cb_date = "2020-11-05", cb_duration = 27, lockdown = lockdownE, se = seE, close_schools = FALSE, cb_behaviour = "default", expire = "2020-10-13", parameters_only = TRUE)
-qsave(params_ldE4o, "./figures/params_ldE4o.qs")
+
+
+
+# OLD CODE
 
 
 # RUN PROJECTIONS

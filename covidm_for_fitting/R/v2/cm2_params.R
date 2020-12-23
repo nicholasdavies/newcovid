@@ -97,6 +97,8 @@ cm_check_parameters = function(parameters)
         reqp(i, "wv",      "is.numeric(wv) & length(wv) == length(size) & all(wv >= 0)");
         reqp(i, "ei_v",    "is.numeric(ei_v) & length(ei_v) == length(size) & all(ei_v >= 0) & all(ei_v <= 1)");
         reqp(i, "ei2_v",   "is.numeric(ei2_v) & length(ei2_v) == length(size) & all(ei2_v >= 0) & all(ei2_v <= 1)");
+        reqp(i, "ed_vi",   "is.numeric(ed_vi) & length(ed_vi) == length(size) & all(ed_vi >= 0) & all(ed_vi <= 1)");
+        reqp(i, "ed_vi2",  "is.numeric(ed_vi2) & length(ed_vi2) == length(size) & all(ed_vi2 >= 0) & all(ed_vi2 <= 1)");
         reqp(i, "A",       "is.numeric(A) & length(A) == length(size) & all(A >= 0)");
         reqp(i, "B",       "is.numeric(B) & length(B) == length(size) & all(B >= 0)");
         reqp(i, "D",       "is.numeric(D) & length(D) == length(size) & all(D >= 0)");
@@ -268,6 +270,8 @@ cm_base_pop_SEI3R = function(n_groups)
         wv = rep(0, n_groups),
         ei_v = rep(1, n_groups),
         ei2_v = rep(1, n_groups),
+        ed_vi = rep(0, n_groups),
+        ed_vi2 = rep(0, n_groups),
         A = rep(0, n_groups),
         B = rep(0, n_groups),
         D = rep(0, n_groups),
@@ -289,7 +293,7 @@ cm_build_pop_SEI3R = function(dem_location, mat_location = "guess",
     dE = NULL, dIp = NULL, dIs = NULL, dIa = NULL, dE2 = NULL, contact = NULL, imm0 = NULL, 
     u = NULL, u2 = NULL, y = NULL, y2 = NULL, fIp = NULL, fIa = NULL, fIs = NULL, omega = NULL, tau = NULL,
     pi_r = NULL, pi_r2 = NULL, pi2_r = NULL, pi2_r2 = NULL, wn = NULL, wn2 = NULL,
-    v = NULL, wv = NULL, ei_v = NULL, ei2_v = NULL,
+    v = NULL, wv = NULL, ei_v = NULL, ei2_v = NULL, ed_vi = NULL, ed_vi2 = NULL, 
     A = NULL, B = NULL, D = NULL, season_A = NULL, season_T = NULL, season_phi = NULL,
     seed_times = NULL, seed_times2 = NULL, dist_seed_ages = NULL, observer = NULL, schedule = NULL)
 {
@@ -353,6 +357,8 @@ cm_build_pop_SEI3R = function(dem_location, mat_location = "guess",
     pop = assign_g(pop, "wv", wv, n_groups);
     pop = assign_g(pop, "ei_v", ei_v, n_groups);
     pop = assign_g(pop, "ei2_v", ei2_v, n_groups);
+    pop = assign_g(pop, "ed_vi", ed_vi, n_groups);
+    pop = assign_g(pop, "ed_vi2", ed_vi2, n_groups);
     pop = assign_g(pop, "A", A, n_groups);
     pop = assign_g(pop, "B", B, n_groups);
     pop = assign_g(pop, "D", D, n_groups);
@@ -397,7 +403,7 @@ cm_parameters_SEI3R = function(dem_locations, mat_locations = "guess", date_star
     dE = NULL, dIp = NULL, dIs = NULL, dIa = NULL, dE2 = NULL, contact = NULL, imm0 = NULL, 
     u = NULL, u2 = NULL, y = NULL, y2 = NULL, fIp = NULL, fIa = NULL, fIs = NULL, omega = NULL, tau = NULL,
     pi_r = NULL, pi_r2 = NULL, pi2_r = NULL, pi2_r2 = NULL, wn = NULL, wn2 = NULL,
-    v = NULL, wv = NULL, ei_v = NULL, ei2_v = NULL,
+    v = NULL, wv = NULL, ei_v = NULL, ei2_v = NULL, ed_vi = NULL, ed_vi2 = NULL, 
     A = NULL, B = NULL, D = NULL, season_A = NULL, season_T = NULL, season_phi = NULL,
     seed_times = NULL, seed_times2 = NULL, dist_seed_ages = NULL, observer = NULL, schedule = NULL)
 {
@@ -418,7 +424,7 @@ cm_parameters_SEI3R = function(dem_locations, mat_locations = "guess", date_star
             dE = dE, dIp = dIp, dIs = dIs, dIa = dIa, dE2 = dE2, contact = contact, imm0 = imm0,
             u = u, u2 = u2, y = y, y2 = y2, fIp = fIp, fIa = fIa, fIs = fIs, omega = omega, tau = tau,
             pi_r = pi_r, pi_r2 = pi_r2, pi2_r = pi2_r, pi2_r2 = pi2_r2, wn = wn, wn2 = wn2,
-            v = v, wv = wv, ei_v = ei_v, ei2_v = ei2_v,
+            v = v, wv = wv, ei_v = ei_v, ei2_v = ei2_v, ed_vi = ed_vi, ed_vi2 = ed_vi2, 
             A = A, B = B, D = D, season_A = season_A, season_T = season_T, season_phi = season_phi,
             seed_times = seed_times, seed_times2 = seed_times2, dist_seed_ages = dist_seed_ages, observer = observer, schedule = schedule);
     }

@@ -35,8 +35,8 @@ public:
     vector<double> lambda;
     vector<double> lambda2;
     vector<double> N, S, R, R2, V;              // Total number, susceptible, recovered, recovered 2, vaccinated
-    vector<Compartment> E, Ip, Ia, Is;          // Strain 1 exposed, presymptomatic, asymptomatic, symptomatic
-    vector<Compartment> E2, Ip2, Ia2, Is2;      // Strain 2 exposed, presymptomatic, asymptomatic, symptomatic
+    vector<Compartment> E, L, Ip, Ia, Is;       // Strain 1 exposed, latent (exposed to asymptomatic), presymptomatic, asymptomatic, symptomatic
+    vector<Compartment> E2, L2, Ip2, Ia2, Is2;  // Strain 2 exposed, latent (exposed to asymptomatic), presymptomatic, asymptomatic, symptomatic
     unsigned int seed_row, seed_row2;           // Which seed event is next
     unsigned int p;                             // Which population this is
     vector<vector<Compartment>> pc;             // User-specified process compartments, indexed by process id, then group

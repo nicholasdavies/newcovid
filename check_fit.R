@@ -2,7 +2,7 @@
 # PLOT FITS.
 #
 
-check_fit = function(test, ld, sitreps, virus, sero, populations)
+gen_fit = function(test, ld, sitreps, virus, sero, populations)
 {
     test = copy(test)[population %in% populations]
     sero = copy(sero)[NHS.region %in% populations]
@@ -88,6 +88,21 @@ check_fit = function(test, ld, sitreps, virus, sero, populations)
     data[ValueType == "sero_prev", ValueType := "Seroprevalence (%)"]
     data[ValueType == "type28_death_inc_line", ValueType := "Deaths"]
     
+    return (list(data, output))
+}
+
+check_fit = function(test, ld, sitreps, virus, sero, populations, max_date, min_date = NULL)
+{
+    fit = gen_fit(test, ld, sitreps, virus, sero, populations)
+    data = fit[[1]]
+    output = fit[[2]]
+    output = output[d <= max_date]
+    
+    if (!is.null(min_date)) {
+        output = output[d >= min_date]
+        data = data[d >= min_date]
+    }
+    
     # Make plot
     theme_set(cowplot::theme_cowplot(font_size = 10) + theme(strip.background = element_blank()))
     
@@ -96,6 +111,42 @@ check_fit = function(test, ld, sitreps, virus, sero, populations)
     plot = ggplot(output[d > "2020-03-01" & AgeBand == "All"]) +
         geom_ribbon(aes(x = d, ymin = `Quantile 0.05`, ymax = `Quantile 0.95`, fill = ValueType), alpha = 0.5) +
         geom_line(aes(x = d, y = Value, colour = ValueType)) +
+        geom_line(data = data[ValueType %in% linetypes], aes(x = d, y = y), size = 0.2) +
+        geom_point(data = data[!ValueType %in% linetypes], aes(x = d, y = y), size = 0.01, shape = 20) +
+        geom_linerange(data = data, aes(x = d, ymin = ymin, ymax = ymax), size = 0.2) +
+        geom_linerange(data = data, aes(xmin = dmin, xmax = dmax, y = y), size = 0.2) +
+        facet_grid(ValueType ~ Geography, scales = "free", switch = "y") +
+        theme(legend.position = "none", strip.placement = "outside", strip.background = element_blank()) +
+        scale_x_date(date_breaks = "2 months", date_labels = "%b") +
+        labs(x = NULL, y = NULL)
+    
+    return (plot)
+}
+
+
+
+compare_fit = function(test, test0, ld, sitreps, virus, sero, populations, populations0, max_date)
+{
+    fit = gen_fit(test, ld, sitreps, virus, sero, populations)
+    output = fit[[2]]
+
+    fit = gen_fit(test0, ld, sitreps, virus, sero, populations0)
+    data = fit[[1]]
+    output0 = fit[[2]]
+    
+    output[, kind := "With VOC"]
+    output0[, kind := "Without VOC"]
+    output = rbind(output, output0)
+    output = output[d <= max_date]
+    
+    # Make plot
+    theme_set(cowplot::theme_cowplot(font_size = 10) + theme(strip.background = element_blank()))
+    
+    linetypes = c("Deaths", "Hospital admissions", "Hospital beds occupied", "ICU beds occupied")
+    
+    plot = ggplot(output[d > "2020-03-01" & AgeBand == "All"]) +
+        geom_ribbon(aes(x = d, ymin = `Quantile 0.05`, ymax = `Quantile 0.95`, fill = ValueType, group = kind), alpha = 0.5) +
+        geom_line(aes(x = d, y = Value, colour = ValueType, linetype = kind)) +
         geom_line(data = data[ValueType %in% linetypes], aes(x = d, y = y), size = 0.2) +
         geom_point(data = data[!ValueType %in% linetypes], aes(x = d, y = y), size = 0.01, shape = 20) +
         geom_linerange(data = data, aes(x = d, ymin = ymin, ymax = ymax), size = 0.2) +

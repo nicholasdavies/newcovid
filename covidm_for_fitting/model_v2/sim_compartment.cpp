@@ -21,11 +21,13 @@ Population::Population(Parameters& P, unsigned int pindex)
     V  = vector<double>(S.size(), 0.);
     
     E  = vector<Compartment>(S.size());
+    L  = vector<Compartment>(S.size());
     Ip = vector<Compartment>(S.size());
     Ia = vector<Compartment>(S.size());
     Is = vector<Compartment>(S.size());
 
     E2  = vector<Compartment>(S.size());
+    L2  = vector<Compartment>(S.size());
     Ip2 = vector<Compartment>(S.size());
     Ia2 = vector<Compartment>(S.size());
     Is2 = vector<Compartment>(S.size());
@@ -244,7 +246,7 @@ void Population::Tick(Parameters& P, Randomizer& Rand, double t, vector<double>&
         double nS_E2 = nS_E12 - nS_E;
 
         // Reinfection rates
-        // R -> E, R -> E2, R2 -> E, R2 -> E2, V -> E, V -> E2
+        // R -> E, R -> E2, R2 -> E, R2 -> E2, V -> E, V -> E2, V -> L, V -> L2
         double foi_r   = lambda[a]  * (1 - P.pop[p].pi_r[a]);
         double foi2_r  = lambda2[a] * (1 - P.pop[p].pi2_r[a]);
         double foi_r2  = lambda[a]  * (1 - P.pop[p].pi_r2[a]);
@@ -258,30 +260,43 @@ void Population::Tick(Parameters& P, Randomizer& Rand, double t, vector<double>&
         double nR2_E12 = binomial(R2[a], 1.0 - exp(-(foi_r2 + foi2_r2) * P.time_step));
         double nR2_E = binomial(nR2_E12, foi_r2 + foi2_r2 > 0 ? foi_r2 / (foi_r2 + foi2_r2) : 0);
         double nR2_E2 = nR2_E12 - nR2_E;
-        double nV_E12 = binomial(V[a], 1.0 - exp(-(foi_v + foi2_v) * P.time_step));
-        double nV_E = binomial(nV_E12, foi_v + foi2_v > 0 ? foi_v / (foi_v + foi2_v) : 0);
-        double nV_E2 = nV_E12 - nV_E;
+
+        double nV_EL12 = binomial(V[a], 1.0 - exp(-(foi_v + foi2_v) * P.time_step));
+        double nV_EL = binomial(nV_EL12, foi_v + foi2_v > 0 ? foi_v / (foi_v + foi2_v) : 0);
+        double nV_EL2 = nV_EL12 - nV_EL;
+        double nV_L = binomial(nV_EL, P.pop[p].ed_vi[a]);
+        double nV_E = nV_EL - nV_L;
+        double nV_L2 = binomial(nV_EL2, P.pop[p].ed_vi2[a]);
+        double nV_E2 = nV_EL2 - nV_L2;
         
         // Infection / reinfection changes
         S[a]  -= nS_E  + nS_E2;
         R[a]  -= nR_E  + nR_E2;
         R2[a] -= nR2_E + nR2_E2;
-        V[a]  -= nV_E  + nV_E2;
+        V[a]  -= nV_EL12;
 
         // Add new exposed. If dE2 has been supplied, use that as latent period for strain 2, otherwise use dE.
-        E[a] .Add(P, Rand, nS_E  + nR_E  + nR2_E  + nV_E,  P.pop[p].dE);
+        E[a].Add(P, Rand, nS_E  + nR_E  + nR2_E  + nV_E,  P.pop[p].dE);
         if (P.pop[p].dE2.weights.size() <= 1)
             E2[a].Add(P, Rand, nS_E2 + nR_E2 + nR2_E2 + nV_E2, P.pop[p].dE);
         else
             E2[a].Add(P, Rand, nS_E2 + nR_E2 + nR2_E2 + nV_E2, P.pop[p].dE2);
 
+        // Add new "latent" (exposed to infection, but protected against disease by vaccine)
+        L[a].Add(P, Rand, nV_L, P.pop[p].dE);
+        if (P.pop[p].dE2.weights.size() <= 1)
+            L2[a].Add(P, Rand, nV_L2, P.pop[p].dE);
+        else
+            L2[a].Add(P, Rand, nV_L2, P.pop[p].dE2);
+
         // Strain 1
-        // E -> Ip/Ia
+        // E -> Ip/Ia, L -> Ia
         double nE_Ipa = E[a].Mature();
         double nE_Ip = binomial(nE_Ipa, P.pop[p].y[a]);
         double nE_Ia = nE_Ipa - nE_Ip;
+        double nL_Ia = L[a].Mature();
         Ip[a].Add(P, Rand, nE_Ip, P.pop[p].dIp);
-        Ia[a].Add(P, Rand, nE_Ia, P.pop[p].dIa);
+        Ia[a].Add(P, Rand, nE_Ia + nL_Ia, P.pop[p].dIa);
 
         // Ip -> Is
         double nIp_Is = Ip[a].Mature();
@@ -296,12 +311,13 @@ void Population::Tick(Parameters& P, Randomizer& Rand, double t, vector<double>&
         R[a] += nIa_R;
 
         // Strain 2
-        // E2 -> Ip2/Ia2
+        // E2 -> Ip2/Ia2, L2 -> Ia2
         double nE2_Ipa2 = E2[a].Mature();
         double nE2_Ip2 = binomial(nE2_Ipa2, P.pop[p].y2[a]);
         double nE2_Ia2 = nE2_Ipa2 - nE2_Ip2;
+        double nL2_Ia2 = L2[a].Mature();
         Ip2[a].Add(P, Rand, nE2_Ip2, P.pop[p].dIp);
-        Ia2[a].Add(P, Rand, nE2_Ia2, P.pop[p].dIa);
+        Ia2[a].Add(P, Rand, nE2_Ia2 + nL2_Ia2, P.pop[p].dIa);
 
         // Ip2 -> Is2
         double nIp2_Is2 = Ip2[a].Mature();
@@ -333,7 +349,7 @@ void Population::Tick(Parameters& P, Randomizer& Rand, double t, vector<double>&
                 case src_newIs:
                     n_entering = nIp_Is; break;
                 case src_newIa:
-                    n_entering = nE_Ia; break;
+                    n_entering = nE_Ia + nL_Ia; break;
                 case src_newE2:
                     n_entering = nS_E2 + nR_E2 + nR2_E2 + nV_E2; break;
                 case src_newI2:
@@ -343,17 +359,17 @@ void Population::Tick(Parameters& P, Randomizer& Rand, double t, vector<double>&
                 case src_newIs2:
                     n_entering = nIp2_Is2; break;
                 case src_newIa2:
-                    n_entering = nE2_Ia2; break;
+                    n_entering = nE2_Ia2 + nL2_Ia2; break;
                 case src_newEE2:
                     n_entering = nS_E + nR_E + nR2_E + nV_E + nS_E2 + nR_E2 + nR2_E2 + nV_E2; break;
                 case src_newII2:
-                    n_entering = nE_Ipa + nE2_Ipa2; break;
+                    n_entering = nE_Ipa + nE2_Ipa2  + nL_Ia + nL2_Ia2; break;
                 case src_newIpIp2:
                     n_entering = nE_Ip + nE2_Ip2; break;
                 case src_newIsIs2:
                     n_entering = nIp_Is + nIp2_Is2; break;
                 case src_newIaIa2:
-                    n_entering = nE_Ia + nE2_Ia2; break;
+                    n_entering = nE_Ia + nE2_Ia2 + nL_Ia + nL2_Ia2; break;
                 default:
                     n_entering = pco[process.source_id];
                     if (n_entering < 0)
@@ -413,15 +429,17 @@ void Population::Tick(Parameters& P, Randomizer& Rand, double t, vector<double>&
         
         // Deaths (inner compartments)
         double DE   = E[a]  .RemoveProb(P, Rand, death_prob);
+        double DL   = L[a]  .RemoveProb(P, Rand, death_prob);
         double DIp  = Ip[a] .RemoveProb(P, Rand, death_prob);
         double DIa  = Ia[a] .RemoveProb(P, Rand, death_prob);
         double DIs  = Is[a] .RemoveProb(P, Rand, death_prob);
         double DE2  = E2[a] .RemoveProb(P, Rand, death_prob);
+        double DL2  = L2[a] .RemoveProb(P, Rand, death_prob);
         double DIp2 = Ip2[a].RemoveProb(P, Rand, death_prob);
         double DIa2 = Ia2[a].RemoveProb(P, Rand, death_prob);
         double DIs2 = Is2[a].RemoveProb(P, Rand, death_prob);
 
-        N[a]  -= DS + DR + DR2 + DV + DE + DIp + DIa + DIs + DE2 + DIp2 + DIa2 + DIs2;
+        N[a]  -= DS + DR + DR2 + DV + DE + DL + DIp + DIa + DIs + DE2 + DL2 + DIp2 + DIa2 + DIs2;
 
         // Agings
         if (a != lambda.size() - 1)
@@ -441,16 +459,18 @@ void Population::Tick(Parameters& P, Randomizer& Rand, double t, vector<double>&
             V[a]      -= AV;
             V[a + 1]  += AV;
             double AE   = E[a]  .MoveProb(E   [a + 1], P, Rand, age_prob);
+            double AL   = L[a]  .MoveProb(L   [a + 1], P, Rand, age_prob);
             double AIp  = Ip[a] .MoveProb(Ip  [a + 1], P, Rand, age_prob);
             double AIa  = Ia[a] .MoveProb(Ia  [a + 1], P, Rand, age_prob);
             double AIs  = Is[a] .MoveProb(Is  [a + 1], P, Rand, age_prob);
             double AE2  = E2[a] .MoveProb(E2  [a + 1], P, Rand, age_prob);
+            double AL2  = L2[a] .MoveProb(L2  [a + 1], P, Rand, age_prob);
             double AIp2 = Ip2[a].MoveProb(Ip2 [a + 1], P, Rand, age_prob);
             double AIa2 = Ia2[a].MoveProb(Ia2 [a + 1], P, Rand, age_prob);
             double AIs2 = Is2[a].MoveProb(Is2 [a + 1], P, Rand, age_prob);
 
-            N[a]      -= AS + AR + AR2 + AV + AE + AIp + AIa + AIs + AE2 + AIp2 + AIa2 + AIs2;
-            N[a + 1]  += AS + AR + AR2 + AV + AE + AIp + AIa + AIs + AE2 + AIp2 + AIa2 + AIs2;
+            N[a]      -= AS + AR + AR2 + AV + AE + AL + AIp + AIa + AIs + AE2 + AL2 + AIp2 + AIa2 + AIs2;
+            N[a + 1]  += AS + AR + AR2 + AV + AE + AL + AIp + AIa + AIs + AE2 + AL2 + AIp2 + AIa2 + AIs2;
         }
 
         if (a == 0)
@@ -483,11 +503,13 @@ void Population::DebugPrint() const
     vecprint(R, "R");
     vecprint(V, "V");
     comprint(E, "E");
+    comprint(L, "L");
     comprint(Ip, "Ip");
     comprint(Ia, "Ia");
     comprint(Is, "Is");
     vecprint(R2, "R2");
     comprint(E2, "E2");
+    comprint(L2, "L2");
     comprint(Ip2, "Ip2");
     comprint(Ia2, "Ia2");
     comprint(Is2, "Is2");

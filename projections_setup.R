@@ -66,12 +66,12 @@ setkey(popsize, Geography)
 
 # 2. Bringing in of interventions
 
-# Extract first column from each of tables_list with scenario names
+# Extract England column from each of tables_list with scenario names
 england_only = function(tables_list, names)
 {
     t = tables_list[[1]][, 1]
     for (i in seq_along(tables_list)) {
-        t = cbind(t, tables_list[[i]][, 2]);
+        t = cbind(t, tables_list[[i]][, England]);
         names(t)[i + 1] = names[i];    
     }
     
@@ -144,6 +144,75 @@ plot_projection = function(proj_list, proj_names, from_date, pal = "Accent")
         ylim(0, NA)
 }
 
+plot_projection_2parts = function(proj_list, proj_names, from_date, colours, regions_a)
+{
+    p = NULL
+    for (i in seq_along(proj_list)) {
+        pp = arrange_projection(proj_list[[i]]);
+        pp[, name := proj_names[[i]]];
+        p = rbind(p, pp);
+    }
+    p[, name := factor(name, unique(name))]
+
+    plotA = ggplot(p[!variable %in% c("tier", "cb") & ymd("2020-01-01") + t >= from_date & population %in% regions_a]);
+    
+    cbs = p[variable == "cb" & population %in% regions_a, .(t = ymd("2020-01-01") + t[`50%` > 0.5]), by = .(population)][, 
+        .(tmin = min(t), tmax = max(t)), by = population]
+    if (nrow(cbs) > 0) {
+        plotA = plotA +
+            geom_rect(data = cbs, aes(xmin = tmin, xmax = tmax, ymin = -Inf, ymax = Inf), fill = "black", alpha = 0.1)
+    }
+    
+    rline = data.table(variable = factor("Rt", levels(p$variable)), y = 1)
+    
+    plotA = plotA +
+        geom_ribbon(aes(x = ymd("2020-01-01") + t, ymin = `2.5%`, ymax = `97.5%`, fill = name), alpha = 0.4) +
+        geom_hline(data = rline, aes(yintercept = y), size = 0.3) +
+        geom_line(aes(x = ymd("2020-01-01") + t, y = `50%`, colour = name)) +
+        facet_grid(variable ~ population, switch = "y", scales = "free") +
+        cowplot::theme_cowplot(font_size = 11) + 
+        theme(strip.background = element_blank(), strip.placement = "outside", 
+            legend.position = "bottom",
+            panel.background = element_rect(fill = "#f4f4f4"),
+            panel.grid.major = element_line(colour = "#ffffff", size = 0.4),
+            axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+        labs(x = NULL, y = NULL, colour = NULL, fill = NULL) +
+        scale_x_date(date_breaks = "1 month", date_labels = "%b") +
+        scale_color_manual(aesthetics = c("colour", "fill"), values = colours) +
+        ylim(0, NA)
+    
+    # B
+
+    plotB = ggplot(p[!variable %in% c("tier", "cb") & ymd("2020-01-01") + t >= from_date & !population %in% regions_a]);
+    
+    cbs = p[variable == "cb" & !population %in% regions_a, .(t = ymd("2020-01-01") + t[`50%` > 0.5]), by = .(population)][, 
+        .(tmin = min(t), tmax = max(t)), by = population]
+    if (nrow(cbs) > 0) {
+        plotB = plotB +
+            geom_rect(data = cbs, aes(xmin = tmin, xmax = tmax, ymin = -Inf, ymax = Inf), fill = "black", alpha = 0.1)
+    }
+    
+    rline = data.table(variable = factor("Rt", levels(p$variable)), y = 1)
+    
+    plotB = plotB +
+        geom_ribbon(aes(x = ymd("2020-01-01") + t, ymin = `2.5%`, ymax = `97.5%`, fill = name), alpha = 0.4) +
+        geom_hline(data = rline, aes(yintercept = y), size = 0.3) +
+        geom_line(aes(x = ymd("2020-01-01") + t, y = `50%`, colour = name)) +
+        facet_grid(variable ~ population, switch = "y", scales = "free") +
+        cowplot::theme_cowplot(font_size = 11) + 
+        theme(strip.background = element_blank(), strip.placement = "outside", 
+            legend.position = "bottom",
+            panel.background = element_rect(fill = "#f4f4f4"),
+            panel.grid.major = element_line(colour = "#ffffff", size = 0.4),
+            axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+        labs(x = NULL, y = NULL, colour = NULL, fill = NULL) +
+        scale_x_date(date_breaks = "1 month", date_labels = "%b") +
+        scale_color_manual(aesthetics = c("colour", "fill"), values = colours) +
+        ylim(0, NA)
+    
+    cowplot::plot_grid(plotA, plotB, nrow = 1, rel_widths = c(0.48, 0.52), labels = LETTERS, label_size = 10)
+}
+
 plot_cum_deaths = function(proj_list, proj_names, from_date, ystart = 26, ydiff = -1.2, titl = "Cumulative deaths")
 {
     stop("Check for both virus strains.")
@@ -212,116 +281,80 @@ plot_icu = function(proj_list, proj_names, from_date)
 }
 
 
-summarize_projection = function(proj, from_date, popsize, scenario_output = NULL, to_date = NULL, wh = "after")
+summarize_projection = function(proj, from_date, popsize, to_date = NULL, wh = "after")
 {
-    stop("Check for both virus strains.")
-
+    proj = copy(proj)
     if (!is.null(to_date)) {
-        proj = rlang::duplicate(proj)
         proj = proj[ymd("2020-01-01") + t <= to_date]
     }
     
-    geo = c("England", proj[, unique(population)])
+    england = proj[, lapply(.SD, sum), .SDcols = 5:ncol(proj), by = .(run, t, group)]
+    england[, population := "England"]
+    proj = rbind(proj, england, fill = TRUE)
+    
+    geo = proj[, unique(population)]
     
     # Build summaries
-    totals = proj[, .(cases = sum(cases), infections = sum(infections_i), 
-        deaths = sum(death_o), admissions = sum(hosp_undetected_o)), 
+    totals = proj[, .(
+        deaths = sum(death_o + death2_o), admissions = sum(hosp_undetected_o + hosp_undetected2_o)), 
         by = .(population, run, when = ifelse(ymd("2020-01-01") + t < from_date, "before", "after"))]
-    totals = rbind(totals[, .(population = "England", cases = sum(cases), infections = sum(infections),
-        deaths = sum(deaths), admissions = sum(admissions)), by = .(run, when)], totals, fill = TRUE);
-    
+
     prev_peaks = proj[ymd("2020-01-01") + t < from_date,
-        .(all = sum(hosp_p - hosp_undetected_p), icu = sum(icu_p)),
+        .(all = sum(hosp_p - hosp_undetected_p + hosp2_p - hosp_undetected2_p), icu = sum(icu_p + icu2_p), dea = sum(death_o + death2_o)),
         by = .(population, run, t)][,
-        .(all = max(all), icu = max(icu)),
+        .(all = max(all), icu = max(icu), dea = max(dea)),
         by = .(population, run)][,
-        .(peak_all = mean(all), peak_icu = mean(icu)), keyby = population]
-    prev_peaks = rbind(prev_peaks[, .(population = "England", peak_all = sum(peak_all), peak_icu = sum(peak_icu))], prev_peaks, fill = TRUE);
+        .(peak_all = mean(all), peak_icu = mean(icu), peak_dea = mean(dea)), keyby = population]
     setkey(prev_peaks, population)
     
     if (wh == "before") {
         post_peaks = proj[ymd("2020-01-01") + t < from_date,
-            .(all = sum(hosp_p - hosp_undetected_p), icu = sum(icu_p)),
+            .(all = sum(hosp_p - hosp_undetected_p + hosp2_p - hosp_undetected2_p), icu = sum(icu_p + icu2_p), dea = sum(death_o + death2_o)),
             by = .(population, run, t)][,
-            .(all = max(all), icu = max(icu)),
+            .(all = max(all), icu = max(icu), dea = max(dea)),
             keyby = .(population, run)]
     } else {
         post_peaks = proj[ymd("2020-01-01") + t >= from_date,
-            .(all = sum(hosp_p - hosp_undetected_p), icu = sum(icu_p)),
+            .(all = sum(hosp_p - hosp_undetected_p + hosp2_p - hosp_undetected2_p), icu = sum(icu_p + icu2_p), dea = sum(death_o + death2_o)),
             by = .(population, run, t)][,
-            .(all = max(all), icu = max(icu)),
+            .(all = max(all), icu = max(icu), dea = max(dea)),
             keyby = .(population, run)]
     }
-    post_peaks = rbind(post_peaks[, .(population = "England", all = sum(all), icu = sum(icu)), by = run], post_peaks, fill = TRUE);
     setkey(post_peaks, population)
     
     peaks = post_peaks[,
         .(all = all, rel_all = all / prev_peaks[population, peak_all],
+          dea = dea, rel_dea = dea / prev_peaks[population, peak_dea],
           icu = icu, rel_icu = icu / prev_peaks[population, peak_icu]),
         keyby = .(population, run)]
-
-    hi = proj[ymd("2020-01-01") + t >= from_date,
-        .(all = sum(hosp_p - hosp_undetected_p), icu = sum(icu_p)),
-        keyby = .(population, run, t)][,
-        .(all_hi = sum(all > prev_peaks[population, peak_all] * 0.5) / 7,
-          icu_hi = sum(icu > prev_peaks[population, peak_icu] * 0.5) / 7), 
-        keyby = .(population, run)]
+    
     
     tier = proj[ymd("2020-01-01") + t >= from_date,
         .(tier = obs0[2], cb = obs0[3]), keyby = .(population, run, t)][,
-        .(tier2 = sum(tier == 2 & cb == 0) / 7, tier3 = sum(tier == 3 & cb == 0) / 7, cb = sum(cb == 1) / 7),
+        .(tier2 = sum(tier == 2 & cb == 0) / 7, tier3 = sum(tier == 3 & cb == 0) / 7, tier4 = sum(cb == 1) / 7),
         keyby = .(population, run)]
-    
-    hi2 = merge(hi, popsize, by.x = "population", by.y = "Geography")
-    hi2 = hi2[, .(population = "England", all_hi = weighted.mean(all_hi, population_size), 
-        icu_hi = weighted.mean(icu_hi, population_size)), by = run]
-    hi = rbind(hi2, hi)
-    
-    tier2 = merge(tier, popsize, by.x = "population", by.y = "Geography")
+
+    tier2 = merge(tier[population != "England"], popsize, by.x = "population", by.y = "Geography")
     tier2 = tier2[, .(population = "England", tier2 = weighted.mean(tier2, population_size),
-        tier3 = weighted.mean(tier3, population_size), cb = weighted.mean(cb, population_size)), by = run]
-    tier = rbind(tier2, tier)
+        tier3 = weighted.mean(tier3, population_size), tier4 = weighted.mean(tier4, population_size)), by = run]
+    tier = rbind(tier2, tier[population != "England"])
 
     # Factor
     totals[, population := factor(population, geo)]
     peaks[, population := factor(population, geo)]
-    hi[, population := factor(population, geo)]
     tier[, population := factor(population, geo)]
     
-    if (is.null(scenario_output)) { # Nice table output
-        tab = rbind(
-            totals[when == wh, .(indicator = "Deaths", value = niceq(deaths)), keyby = population],
-            totals[when == wh, .(indicator = "Admissions", value = niceq(admissions)), keyby = population],
-            peaks[, .(indicator = "Peak ICU requirement", value = niceq(icu)), keyby = population],
-            peaks[, .(indicator = "Peak ICU (rel. W1)", value = nicepc(rel_icu)), keyby = population],
-            hi[, .(indicator = "Weeks of high ICU occupancy", value = niceq(icu_hi)), keyby = population],
-            tier[, .(indicator = "Weeks in Tier 2", value = niceq(tier2)), keyby = population],
-            tier[, .(indicator = "Weeks in Tier 3", value = niceq(tier3)), keyby = population],
-            tier[, .(indicator = "Weeks in lockdown", value = niceq(cb)), keyby = population]
-        )
-        return (dcast(tab, indicator ~ population))
-    } else { # Data output
-        tab = rbind(
-            totals[when == "after", .(indicator = "Cases",      value = quantile(cases,      c(0.025, 0.5, 0.975)), q = c("lo", "mid", "hi")), keyby = population],
-            totals[when == "after", .(indicator = "Infections", value = quantile(infections, c(0.025, 0.5, 0.975)), q = c("lo", "mid", "hi")), keyby = population],
-            totals[when == "after", .(indicator = "Deaths",     value = quantile(deaths,     c(0.025, 0.5, 0.975)), q = c("lo", "mid", "hi")), keyby = population],
-            totals[when == "after", .(indicator = "Admissions", value = quantile(admissions, c(0.025, 0.5, 0.975)), q = c("lo", "mid", "hi")), keyby = population],
-            
-            prev_peaks[, .(indicator = "Peak hospital beds", value = peak_all, q = "ref"), keyby = population],
-            prev_peaks[, .(indicator = "Peak ICU beds", value = peak_icu, q = "ref"), keyby = population],
-            peaks[, .(indicator = "Peak hospital beds", value = quantile(all, c(0.025, 0.5, 0.975)), q = c("lo", "mid", "hi")), keyby = population],
-            peaks[, .(indicator = "Peak ICU beds", value = quantile(icu, c(0.025, 0.5, 0.975)), q = c("lo", "mid", "hi")), keyby = population],
-            
-            hi[, .(indicator = "Weeks of high ICU occupancy", value = quantile(icu_hi, c(0.025, 0.5, 0.975)), q = c("lo", "mid", "hi")), keyby = population],
-            hi[, .(indicator = "Weeks of high hospital occupancy", value = quantile(all_hi, c(0.025, 0.5, 0.975)), q = c("lo", "mid", "hi")), keyby = population],
-            
-            tier[, .(indicator = "Weeks in Tier 2", value = quantile(tier2, c(0.025, 0.5, 0.975)), q = c("lo", "mid", "hi")), keyby = population],
-            tier[, .(indicator = "Weeks in Tier 3", value = quantile(tier3, c(0.025, 0.5, 0.975)), q = c("lo", "mid", "hi")), keyby = population],
-            tier[, .(indicator = "Weeks in lockdown",  value = quantile(cb, c(0.025, 0.5, 0.975)), q = c("lo", "mid", "hi")), keyby = population]
-        )
-        
-        return (cbind(dcast(tab, population + indicator ~ q), scenario = scenario_output))
-    }
+    tab = rbind(
+        totals[when == wh, .(indicator = "Total deaths", value = niceq(deaths)), keyby = population],
+        totals[when == wh, .(indicator = "Total admissions", value = niceq(admissions)), keyby = population],
+        peaks[, .(indicator = "Peak deaths", value = niceq(dea)), keyby = population],
+        peaks[, .(indicator = "Peak ICU requirement", value = niceq(icu)), keyby = population],
+        peaks[, .(indicator = "Peak ICU (rel. to 1st wave)", value = nicepc(rel_icu)), keyby = population],
+        tier[, .(indicator = "Weeks in Tier 2", value = niceq(tier2)), keyby = population],
+        tier[, .(indicator = "Weeks in Tier 3", value = niceq(tier3)), keyby = population],
+        tier[, .(indicator = "Weeks in Tier 4", value = niceq(tier4)), keyby = population]
+    )
+    return (dcast(tab, indicator ~ population))
 }
 
 
@@ -404,21 +437,17 @@ cpp_obsI_cb = function(cb_dates, cb_durations, behaviour)
     return (ret)
 }
 
-cpp_chgI_close_schools = function(cb_dates, cb_durations)
+cpp_chgI_close_schools = function(school_breaks)
 {
-    cb_durations = rep_len(cb_durations, length(cb_dates))
     ret = c(
         'P.changes.ch[5].values = { vector<double>(8, x[15]) };',
         'P.changes.ch[5].times = { x[17] };'
     )
     
-    for (k in seq_along(cb_dates)) {
-        cb_date = cb_dates[k];
-        cb_duration = cb_durations[k];
-        
-        cb_t0 = as.integer(ymd(cb_date) - ymd("2020-01-01"));
-        cb_t1 = cb_t0 + cb_duration;
-        
+    for (k in seq(1, length(school_breaks), by = 2)) {
+        cb_t0 = as.integer(ymd(school_breaks[k]) - ymd("2020-01-01"));
+        cb_t1 = as.integer(ymd(school_breaks[k + 1]) - ymd("2020-01-01"));
+
         ret = c(ret,
             '{',
             glue::glue('double school_close = {cb_t0}, school_open = {cb_t1};'),
@@ -426,13 +455,13 @@ cpp_chgI_close_schools = function(cb_dates, cb_durations)
             'P.changes.ch[5].values.push_back(vector<double>(8, 1.0));',
             'P.changes.ch[5].values.push_back(vector<double>(8, x[15]));',
             'P.changes.ch[5].times.push_back(school_close);',
-            'P.changes.ch[5].times.push_back(school_open + 1);',
+            'P.changes.ch[5].times.push_back(school_open);',
     
             # fitting of google mobility indices
             'for (unsigned int k : vector<unsigned int> { 0, 2, 3 }) {',
             '    for (unsigned int i = 0; i < P.changes.ch[k].times.size(); ++i) {',
             '        double t = P.changes.ch[k].times[i];',
-            '        if (t >= school_close && t <= school_open) {',
+            '        if (t >= school_close && t < school_open) {',
             '            P.changes.ch[k].values[i][2] = 0;',
             '            P.changes.ch[k].values[i][6] = 0;',
             '        }',
@@ -446,8 +475,8 @@ cpp_chgI_close_schools = function(cb_dates, cb_durations)
 }
 
 project = function(popset, tiers = FALSE, tier2 = NULL, tier3 = NULL, 
-    cb_date = NA, cb_duration = 14, lockdown = NULL, se = rep(0, 12), close_schools = FALSE, cb_behaviour = "default", 
-    waning_duration = -1, seasonality = 0, n_run = 100, expire = NULL, parameters_only = FALSE)
+    cb_date = NA, cb_duration = 14, lockdown = NULL, se = rep(0, 12), school_breaks = NULL, cb_behaviour = "default", 
+    waning_duration = -1, seasonality = 0, n_run = 100, expire = NULL, vacc = NULL, ei_v = rep(1, 16), ed_vi = rep(1, 16), parameters_only = FALSE)
 {
     dynamicsO = list()
     paramsO = list()
@@ -457,17 +486,34 @@ project = function(popset, tiers = FALSE, tier2 = NULL, tier3 = NULL,
         
         # Set parameters for this run . . .
         paramsI = rlang::duplicate(parametersI[[p]])
-        paramsI$time1 = "2021-03-31";
+        paramsI$time1 = "2021-06-30";
+        
+        paramsI$pop[[1]]$ei_v = ei_v;
+        paramsI$pop[[1]]$ei2_v = ei_v;
+        paramsI$pop[[1]]$ed_vi = ed_vi;
+        paramsI$pop[[1]]$ed_vi2 = ed_vi;
         
         # get lockdown days in schedule1
+        # Old version with multiple circuit breakers:
+        # cb_days = rep(0, length(paramsI$schedule[[1]]$times))
+        # if (!is.na(cb_date[1])) {
+        #     for (k in seq_along(cb_date)) {
+        #         for (i in seq_along(paramsI$schedule[[1]]$values)) {
+        #             today = ymd(paramsI$date0) + paramsI$schedule[[1]]$times[i];
+        #             if (today %between% c(ymd(cb_date[k]), ymd(cb_date[k]) + rep_len(cb_duration, length(cb_date))[k] - 1)) {
+        #                 cb_days[i] = 1;
+        #             }
+        #         }
+        #     }
+        # }
+
+        # New version with diff circuit breakers in different regions:
         cb_days = rep(0, length(paramsI$schedule[[1]]$times))
-        if (!is.na(cb_date[1])) {
-            for (k in seq_along(cb_date)) {
-                for (i in seq_along(paramsI$schedule[[1]]$values)) {
-                    today = ymd(paramsI$date0) + paramsI$schedule[[1]]$times[i];
-                    if (today %between% c(ymd(cb_date[k]), ymd(cb_date[k]) + rep_len(cb_duration, length(cb_date))[k] - 1)) {
-                        cb_days[i] = 1;
-                    }
+        if (!is.na(cb_date[p])) {
+            for (i in seq_along(paramsI$schedule[[1]]$values)) {
+                today = ymd(paramsI$date0) + paramsI$schedule[[1]]$times[i];
+                if (today %between% c(ymd(cb_date[p]), ymd(cb_date[p]) + cb_duration[p] - 1)) {
+                    cb_days[i] = 1;
                 }
             }
         }
@@ -478,15 +524,16 @@ project = function(popset, tiers = FALSE, tier2 = NULL, tier3 = NULL,
                 model_v2 = list(
                     cpp_changes = c(
                         cpp_chgI_proj(cb_days, se),
-                        if (close_schools) cpp_chgI_close_schools(cb_date, cb_duration) else NULL
+                        cpp_chgI_close_schools(school_breaks)
                     ),
                     cpp_loglikelihood = "",
                     cpp_observer = c(
                         cpp_obsI(P.death), 
-                        if (!is.na(cb_date[1])) cpp_obsI_cb(cb_date, cb_duration, cb_behaviour) else NULL,
-                        if (tiers) cpp_obsI_tiers("2020-10-14", 700, 2100, pop_size) else NULL,
+                        if (!is.na(cb_date[p])) cpp_obsI_cb(cb_date[p], cb_duration[p], cb_behaviour) else NULL,
+                        if (tiers) cpp_obsI_tiers("2020-12-15", 700, 1400, pop_size) else NULL,
                         if (waning_duration > 0) paste("if (t == 274) { P.pop[0].wn = vector<double>(16,", 1 / waning_duration, "); }") else NULL,
-                        if (seasonality > 0) paste("if (t == 274) { P.pop[0].season_A[0] = ", seasonality, "; }") else NULL
+                        if (seasonality > 0) paste("if (t == 274) { P.pop[0].season_A[0] = ", seasonality, "; }") else NULL,
+                        if (!is.null(vacc)) cpp_obsI_vax(parametersI[[p]], vacc[[p]]) else NULL
                     )
                 )
             )
@@ -502,20 +549,34 @@ project = function(popset, tiers = FALSE, tier2 = NULL, tier3 = NULL,
         }
         
         # adjust schedule1 for lockdown 
-        if (!is.na(cb_date[1])) {
-            for (k in seq_along(cb_date)) {
-                for (i in seq_along(paramsI$schedule[[1]]$values)) {
-                    today = ymd(paramsI$date0) + paramsI$schedule[[1]]$times[i];
-                    if (today %between% c(ymd(cb_date[k]), ymd(cb_date[k]) + rep_len(cb_duration, length(cb_date))[k] - 1)) {
-                        paramsI$schedule[[1]]$values[[i]][1] = max(0.0, paramsI$schedule[[1]]$values[[i]][1] + lockdown$res / 100); # res
-                        paramsI$schedule[[1]]$values[[i]][2] = max(0.0, paramsI$schedule[[1]]$values[[i]][2] + lockdown$wor / 100); # work
-                        paramsI$schedule[[1]]$values[[i]][3] = max(0.0, paramsI$schedule[[1]]$values[[i]][3] + lockdown$gro / 100); # groc
-                        paramsI$schedule[[1]]$values[[i]][4] = max(0.0, paramsI$schedule[[1]]$values[[i]][4] + lockdown$ret / 100); # retail
-                        paramsI$schedule[[1]]$values[[i]][5] = max(0.0, paramsI$schedule[[1]]$values[[i]][5] + lockdown$tra / 100); # transit
-                    }
+        if (!is.na(cb_date[p])) {
+            for (i in seq_along(paramsI$schedule[[1]]$values)) {
+                today = ymd(paramsI$date0) + paramsI$schedule[[1]]$times[i];
+                if (today %between% c(ymd(cb_date[p]), ymd(cb_date[p]) + cb_duration[p] - 1)) {
+                    paramsI$schedule[[1]]$values[[i]][1] = max(0.0, paramsI$schedule[[1]]$values[[i]][1] + lockdown$res / 100); # res
+                    paramsI$schedule[[1]]$values[[i]][2] = max(0.0, paramsI$schedule[[1]]$values[[i]][2] + lockdown$wor / 100); # work
+                    paramsI$schedule[[1]]$values[[i]][3] = max(0.0, paramsI$schedule[[1]]$values[[i]][3] + lockdown$gro / 100); # groc
+                    paramsI$schedule[[1]]$values[[i]][4] = max(0.0, paramsI$schedule[[1]]$values[[i]][4] + lockdown$ret / 100); # retail
+                    paramsI$schedule[[1]]$values[[i]][5] = max(0.0, paramsI$schedule[[1]]$values[[i]][5] + lockdown$tra / 100); # transit
                 }
             }
         }
+
+        # Old version with multiple CBs
+        # if (!is.na(cb_date[1])) {
+        #     for (k in seq_along(cb_date)) {
+        #         for (i in seq_along(paramsI$schedule[[1]]$values)) {
+        #             today = ymd(paramsI$date0) + paramsI$schedule[[1]]$times[i];
+        #             if (today %between% c(ymd(cb_date[k]), ymd(cb_date[k]) + rep_len(cb_duration, length(cb_date))[k] - 1)) {
+        #                 paramsI$schedule[[1]]$values[[i]][1] = max(0.0, paramsI$schedule[[1]]$values[[i]][1] + lockdown$res / 100); # res
+        #                 paramsI$schedule[[1]]$values[[i]][2] = max(0.0, paramsI$schedule[[1]]$values[[i]][2] + lockdown$wor / 100); # work
+        #                 paramsI$schedule[[1]]$values[[i]][3] = max(0.0, paramsI$schedule[[1]]$values[[i]][3] + lockdown$gro / 100); # groc
+        #                 paramsI$schedule[[1]]$values[[i]][4] = max(0.0, paramsI$schedule[[1]]$values[[i]][4] + lockdown$ret / 100); # retail
+        #                 paramsI$schedule[[1]]$values[[i]][5] = max(0.0, paramsI$schedule[[1]]$values[[i]][5] + lockdown$tra / 100); # transit
+        #             }
+        #         }
+        #     }
+        # }
         
         # contacts for tier 2
         for (i in seq_along(paramsI$schedule[[3]]$values)) {
@@ -778,6 +839,86 @@ plot_indicator_regions = function(series, indicator_name, label = indicator_name
         labs(x = NULL, y = paste0(label, suffix), colour = NULL, title = bigtitle) + 
         ylim(0, NA) +
         theme(legend.position = legpos)
+}
+
+make_vaccine_schedule = function(ymd_start, weekly_v, targeting, popset)
+{
+    # Get total population
+    popsize2 = NULL
+    for (i in popset) {
+        if (!is.null(parametersI[[i]])) {
+            popsize2 = rbind(popsize2,
+                data.table(p = i, 
+                    age = parametersI[[i]]$pop[[1]]$group_names,
+                    population_size = parametersI[[i]]$pop[[1]]$size)
+            )
+        }
+    }
+    total_popsize = popsize2[, .(population_size = sum(population_size)), by = age]$population_size;
+
+    # Make vaccination schedule
+    npops = length(popset)
+    
+    schedule = data.table(date = rep(ymd(ymd_start) + 0:(length(weekly_v) - 1), each = npops), 
+        pop = rep(popset, length(weekly_v)),
+        daily_v = rep(weekly_v / 7, each = npops),
+        v = rep(list(rep(0, 16)), length(weekly_v) * length(npops)));
+    setkey(schedule, date);
+    
+    # Allocate to each region by population and targeting
+    target_prev = rep(0, 16);
+    target_i = 1;
+
+    vacc = rep(0, 16);
+
+    for (d in schedule[, unique(date)])
+    {
+        alloc_pattern = targeting[[target_i]] - target_prev;
+        alloc_target = total_popsize * alloc_pattern;
+        alloc_today = schedule[date == d, daily_v[1]] * alloc_target / sum(alloc_target);
+        
+        s = cbind(popsize2[, 1:3], alloc_today = rep(alloc_today, npops));
+        s[, alloc_today := alloc_today * population_size / sum(population_size), by = age];
+        for (p in popset) {
+            schedule[date == d & pop == p, v := s[p == ..p, alloc_today]]
+        }
+        
+        vacc = vacc + alloc_today;
+        if (all(vacc >= alloc_target)) {
+            target_prev = targeting[[target_i]];
+            target_i = target_i + 1;
+            if (target_i > length(targeting)) {
+                break;
+            }
+            if (!any(targeting[[target_i]] > target_prev)) {
+                stop("Malformed targeting")
+            }
+        }
+    }
+    
+    # Keep only rows in schedule that change vaccination allotment
+    ret = list()
+
+    for (i in popset) {
+        # Keep only rows in schedule that change vaccination allotment
+        sched = schedule[pop == i];
+        for (r in nrow(sched):2)
+        {
+            if (all(sched[r, v][[1]]   == sched[r - 1, v][[1]])) {
+                sched = sched[-r]
+            }
+        }
+        sched = rbind(sched,
+            data.table(date = ymd(ymd_start) + length(weekly_v), pop = i, 
+                daily_v = 0, v = list(rep(0, 16))))
+        
+        ret[[i]] = list(
+            vt = sched[, date],
+            v = sched[, v]
+        );
+    }
+    
+    return (ret)
 }
 
 

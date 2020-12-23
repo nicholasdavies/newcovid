@@ -67,7 +67,7 @@ public:
     vector<double> tau;
     vector<double> pi_r, pi_r2, pi2_r, pi2_r2;
     vector<double> wn, wn2;
-    vector<double> v, wv, ei_v, ei2_v;
+    vector<double> v, wv, ei_v, ei2_v, ed_vi, ed_vi2;
     vector<double> A;
     vector<double> B;
     vector<double> D;
