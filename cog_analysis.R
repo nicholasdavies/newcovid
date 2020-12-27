@@ -91,7 +91,8 @@ approx_mean_betas = function(w, a, b)
 # Get new lineage data
 nl = function()
 {
-    newlin = fread("./data/cog_metadata_microreact_public-2020-12-18.csv")
+    #newlin = fread("./data/cog_metadata_microreact_public-2020-12-18.csv")
+    newlin = fread("./data/cog_metadata_microreact_public-2020-12-22.csv")#
     newlin = newlin[country == "UK"]
     newlin[, site := .GRP, by = .(longitude, latitude)]
     newlin[, B117 := lineage == "B.1.1.7"]
@@ -178,7 +179,7 @@ ggplot(varfreq[, sum(var1 + var2), by = .(date, nhs_name)]) +
     geom_vline(aes(xintercept = ymd("2020-11-25"))) +
     facet_wrap(~nhs_name, scales = "free")
 
-v = varfreq[date <= ymd("2020-12-01"), .(var1 = sum(var1 * sitefreq) + 1, var2 = sum(var2 * sitefreq) + 0.5), by = .(nhs_name, date)]
+v = varfreq[, .(var1 = sum(var1 * sitefreq) + 1, var2 = sum(var2 * sitefreq) + 0.5), by = .(nhs_name, date)]
 
 for (i in 1:nrow(v)) {
     a = v[i, var2] # inverted because we are interested
@@ -191,15 +192,11 @@ for (i in 1:nrow(v)) {
 ggplot(v) +
     geom_ribbon(aes(x = date, ymin = q_lo, ymax = q_hi), alpha = 0.2) +
     geom_line(aes(x = date, y = mode), alpha = 0.5) +
-    facet_wrap(~nhs_name)
+    facet_wrap(~nhs_name) + scale_y_log10()
 
 
-data = newlin[, .(all = .N, var2 = sum(var2)), keyby = .(sample_date, nhs)]
-data[nhs %like% "E", nhs_name := ogwhat(nhs)]
-data[nhs %like% "N", nhs_name := "Northern Ireland"]
-data[nhs %like% "S", nhs_name := "Scotland"]
-data[nhs %like% "W", nhs_name := "Wales"]
-ggplot(data[sample_date <= "2020-12-01"]) +
+data = newlin[, .(all = .N, var2 = sum(var2)), keyby = .(sample_date, nhs_name)]
+ggplot(data[sample_date <= "2020-12-31"]) +
     geom_line(aes(x = sample_date, y = var2 / all, colour = nhs_name)) +
     facet_wrap(~nhs_name) +
     theme(legend.position = "none")
