@@ -1,3 +1,7 @@
+# LOGISTIC FITS TO DETERMINE GROWTH RATE & SELECTIVE ADVANTAGE OF VOC 202012/01 STRAIN
+# ACROSS DIFFERENT REGIONS IN THE UK
+# T. Wenseleers, 28 Dec. 2020
+
 library(lme4)
 library(emmeans)
 library(effects)
