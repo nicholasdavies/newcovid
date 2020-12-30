@@ -437,22 +437,57 @@ cpp_obsI_cb = function(cb_dates, cb_durations, behaviour)
     return (ret)
 }
 
-cpp_chgI_close_schools = function(school_breaks)
+cpp_obsI_partclose_schools = function(params, d_school_date0 = NULL, d_school_date1 = NULL, d_school_contact = NULL)
+{
+    if (is.null(d_school_date0)) {
+        return (NULL);
+    }
+    
+    old_matrix = c(t(params$pop[[1]]$matrices[[3]]));
+    adj_matrix = c(t(params$pop[[1]]$matrices[[3]] * d_school_contact));
+    
+    t0 = as.integer(ymd(d_school_date0) - ymd("2020-01-01"));
+    t1 = as.integer(ymd(d_school_date1) - ymd("2020-01-01"));
+    
+    glue::glue(
+        'if (t == ${t0}) {',
+        '    P.pop[0].matrices[2].x = ${ cpp_vec(adj_matrix) };',
+        '    P.pop[0].needs_recalc = true;',
+        '    P.pop[0].Recalculate();',
+        '}',
+        'if (t == ${t1}) {',
+        '    P.pop[0].matrices[2].x = ${ cpp_vec(old_matrix) };',
+        '    P.pop[0].needs_recalc = true;',
+        '    P.pop[0].Recalculate();',
+        '}',
+        .sep = "\n", .open = "${", .close = "}")
+}
+
+cpp_chgI_close_schools = function(school_breaks, school_factors_r = NULL, school_factors_c = NULL)
 {
     ret = c(
         'P.changes.ch[5].values = { vector<double>(8, x[15]) };',
         'P.changes.ch[5].times = { x[17] };'
     )
     
+    if (is.null(school_factors_r)) {
+        school_factors_r = rep(0, length(school_breaks) %/% 2);
+    }
+    if (is.null(school_factors_c)) {
+        school_factors_c = rep(0, length(school_breaks) %/% 2);
+    }
+    
     for (k in seq(1, length(school_breaks), by = 2)) {
         cb_t0 = as.integer(ymd(school_breaks[k]) - ymd("2020-01-01"));
         cb_t1 = as.integer(ymd(school_breaks[k + 1]) - ymd("2020-01-01"));
+        school_factor_r = school_factors_r[(k + 1) %/% 2];
+        school_factor_c = school_factors_c[(k + 1) %/% 2];
 
         ret = c(ret,
             '{',
-            glue::glue('double school_close = {cb_t0}, school_open = {cb_t1};'),
+            glue::glue('double school_close = {cb_t0}, school_open = {cb_t1}, school_factor_r = {school_factor_r}, school_factor_c = {school_factor_c};'),
             
-            'P.changes.ch[5].values.push_back(vector<double>(8, 1.0));',
+            'P.changes.ch[5].values.push_back(vector<double>(8, (1 - school_factor_r) * 1.0 + school_factor_r * x[15]));',
             'P.changes.ch[5].values.push_back(vector<double>(8, x[15]));',
             'P.changes.ch[5].times.push_back(school_close);',
             'P.changes.ch[5].times.push_back(school_open);',
@@ -462,8 +497,8 @@ cpp_chgI_close_schools = function(school_breaks)
             '    for (unsigned int i = 0; i < P.changes.ch[k].times.size(); ++i) {',
             '        double t = P.changes.ch[k].times[i];',
             '        if (t >= school_close && t < school_open) {',
-            '            P.changes.ch[k].values[i][2] = 0;',
-            '            P.changes.ch[k].values[i][6] = 0;',
+            '            P.changes.ch[k].values[i][2] *= school_factor_c;',
+            '            P.changes.ch[k].values[i][6] *= school_factor_c;',
             '        }',
             '    }',
             '}',
@@ -476,7 +511,8 @@ cpp_chgI_close_schools = function(school_breaks)
 
 project = function(popset, tiers = FALSE, tier2 = NULL, tier3 = NULL, 
     cb_date = NA, cb_duration = 14, lockdown = NULL, se = rep(0, 12), school_breaks = NULL, cb_behaviour = "default", 
-    waning_duration = -1, seasonality = 0, n_run = 100, expire = NULL, vacc = NULL, ei_v = rep(1, 16), ed_vi = rep(1, 16), parameters_only = FALSE)
+    waning_duration = -1, seasonality = 0, n_run = 100, expire = NULL, vacc = NULL, ei_v = rep(1, 16), ed_vi = rep(1, 16), parameters_only = FALSE, 
+    school_factors_r = NULL, school_factors_c = NULL, d_school_date0 = NULL, d_school_date1 = NULL, d_school_contact = NULL)
 {
     dynamicsO = list()
     paramsO = list()
@@ -524,7 +560,7 @@ project = function(popset, tiers = FALSE, tier2 = NULL, tier3 = NULL,
                 model_v2 = list(
                     cpp_changes = c(
                         cpp_chgI_proj(cb_days, se),
-                        cpp_chgI_close_schools(school_breaks)
+                        cpp_chgI_close_schools(school_breaks, school_factors_r, school_factors_c)
                     ),
                     cpp_loglikelihood = "",
                     cpp_observer = c(
@@ -533,7 +569,8 @@ project = function(popset, tiers = FALSE, tier2 = NULL, tier3 = NULL,
                         if (tiers) cpp_obsI_tiers("2020-12-15", 700, 1400, pop_size) else NULL,
                         if (waning_duration > 0) paste("if (t == 274) { P.pop[0].wn = vector<double>(16,", 1 / waning_duration, "); }") else NULL,
                         if (seasonality > 0) paste("if (t == 274) { P.pop[0].season_A[0] = ", seasonality, "; }") else NULL,
-                        if (!is.null(vacc)) cpp_obsI_vax(parametersI[[p]], vacc[[p]]) else NULL
+                        if (!is.null(vacc)) cpp_obsI_vax(parametersI[[p]], vacc[[p]]) else NULL,
+                        if (!is.null(d_school_contact)) cpp_obsI_partclose_schools(paramsI, d_school_date0, d_school_date1, d_school_contact) else NULL
                     )
                 )
             )
@@ -607,7 +644,7 @@ project = function(popset, tiers = FALSE, tier2 = NULL, tier3 = NULL,
         
         # Sampling fits
         if (!parameters_only) {
-            postI = rlang::duplicate(posteriorsI[[p]])
+            postI = copy(posteriorsI[[p]])
             postI[, stdnorm_ld := rnorm(.N)]
             postI[, stdnorm_t2 := rnorm(.N)]
             postI[, stdnorm_t3 := rnorm(.N)]

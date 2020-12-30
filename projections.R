@@ -4,7 +4,7 @@ source("./define_tiers.R")
 
 # Get variant 2 quantities for other regions which were not fitted because of insufficient data.
 variant_pops = c(1, 3, 9)
-variant_posterior = rbindlist(posteriorsI[variant_pops])
+variant_posterior = rbindlist(posteriorsI[variant_pops], idcol = "population")
 
 variant_posterior[, mean(v2_when)]
 
@@ -54,7 +54,6 @@ proj_Ec_Vl = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, c
 proj_Ec_Vh = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, school_breaks = school_breaks_c, cb_behaviour = "default",
     vacc = make_vaccine_schedule("2021-01-01", rep(2000000, 365), targeting_old_to_young, england_pops), ei_v = rep(0.6, 16), ed_vi = rep(0.875, 16))
 
-# 23 Dec 16:06 RUN ALL THIS BELOW
 tb00 = summarize_projection(proj_00, "2020-12-15", popsize)
 fwrite(tb00, "./output/table_00.csv");
 tbEo = summarize_projection(proj_Eo, "2020-12-15", popsize)
@@ -86,6 +85,105 @@ ggsave(paste0("./output/proj_vacc_", replic, ".pdf"), width = 34, height = 16, u
 ggsave(paste0("./output/proj_vacc_", replic, ".png"), width = 34, height = 16, units = "cm")
 
 # TO HERE - replace Table 1, Fig 4, Fig 5
+
+
+# New school closure analyses
+primary = c(0.0, 1.0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+sndary0 = c(0.0, 0.0, 0.8, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+sndary1 = c(0.0, 0.0, 0.0, 0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+univers = c(0.0, 0.0, 0.0, 0.4, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+teacher = c(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+    
+dsc_Sa = 1.0 * primary + 0.5 * sndary0 + 1.0 * sndary1 + 0.0 * univers + 1.0 * teacher;
+dsc_Sb = 0.5 * primary + 0.5 * sndary0 + 1.0 * sndary1 + 0.0 * univers + 1.0 * teacher;
+
+school_breaks_2 = c("2020-12-19", "2021-01-03", "2021-01-04", "2021-04-01")
+
+
+proj_SO = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, cb_behaviour = "default",
+    school_breaks = school_breaks_2, school_factors_r = c(0.0, 1.0), school_factors_c = c(0.0, 1.0),
+    d_school_date0 = "2021-01-04", d_school_date1 = "2021-04-01", d_school_contact = rep(1, 16))
+proj_Sa = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, cb_behaviour = "default",
+    school_breaks = school_breaks_2, school_factors_r = c(0.0, 0.79), school_factors_c = c(0.0, 1.0),
+    d_school_date0 = "2021-01-04", d_school_date1 = "2021-04-01", d_school_contact = dsc_Sa)
+proj_Sb = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, cb_behaviour = "default",
+    school_breaks = school_breaks_2, school_factors_r = c(0.0, 0.54), school_factors_c = c(0.0, 1.0),
+    d_school_date0 = "2021-01-04", d_school_date1 = "2021-04-01", d_school_contact = dsc_Sb)
+proj_SC = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, cb_behaviour = "default",
+    school_breaks = school_breaks_2, school_factors_r = c(0.0, 0.0), school_factors_c = c(0.0, 1.0),
+    d_school_date0 = "2021-01-04", d_school_date1 = "2021-04-01", d_school_contact = rep(0, 16))
+
+
+plll = plot_projection_2parts(list(proj_SO, proj_Sa, proj_Sb, proj_SC), list("All open", "M1: P open, SK open, SN alt, U closed", "M2: P alt, SK open, SN alt, U closed", "All closed"), 
+    "2020-10-01", c("#5679a3", "#f47942", "#59a14f", "#31a1b3"), c("East of England", "London", "South East"))
+replic = 10
+ggsave(paste0("./output/28Dec_proj_", replic, ".pdf"), plll, width = 34, height = 16, units = "cm", useDingbats = FALSE)
+ggsave(paste0("./output/28Dec_proj_", replic, ".png"), plll, width = 34, height = 16, units = "cm")
+
+tbSO = summarize_projection(proj_SO, "2020-12-15", popsize)
+tbSa = summarize_projection(proj_Sa, "2020-12-15", popsize)
+tbSb = summarize_projection(proj_Sb, "2020-12-15", popsize)
+tbSC = summarize_projection(proj_SC, "2020-12-15", popsize)
+fwrite(tbSO, "./output/28Dec_table_SO.csv");
+fwrite(tbSa, "./output/28Dec_table_Sa.csv");
+fwrite(tbSb, "./output/28Dec_table_Sb.csv");
+fwrite(tbSC, "./output/28Dec_table_SC.csv");
+tbS = england_only(list(tbSO, tbSa, tbSb, tbSC), c("All open", "P open, SK open, SN 1/1, U closed", "P 1/1, SK open, SN 1/1, U closed", "All closed"))
+fwrite(tbS, "./output/28Dec_table_S.csv");
+
+
+proj_SOv = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, cb_behaviour = "default",
+    school_breaks = school_breaks_2, school_factors_r = c(0.0, 1.0), school_factors_c = c(0.0, 1.0),
+    d_school_date0 = "2021-01-04", d_school_date1 = "2021-04-01", d_school_contact = rep(1, 16),
+    vacc = make_vaccine_schedule("2021-01-01", rep(1500000, 365), targeting_old_to_young, england_pops), ei_v = rep(0.375, 16), ed_vi = rep(0.6, 16))
+proj_Sav = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, cb_behaviour = "default",
+    school_breaks = school_breaks_2, school_factors_r = c(0.0, 0.79), school_factors_c = c(0.0, 1.0),
+    d_school_date0 = "2021-01-04", d_school_date1 = "2021-04-01", d_school_contact = dsc_Sa,
+    vacc = make_vaccine_schedule("2021-01-01", rep(1500000, 365), targeting_old_to_young, england_pops), ei_v = rep(0.375, 16), ed_vi = rep(0.6, 16))
+proj_Sbv = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, cb_behaviour = "default",
+    school_breaks = school_breaks_2, school_factors_r = c(0.0, 0.54), school_factors_c = c(0.0, 1.0),
+    d_school_date0 = "2021-01-04", d_school_date1 = "2021-04-01", d_school_contact = dsc_Sb,
+    vacc = make_vaccine_schedule("2021-01-01", rep(1500000, 365), targeting_old_to_young, england_pops), ei_v = rep(0.375, 16), ed_vi = rep(0.6, 16))
+proj_SCv = project(england_pops, tiers = TRUE, tier2 = tier2, tier3 = tier3, cb_date = lockdown_dates, cb_duration = lockdown_durations, lockdown = lockdownER, se = seER, cb_behaviour = "default",
+    school_breaks = school_breaks_2, school_factors_r = c(0.0, 0.0), school_factors_c = c(0.0, 1.0),
+    d_school_date0 = "2021-01-04", d_school_date1 = "2021-04-01", d_school_contact = rep(0, 16),
+    vacc = make_vaccine_schedule("2021-01-01", rep(1500000, 365), targeting_old_to_young, england_pops), ei_v = rep(0.375, 16), ed_vi = rep(0.6, 16))
+
+pllv = plot_projection_2parts(list(proj_SOv, proj_Sav, proj_Sbv, proj_SCv), list("All open", "M1: P open, SK open, SN alt, U closed", "M2: P alt, SK open, SN alt, U closed", "All closed"), 
+    "2020-10-01", c("#5679a3", "#f47942", "#59a14f", "#31a1b3"), c("East of England", "London", "South East"))
+replic = 10
+ggsave(paste0("./output/28Dec_proj_vacc_", replic, ".pdf"), pllv, width = 34, height = 16, units = "cm", useDingbats = FALSE)
+ggsave(paste0("./output/28Dec_proj_vacc_", replic, ".png"), pllv, width = 34, height = 16, units = "cm")
+
+tbSOv = summarize_projection(proj_SOv, "2020-12-15", popsize)
+tbSav = summarize_projection(proj_Sav, "2020-12-15", popsize)
+tbSbv = summarize_projection(proj_Sbv, "2020-12-15", popsize)
+tbSCv = summarize_projection(proj_SCv, "2020-12-15", popsize)
+fwrite(tbSOv, "./output/28Dec_table_SOv.csv");
+fwrite(tbSav, "./output/28Dec_table_Sav.csv");
+fwrite(tbSbv, "./output/28Dec_table_Sbv.csv");
+fwrite(tbSCv, "./output/28Dec_table_SCv.csv");
+tbSv = england_only(list(tbSOv, tbSav, tbSbv, tbSCv), c("All open", "P open, SK open, SN 1/1, U closed", "P 1/1, SK open, SN 1/1, U closed", "All closed"))
+fwrite(tbSv, "./output/28Dec_table_Sv.csv");
+
+### South Eastern England only
+southeast = c("London", "East of England", "South East")
+tbSO = summarize_projection(proj_SO[population %in% southeast], "2020-12-15", popsize)
+tbSa = summarize_projection(proj_Sa[population %in% southeast], "2020-12-15", popsize)
+tbSb = summarize_projection(proj_Sb[population %in% southeast], "2020-12-15", popsize)
+tbSC = summarize_projection(proj_SC[population %in% southeast], "2020-12-15", popsize)
+tbS = england_only(list(tbSO, tbSa, tbSb, tbSC), c("All open", "P open, SK open, SN 1/1, U closed", "P 1/1, SK open, SN 1/1, U closed", "All closed"))
+fwrite(tbS, "./output/28Dec_table_S_SE.csv");
+
+
+tbSOv = summarize_projection(proj_SOv[population %in% southeast], "2020-12-15", popsize)
+tbSav = summarize_projection(proj_Sav[population %in% southeast], "2020-12-15", popsize)
+tbSbv = summarize_projection(proj_Sbv[population %in% southeast], "2020-12-15", popsize)
+tbSCv = summarize_projection(proj_SCv[population %in% southeast], "2020-12-15", popsize)
+tbSv = england_only(list(tbSOv, tbSav, tbSbv, tbSCv), c("All open", "P open, SK open, SN 1/1, U closed", "P 1/1, SK open, SN 1/1, U closed", "All closed"))
+fwrite(tbSv, "./output/28Dec_table_Sv_SE.csv");
+
+
 
 # Note for vaccination without new strain, or scenarios without new strain, can set all v2_when in posteriorsI to 9999
 

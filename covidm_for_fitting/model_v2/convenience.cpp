@@ -41,11 +41,11 @@ double nbinom(unsigned int x, double mean, double size)
 }
 
 // beta binomial log density
-double bbinom(double k, double n, double p, double k_minus_2)
+double bbinom(double k, double n, double mode, double conc)
 {
     auto lgamma = [](double x) { return gsl_sf_lngamma(x); };
-    double a = p * (k_minus_2) + 1;
-    double b = (1 - p) * (k_minus_2) + 1;
+    double a = mode * (conc - 2) + 1;
+    double b = (1 - mode) * (conc - 2) + 1;
     
     return (lgamma(n + 1) + lgamma(k + a) + lgamma(n - k + b) + lgamma(a + b))
         - (lgamma(k + 1) + lgamma(n - k + 1) + lgamma(n + a + b) + lgamma(a) + lgamma(b));

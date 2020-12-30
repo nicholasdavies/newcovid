@@ -100,8 +100,8 @@ public:
             unsigned int ncol = matrices[0].nc;
             unsigned int nrow = matrices[0].x.size() / ncol;
 
-            auto c_mult = [&](int m) { if (!contact_mult.empty()) return contact_mult[m]; return 1.0; };
-            auto c_lowerto = [&](int m) { if (!contact_lowerto.empty()) return contact_lowerto[m]; return std::numeric_limits<double>::max(); };
+            auto c_mult = [&](unsigned int m) { if (!contact_mult.empty()) return contact_mult[m]; return 1.0; };
+            auto c_lowerto = [&](unsigned int m) { if (!contact_lowerto.empty()) return contact_lowerto[m]; return std::numeric_limits<double>::max(); };
 
             cm = Matrix(0, nrow, ncol);
 

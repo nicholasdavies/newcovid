@@ -20,7 +20,7 @@ double binom(double x, double size, double prob);
 double nbinom(unsigned int x, double mean, double size);
 
 // beta binomial log density
-double bbinom(double k, double n, double p, double a_plus_b);
+double bbinom(double k, double n, double mode, double conc);
 
 // negative binomial log density with retrospective confirmation
 double nbinom_gammaconf(unsigned int x, double mean, double size, double days_ago, double conf_delay_mean, double conf_delay_shape);

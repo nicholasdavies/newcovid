@@ -92,7 +92,8 @@ approx_mean_betas = function(w, a, b)
 nl = function()
 {
     #newlin = fread("./data/cog_metadata_microreact_public-2020-12-18.csv")
-    newlin = fread("./data/cog_metadata_microreact_public-2020-12-22.csv")#
+    #newlin = fread("./data/cog_metadata_microreact_public-2020-12-22.csv")
+    newlin = fread("./data/cog_metadata_microreact_public-2020-12-27.csv")
     newlin = newlin[country == "UK"]
     newlin[, site := .GRP, by = .(longitude, latitude)]
     newlin[, B117 := lineage == "B.1.1.7"]
@@ -170,7 +171,7 @@ ggplot(data_site[sample_date > "2020-10-01"]) +
     facet_wrap(~nhs_name) +
     theme(legend.position = "none") +
     scale_fill_gradientn(colours = c("red", "yellow", "green", "blue", "violet")) +
-    geom_vline(aes(xintercept = ymd("2020-12-01"))) +
+    geom_vline(aes(xintercept = ymd("2020-12-15"))) +
     labs(x = "Sample date", y = "Proportion of COG-UK samples from each site")
 
 
@@ -201,7 +202,8 @@ ggplot(data[sample_date <= "2020-12-31"]) +
     facet_wrap(~nhs_name) +
     theme(legend.position = "none")
 
-fwrite(data[sample_date <= "2020-12-01"], "./fitting_data/var2-2020-12-16.csv")
+#fwrite(data[sample_date <= "2020-12-01"], "./fitting_data/var2-2020-12-16.csv")
+fwrite(data, "./fitting_data/var2-2020-12-21.csv")
 
 data_site = newlin[, .(all = .N, var2 = sum(var2)), keyby = .(site, sample_date)]
 data_site
@@ -210,3 +212,91 @@ ggplot(data_site) +
     facet_wrap(~site) +
     theme(legend.position = "none") +
     geom_vline(aes(xintercept = ymd("2020-12-01")))
+
+
+raw = newlin[, .(var2 = sum(var2), all = .N, nsite = uniqueN(site)), by = .(sample_date, nhs_name)]
+raw = raw[order(nhs_name, sample_date)]
+raw[, fn := all / max(all), by = nhs_name]
+raw[, fnr := rollmean(fn, 7, fill = NA), by = nhs_name]
+raw[, fsite := nsite / max(nsite), by = nhs_name]
+raw[, c("mean", "lower", "upper") := binom.confint(var2, all, method = "exact")[, 4:6]]
+
+raw22 = copy(raw)
+raw18 = copy(raw)
+
+for (nhs in raw[, unique(nhs_name)])
+{
+    model = glm(cbind(var2, all - var2) ~ sample_date, family = "binomial", data = raw[nhs_name == nhs])
+    raw[nhs_name == nhs, predicted := predict(model, newdata = .SD, type = "response")]
+    print(nhs)
+    print(model$coefficients[[2]])
+}
+
+library(aod)
+model = betabin(cbind(var2, all - var2) ~ sample_date + nhs_name, ~ 1, data = raw[!nhs_name %in% c("Wales", "Northern Ireland", "Scotland")])
+model
+
+ggplot(raw[sample_date >= "2020-10-01"]) +
+    geom_ribbon(aes(sample_date, ymin = lower, ymax = upper), fill = "darkorchid", alpha = 0.4) +
+    geom_line(aes(sample_date, var2/all), colour = "darkorchid") +
+    geom_line(aes(sample_date, predicted), colour = "black") +
+    geom_step(aes(sample_date, fnr), colour = "black", size = 0.2) +
+    facet_wrap(~nhs_name) +
+    labs(x = "Sample date", y = "Number of samples (black, 7 day rolling mean);\nFrequency of VOC 202012/01 (purple)") +
+    geom_vline(aes(xintercept = ymd("2020-12-15")))
+
+ggsave("~/Documents/newcovid/output/raw-data-2020-12-22.pdf", width = 30, height = 20, units = "cm", useDingbats = FALSE)
+
+
+w = merge(raw22[, .(f22 = var2/all, sample_date, nhs_name)], raw18[, .(f18 = var2/all, sample_date, nhs_name)], all = TRUE)
+w[is.na(f22), f22 := 0]
+w[is.na(f18), f18 := 0]
+ggplot(w) +
+    geom_line(aes(sample_date, f22 - f18), colour = "black") +
+    facet_wrap(~nhs_name) +
+    labs(x = "Sample date", y = "Change in frequency of VOC 202012/01\nin data from 22 Dec relative to 18 Dec")
+
+ggsave("~/Documents/newcovid/output/raw-data-change.pdf", width = 30, height = 20, units = "cm", useDingbats = FALSE)
+
+ggplot() +
+    geom_line(data = raw18[sample_date >= "2020-10-01"], aes(sample_date, var2/all), colour = "black") +
+    geom_line(data = raw22[sample_date >= "2020-10-01"], aes(sample_date, var2/all), colour = "darkorchid") +
+    facet_wrap(~nhs_name) +
+    labs(x = "Sample date", y = "Frequency of VOC 202012/01\ndata to 18 Dec (black) vs. data to 22 Dec (purple)")
+
+
+raw22[, region := ifelse(nhs_name %in% c("East of England", "South East", "London"), "East of England,\nLondon, South East", "Rest of UK")]
+ww = raw22[, .(var2 = sum(var2), all = sum(all)), keyby = .(sample_date, region)]
+
+ggplot(ww[sample_date >= "2020-09-01"]) +
+    geom_line(aes(x = sample_date, y = var2 / all, colour = region)) +
+    scale_y_continuous(trans = scales::logit_trans(), breaks = c(0.001, 0.01, 0.1, 0.2, 0.4, 0.6, 0.8)) +
+    labs(x = "Sample date", y = "Frequency of VOC 202012/01")
+
+summary(glm(cbind(var2, all) ~ sample_date, 
+    data = ww[region != "Rest of UK" & sample_date >= "2020-09-01"],
+    family = "binomial"))
+summary(glm(cbind(var2, all) ~ sample_date, 
+    data = ww[region == "Rest of UK" & sample_date >= "2020-09-01"],
+    family = "binomial"))
+
+
+
+newlin[, fullspec := paste(lineage, spec, sep = "/")]
+weekly = newlin[nhs_name == "Wales", .(k = .N), keyby = .(week(sample_date), fullspec)]
+weekly[, N := sum(k), by = week]
+
+ggplot(weekly) +
+    geom_col(aes(x = week, y = k/N, fill = fullspec), colour = "black", position = "stack") +
+    theme(legend.position = "none")
+
+weekly_m1 = newlin[, .(prevk = .N), keyby = .(week = week(sample_date) + 1, fullspec)]
+weekly_m1[, prevN := sum(prevk), by = week]
+weekly = merge(weekly, weekly_m1)
+
+ggplot(weekly) +
+    geom_jitter(aes(x = week, y = log((k/N)/(prevk/prevN)), colour = fullspec == "B.1.1.7/GNLAYYdel"))
+
+ww = weekly[, .(median(log((k/N)/(prevk/prevN))), sd(log((k/N)/(prevk/prevN))), .N), by = fullspec]
+View(ww[order(V1)])
+newlin[, fullspec]

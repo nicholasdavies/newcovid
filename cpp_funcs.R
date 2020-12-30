@@ -158,8 +158,10 @@ cpp_likI = function(params, ld, sitreps, sero, virus, variant, popid)
         'for (unsigned int i = 0; i < variant_t.size(); ++i) {',
         '    double s1 = dyn("Ip",  variant_t[i], {}, {}) + dyn("Is",  variant_t[i], {}, {}) + dyn("Ia",  variant_t[i], {}, {});',
         '    double s2 = dyn("Ip2", variant_t[i], {}, {}) + dyn("Is2", variant_t[i], {}, {}) + dyn("Ia2", variant_t[i], {}, {});',
-        '    double p2 = max(0.01, min(0.99, (s1 + s2) > 0 ? s2 / (s1 + s2) : 0));',
-        '    ll += binom(variant_v[i], variant_a[i], p2);',
+        #'    double p2 = max(0.01, min(0.99, (s1 + s2) > 0 ? s2 / (s1 + s2) : 0));',
+        #'    ll += binom(variant_v[i], variant_a[i], p2);',
+        '    double p2 = (s1 + s2) > 0 ? s2 / (s1 + s2) : 0;',
+        '    ll += bbinom(variant_v[i], variant_a[i], p2, 39.0);',
         '}',
         
         .sep = "\n    ", .open = "${", .close = "}"

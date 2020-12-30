@@ -10,15 +10,17 @@ library(stringr)
 library(mgcv)
 library(binom)
 
+# Lines with updated data: ###
+# Need to apply these also to other fits.R versions.
+
 N_THREADS = 36
-REP_START = 11
-REP_END = 11
+REP_START = 12
+REP_END = 12
 BURN_IN = 1500
 BURN_IN_FINAL = 2500
 ITER = 500
 
 which_pops = c(1, 3, 4, 5, 6, 9, 10)
-v2_pops = c(1, 3, 9)
 
 uk_covid_data_path = "./fitting_data/";
 datapath = function(x) paste0(uk_covid_data_path, x)
@@ -50,7 +52,7 @@ source("./check_fit.R")
 nhs_regions = popUK[, unique(name)]
 pct = function(x) as.numeric(str_replace_all(x, "%", "")) / 100
 
-all_data = qread(datapath("processed-data-2020-12-19.qs"))
+all_data = qread(datapath("processed-data-2020-12-29.qs")) ###
 ld = all_data[[1]]
 sitreps = all_data[[2]]
 virus = all_data[[3]][!Data.source %like% "7a|7b|6a|6b"]
@@ -64,10 +66,10 @@ variant = all_data[[5]][sample_date >= "2020-10-01"]
 # NUMBER OF REGIONS TO FIT
 N_REG = 12;
 
-# Build parameters for NHS regions
+# Build parameters for NHS regions ###
 params = cm_parameters_SEI3R(nhs_regions[1:N_REG], deterministic = T, 
                              date_start = "2020-01-01", 
-                             date_end = as.character(max(ld$date, sitreps$date, virus$End.date, sero$End.date) + 1),
+                             date_end = as.character(max(ld$date, sitreps$date, virus$End.date, sero$End.date, variant$sample_date) + 1),
     dE  = cm_delay_gamma(2.5, 2.5, t_max = 15, t_step = 0.25)$p,
     dIp = cm_delay_gamma(2.5, 4.0, t_max = 15, t_step = 0.25)$p,
     dIs = cm_delay_gamma(2.5, 4.0, t_max = 15, t_step = 0.25)$p,
@@ -95,7 +97,7 @@ source("./processes.R")
 params$processes = burden_processes
 
 # changes
-schedule_all = readRDS(datapath("schedule3-2020-12-18.rds"));
+schedule_all = readRDS(datapath("schedule3-2020-12-27.rds")); ###
 schedule = list();
 for (i in seq_along(schedule_all)) {
     if (schedule_all[[i]]$pops < N_REG) {
@@ -184,7 +186,7 @@ for (replic in REP_START:REP_END)
     time1 <- Sys.time()
     
     # Loop through regions
-    for (p in which_pops) { ### 1:12) {
+    for (p in which_pops) {
         paramsI = rlang::duplicate(params);
         paramsI$pop = list(rlang::duplicate(params$pop[[p]]));
         paramsI$travel = matrix(1, nrow = 1, ncol = 1);
@@ -253,7 +255,7 @@ for (replic in REP_START:REP_END)
         cm_source_backend(
             user_defined = list(
                 model_v2 = list(
-                    cpp_changes = cpp_chgI(p %in% v2_pops),
+                    cpp_changes = cpp_chgI(TRUE),
                     cpp_loglikelihood = cpp_likI(paramsI, ldI, sitrepsI, seroI, virusI, variantI, p),
                     cpp_observer = cpp_obsI(P.death)
                 )
@@ -313,7 +315,7 @@ for (replic in REP_START:REP_END)
     # load_fit("./fits/pp10.qs")
     dynamicsI = list()
     dynamics0 = list()
-    for (p in which_pops)  { ### 1:12
+    for (p in which_pops)  {
         cat(paste0("Sampling fit for population ", p, "...\n"))
         
         # Source backend

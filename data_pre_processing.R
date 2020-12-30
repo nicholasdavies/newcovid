@@ -115,14 +115,14 @@ sitreps = rbind(sitreps,
 )
 
 # Variant data, add England
-variant = fread(datapath("var2-2020-12-16.csv"))
+variant = fread(datapath("var2-2020-12-21.csv"))
 variant = rbind(variant, 
     variant[!nhs_name %in% c("Northern Ireland", "Scotland", "Wales"),
-        .(nhs = "E99999999", all = sum(all, na.rm = T), var2 = sum(var2, na.rm = T), nhs_name = "England"),
-        by = sample_date]
+        .(all = sum(all, na.rm = T), var2 = sum(var2, na.rm = T), nhs_name = "England"),
+        by = sample_date], fill = TRUE
 )
 variant[, pid := match(nhs_name, nhs_regions) - 1]
 variant[, sample_date := as.Date(sample_date)]
 
 
-qsave(list(ld, sitreps, virus, sero, variant), datapath("processed-data-2020-12-19.qs"))
+qsave(list(ld, sitreps, virus, sero, variant), datapath("processed-data-2020-12-29.qs"))
