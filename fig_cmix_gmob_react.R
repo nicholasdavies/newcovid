@@ -299,3 +299,48 @@ ggsave(filename = "ouputs/figure_1.png",
        plot_final,
        width = 10,
        height = 12)
+
+
+
+# Compare CoMix and REACT -------------------------------------------------
+
+
+setkeyv(cmix_eng,"start_date")
+setkeyv(react_Rt,"time_from")
+
+#monthly.df[,nearest:=(dates)][dates.df,roll = 'nearest'] #closest date
+cmix_react <- react_Rt[,nearest:=(time_from)][cmix_eng,roll = 'nearest'] #Closest _previous_ date
+
+
+
+## Single round
+ggplot(cmix_react[estimate == "per_round"]) +
+  geom_jitter(aes(R_50, `0.5`)) +
+  scale_x_continuous(expand = expansion(0), limits = c(0,2)) +
+  scale_y_continuous(expand = expansion(0), limits = c(0,2)) +
+  geom_abline(aes(slope = 1, intercept = 0)) +
+  ylab("React") +
+  xlab("CoMix")
+
+## Two rounds round
+ggplot(cmix_react[estimate == "two_rounds"]) +
+  geom_point(aes(R_50, `0.5`)) +
+  scale_x_continuous(expand = expansion(0), limits = c(0,2)) +
+  scale_y_continuous(expand = expansion(0), limits = c(0,2)) +
+  geom_abline(aes(slope = 1, intercept = 0)) +
+  ylab("React") +
+  xlab("CoMix")
+
+## Both rounds
+ggplot(cmix_react, aes(R_50, `0.5`)) +
+  geom_jitter() +
+  scale_x_continuous(expand = expansion(0), limits = c(0,2)) +
+  scale_y_continuous(expand = expansion(0), limits = c(0,2)) +
+  facet_grid(. ~ estimate) +
+  geom_abline(aes(slope = 1, intercept = 0)) +
+  ylab("React") +
+  xlab("CoMix")
+
+## corr.tests
+cmix_react[estimate == "two_rounds", cor.test(R_50, `0.5`)]
+cmix_react[estimate == "per_round", cor.test(R_50, `0.5`)]
