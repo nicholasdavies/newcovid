@@ -265,12 +265,41 @@ p_r0 <- ggplot(cmix_eng) +
     labs(fill = "REACT R estimate", y = "R", x = "", title = "E")  +
     scale_x_date(breaks = "month", date_labels = "%b") +
     theme(
+        legend.position = c(.05, .85),
         axis.text = element_text(size = 9),
         axis.title.y = element_text(size = 10),
         strip.text = element_text(size = 12),
         legend.text = element_text(size = 10),
         legend.title = element_text(size = 10)
     )
+
+
+# Compare CoMix and REACT -------------------------------------------------
+
+
+setkeyv(cmix_eng,"start_date")
+setkeyv(react_Rt,"time_from")
+
+cmix_react <- react_Rt[,nearest:=(time_from)][cmix_eng,roll = 'nearest'] #Closest _previous_ date
+
+
+## Both rounds
+p_corr_plot <- ggplot(cmix_react, aes(R_50, `0.5`, col = estimate)) +
+  geom_jitter() +
+  scale_colour_manual(values = c("#3b70bf", "#7dba5d"), labels = c("Single round", "Two rounds")) +
+  scale_x_continuous(expand = expansion(0), limits = c(0,2)) +
+  scale_y_continuous(expand = expansion(0), limits = c(0,2)) +
+  labs(colour = "REACT R estimate", y = "R", x = "", title = "F")  +
+  geom_abline(aes(slope = 1, intercept = 0)) +
+  ylab("REACT") +
+  xlab("CoMix")
+
+## corr.tests
+cmix_react[estimate == "two_rounds", cor.test(R_50, `0.5`)]
+cmix_react[estimate == "per_round", cor.test(R_50, `0.5`)]
+
+
+# Combine plots -----------------------------------------------------------
 
 layout <- "
     AABB
@@ -281,12 +310,12 @@ layout <- "
     CCDD
     CCDD
     CCDD
-    EEEE
-    EEEE
-    EEEE
+    EEEF
+    EEEF
+    EEEF
     "
 
-plot_final <- p_var + p_corr + p_gmob + p_cmix + p_r0 +  plot_layout(design = layout)
+plot_final <- p_var + p_corr + p_gmob + p_cmix + p_r0 + p_corr_plot + plot_layout(design = layout)
 
 plot_final
 
@@ -302,45 +331,3 @@ ggsave(filename = "ouputs/figure_1.png",
 
 
 
-# Compare CoMix and REACT -------------------------------------------------
-
-
-setkeyv(cmix_eng,"start_date")
-setkeyv(react_Rt,"time_from")
-
-#monthly.df[,nearest:=(dates)][dates.df,roll = 'nearest'] #closest date
-cmix_react <- react_Rt[,nearest:=(time_from)][cmix_eng,roll = 'nearest'] #Closest _previous_ date
-
-
-
-## Single round
-ggplot(cmix_react[estimate == "per_round"]) +
-  geom_jitter(aes(R_50, `0.5`)) +
-  scale_x_continuous(expand = expansion(0), limits = c(0,2)) +
-  scale_y_continuous(expand = expansion(0), limits = c(0,2)) +
-  geom_abline(aes(slope = 1, intercept = 0)) +
-  ylab("React") +
-  xlab("CoMix")
-
-## Two rounds round
-ggplot(cmix_react[estimate == "two_rounds"]) +
-  geom_point(aes(R_50, `0.5`)) +
-  scale_x_continuous(expand = expansion(0), limits = c(0,2)) +
-  scale_y_continuous(expand = expansion(0), limits = c(0,2)) +
-  geom_abline(aes(slope = 1, intercept = 0)) +
-  ylab("React") +
-  xlab("CoMix")
-
-## Both rounds
-ggplot(cmix_react, aes(R_50, `0.5`)) +
-  geom_jitter() +
-  scale_x_continuous(expand = expansion(0), limits = c(0,2)) +
-  scale_y_continuous(expand = expansion(0), limits = c(0,2)) +
-  facet_grid(. ~ estimate) +
-  geom_abline(aes(slope = 1, intercept = 0)) +
-  ylab("React") +
-  xlab("CoMix")
-
-## corr.tests
-cmix_react[estimate == "two_rounds", cor.test(R_50, `0.5`)]
-cmix_react[estimate == "per_round", cor.test(R_50, `0.5`)]
