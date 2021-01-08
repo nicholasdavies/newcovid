@@ -13,18 +13,27 @@ library(mgcv)
 library(binom)
 
 N_THREADS = 46
-REP_START = 17
-REP_END = 17
+REP_START = 1
+REP_END = 1
 BURN_IN = 2000
 BURN_IN_FINAL = 2000
 ITER = 500
 
 which_pops = c(1, 3, 4, 5, 6, 9, 10)
+set_id = ""
 
-#which_pops = c(1, 3, 4, 5)
-#set_id = "a"
-#which_pops = c(6, 9, 10)
-#set_id = "b"
+# Command line
+FIT_TYPE = commandArgs(trailingOnly = TRUE)[[1]];
+
+if (FIT_TYPE == "a") {
+    which_pops = c(1, 3, 4, 5)
+    set_id = "a"
+} else if (FIT_TYPE == "b") {
+    which_pops = c(6, 9, 10)
+    set_id = "b"
+} else {
+    stop("FIT_TYPE needed at command line (a or b)")
+}
 
 uk_covid_data_path = "./fitting_data/";
 datapath = function(x) paste0(uk_covid_data_path, x)
@@ -82,10 +91,6 @@ params = cm_parameters_SEI3R(nhs_regions[1:N_REG], deterministic = T,
     dIa = cm_delay_gamma(5.0, 4.0, t_max = 15, t_step = 0.25)$p)
 params = cm_split_matrices_ex_in(params, 15)
 
-# school terms
-school_close =  c("2020-2-16", "2020-4-05", "2020-5-24", "2020-7-22", "2020-10-25", "2020-12-20", "2021-02-14", "2021-04-01", "2021-05-30", "2021-07-25");
-school_reopen = c("2020-2-22", "2020-4-18", "2020-5-30", "2020-9-01", "2020-10-31", "2021-01-02", "2021-02-20", "2021-04-17", "2021-06-05", "2021-09-01");
-
 # Load age-varying symptomatic rate
 covid_scenario = qread(datapath("2-linelist_both_fit_fIa0.5-rbzvih.qs"));
 covu = unname(rep(colMeans(covid_scenario[,  5:12]), each = 2));
@@ -103,7 +108,7 @@ source("./processes.R")
 params$processes = burden_processes
 
 # changes
-schedule_all = readRDS(datapath("schedule3-2020-12-31.rds"));
+schedule_all = readRDS(datapath("schedule3-2021-01-06.rds"));
 schedule = list();
 for (i in seq_along(schedule_all)) {
     if (schedule_all[[i]]$pops < N_REG) {
@@ -132,7 +137,7 @@ source("./cpp_funcs.R")
 # Fitting
 priorsI = list(
     tS = "U 0 60",
-    u = "N 0.1 0.01 T 0.04 0.2",
+    u = "N 0.09 0.02 T 0.04 0.2",
     death_mean = "N 15 2 T 5 30",    # <<< co-cin
     hosp_admission = "N 8 1 T 4 20", # <<< co-cin
     icu_admission = "N 12.5 1 T 8 14", # <<< co-cin
@@ -164,7 +169,7 @@ parametersI = list()
 # Remove problematic virus entries
 virus = virus[omega > 1e-9]
 
-existing_file = paste0("./fits/baseline", REP_START - 1, ".qs");
+existing_file = paste0("./fits/baseline", REP_START - 1, set_id, ".qs");
 if (file.exists(existing_file)) {
     saved = qread(existing_file)
     posteriorsI = saved[[1]]
@@ -196,29 +201,29 @@ for (replic in REP_START:REP_END)
         }
     
         # contact placeholder for tier 2
+        paramsI$schedule[[2]] = rlang::duplicate(paramsI$schedule[[1]]);
+        for (i in seq_along(paramsI$schedule[[2]]$values)) {
+            paramsI$schedule[[2]]$values[[i]][1] = paramsI$schedule[[1]]$values[[i]][1] +  0.2497655 / 100;
+            paramsI$schedule[[2]]$values[[i]][2] = paramsI$schedule[[1]]$values[[i]][2] + -0.2307939 / 100;
+            paramsI$schedule[[2]]$values[[i]][3] = paramsI$schedule[[1]]$values[[i]][3] + -1.5907698 / 100;
+            paramsI$schedule[[2]]$values[[i]][4] = paramsI$schedule[[1]]$values[[i]][4] + -3.4866544 / 100;
+            paramsI$schedule[[2]]$values[[i]][5] = paramsI$schedule[[1]]$values[[i]][5] + -3.4524518 / 100;
+        }
+        paramsI$schedule[[2]]$mode = "bypass";
+    
+        # contact placeholder for tier 3
         paramsI$schedule[[3]] = rlang::duplicate(paramsI$schedule[[1]]);
         for (i in seq_along(paramsI$schedule[[3]]$values)) {
-            paramsI$schedule[[3]]$values[[i]][1] = paramsI$schedule[[1]]$values[[i]][1] +  0.2497655 / 100;
-            paramsI$schedule[[3]]$values[[i]][2] = paramsI$schedule[[1]]$values[[i]][2] + -0.2307939 / 100;
-            paramsI$schedule[[3]]$values[[i]][3] = paramsI$schedule[[1]]$values[[i]][3] + -1.5907698 / 100;
-            paramsI$schedule[[3]]$values[[i]][4] = paramsI$schedule[[1]]$values[[i]][4] + -3.4866544 / 100;
-            paramsI$schedule[[3]]$values[[i]][5] = paramsI$schedule[[1]]$values[[i]][5] + -3.4524518 / 100;
+            paramsI$schedule[[3]]$values[[i]][1] = paramsI$schedule[[1]]$values[[i]][1] +  2.080457 / 100;
+            paramsI$schedule[[3]]$values[[i]][2] = paramsI$schedule[[1]]$values[[i]][2] + -8.045226 / 100;
+            paramsI$schedule[[3]]$values[[i]][3] = paramsI$schedule[[1]]$values[[i]][3] + -2.476266 / 100;
+            paramsI$schedule[[3]]$values[[i]][4] = paramsI$schedule[[1]]$values[[i]][4] + -10.144043 / 100;
+            paramsI$schedule[[3]]$values[[i]][5] = paramsI$schedule[[1]]$values[[i]][5] + -7.681244 / 100;
         }
         paramsI$schedule[[3]]$mode = "bypass";
     
-        # contact placeholder for tier 3
-        paramsI$schedule[[4]] = rlang::duplicate(paramsI$schedule[[1]]);
-        for (i in seq_along(paramsI$schedule[[4]]$values)) {
-            paramsI$schedule[[4]]$values[[i]][1] = paramsI$schedule[[1]]$values[[i]][1] +  2.080457 / 100;
-            paramsI$schedule[[4]]$values[[i]][2] = paramsI$schedule[[1]]$values[[i]][2] + -8.045226 / 100;
-            paramsI$schedule[[4]]$values[[i]][3] = paramsI$schedule[[1]]$values[[i]][3] + -2.476266 / 100;
-            paramsI$schedule[[4]]$values[[i]][4] = paramsI$schedule[[1]]$values[[i]][4] + -10.144043 / 100;
-            paramsI$schedule[[4]]$values[[i]][5] = paramsI$schedule[[1]]$values[[i]][5] + -7.681244 / 100;
-        }
-        paramsI$schedule[[4]]$mode = "bypass";
-    
         # contact multiplier for gradual contact change
-        paramsI$schedule[[5]] = list(
+        paramsI$schedule[[4]] = list(
             parameter = "contact",
             pops = 0,
             mode = "multiply",
@@ -227,14 +232,14 @@ for (replic in REP_START:REP_END)
         )
     
         # contact multiplier for september boost
-        paramsI$schedule[[6]] = list(
+        paramsI$schedule[[5]] = list(
             parameter = "contact",
             pops = 0,
             mode = "multiply",
             values = list(rep(1, 8)),
             times = c(244)
         )
-    
+        
         ldI = rlang::duplicate(ld);
         ldI = ldI[pid == p - 1];
         sitrepsI = rlang::duplicate(sitreps);
@@ -281,7 +286,7 @@ for (replic in REP_START:REP_END)
         posteriorsI[[p]] = postI
     
         parametersI[[p]] = rlang::duplicate(paramsI)
-        qsave(rlang::duplicate(list(posteriorsI, parametersI)), paste0("./fits/baseline", replic, "-progress.qs"))
+        qsave(rlang::duplicate(list(posteriorsI, parametersI)), paste0("./fits/baseline", replic, set_id, "-progress.qs"))
     
         print(p)
     }
@@ -291,7 +296,7 @@ for (replic in REP_START:REP_END)
     print(time2-time1)
     # 45 mins for England
 
-    qsave(rlang::duplicate(list(posteriorsI, parametersI)), paste0("./fits/baseline", replic, ".qs"))
+    qsave(rlang::duplicate(list(posteriorsI, parametersI)), paste0("./fits/baseline", replic, set_id, ".qs"))
     
     # Generate SPI-M output
     # Sample dynamics from fit
@@ -306,7 +311,7 @@ for (replic in REP_START:REP_END)
                 model_v2 = list(
                     cpp_changes = cpp_chgI_voc(priorsI, v2 = FALSE, v2_relu = FALSE, v2_latdur = FALSE, v2_infdur = FALSE, v2_immesc = FALSE, v2_ch_u = FALSE),
                     cpp_loglikelihood = "",
-                    cpp_observer = cpp_obsI_baseline(P.death, P.critical, priorsI)
+                    cpp_observer = cpp_obsI_voc(FALSE, P.death, P.critical, priorsI)
                 )
             )
         )
@@ -335,5 +340,5 @@ for (replic in REP_START:REP_END)
     # Visually inspect fit
     plot = check_fit(test, ld, sitreps, virus, sero, nhs_regions[which_pops], death_cutoff = 0, "2020-12-30")
     plot = plot + geom_vline(aes(xintercept = ymd("2020-11-23")), size = 0.25, linetype = "42")
-    ggsave(paste0("./output/fit_baseline", replic, ".pdf"), plot, width = 40, height = 25, units = "cm", useDingbats = FALSE)
+    ggsave(paste0("./output/fit_baseline", replic, set_id, ".pdf"), plot, width = 40, height = 25, units = "cm", useDingbats = FALSE)
 }

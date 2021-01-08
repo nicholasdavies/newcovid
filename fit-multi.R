@@ -21,7 +21,7 @@ which_pops = c(1, 3, 4, 5, 6, 9, 10)
 
 REF_FIT = "./fits/baseline16.qs"
 data_file = "processed-data-2021-01-06.qs"
-mobility_file = "schedule3-2021-01-05.rds"
+mobility_file = "schedule3-2021-01-06.rds"
 
 reference_posterior = qread(REF_FIT)[[1]]
 reference_sgtf0 = c(0.02571052, 0.03440736, 0.01339611, 0.01631563, 0.01018319, 0.01554367, 0.03621880) # from growth_stat.R
@@ -144,10 +144,6 @@ params = cm_parameters_SEI3R(nhs_regions[1:N_REG], deterministic = T,
     dIs = cm_delay_gamma(2.5, 4.0, t_max = 15, t_step = 0.25)$p,
     dIa = cm_delay_gamma(5.0, 4.0, t_max = 15, t_step = 0.25)$p)
 params = cm_split_matrices_ex_in(params, 15)
-
-# school terms
-school_close =  c("2020-2-16", "2020-4-05", "2020-5-24", "2020-7-22", "2020-10-25", "2020-12-20", "2021-02-14", "2021-04-01", "2021-05-30", "2021-07-25");
-school_reopen = c("2020-2-22", "2020-4-18", "2020-5-30", "2020-9-01", "2020-10-31", "2021-01-02", "2021-02-20", "2021-04-17", "2021-06-05", "2021-09-01");
 
 # Load age-varying symptomatic rate
 covid_scenario = qread(datapath("2-linelist_both_fit_fIa0.5-rbzvih.qs"));
@@ -297,29 +293,29 @@ for (replic in REP_START:REP_END)
         }
     
         # contact placeholder for tier 2
+        paramsI$schedule[[2]] = rlang::duplicate(paramsI$schedule[[1]]);
+        for (i in seq_along(paramsI$schedule[[2]]$values)) {
+            paramsI$schedule[[2]]$values[[i]][1] = paramsI$schedule[[1]]$values[[i]][1] +  0.2497655 / 100;
+            paramsI$schedule[[2]]$values[[i]][2] = paramsI$schedule[[1]]$values[[i]][2] + -0.2307939 / 100;
+            paramsI$schedule[[2]]$values[[i]][3] = paramsI$schedule[[1]]$values[[i]][3] + -1.5907698 / 100;
+            paramsI$schedule[[2]]$values[[i]][4] = paramsI$schedule[[1]]$values[[i]][4] + -3.4866544 / 100;
+            paramsI$schedule[[2]]$values[[i]][5] = paramsI$schedule[[1]]$values[[i]][5] + -3.4524518 / 100;
+        }
+        paramsI$schedule[[2]]$mode = "bypass";
+    
+        # contact placeholder for tier 3
         paramsI$schedule[[3]] = rlang::duplicate(paramsI$schedule[[1]]);
         for (i in seq_along(paramsI$schedule[[3]]$values)) {
-            paramsI$schedule[[3]]$values[[i]][1] = paramsI$schedule[[1]]$values[[i]][1] +  0.2497655 / 100;
-            paramsI$schedule[[3]]$values[[i]][2] = paramsI$schedule[[1]]$values[[i]][2] + -0.2307939 / 100;
-            paramsI$schedule[[3]]$values[[i]][3] = paramsI$schedule[[1]]$values[[i]][3] + -1.5907698 / 100;
-            paramsI$schedule[[3]]$values[[i]][4] = paramsI$schedule[[1]]$values[[i]][4] + -3.4866544 / 100;
-            paramsI$schedule[[3]]$values[[i]][5] = paramsI$schedule[[1]]$values[[i]][5] + -3.4524518 / 100;
+            paramsI$schedule[[3]]$values[[i]][1] = paramsI$schedule[[1]]$values[[i]][1] +  2.080457 / 100;
+            paramsI$schedule[[3]]$values[[i]][2] = paramsI$schedule[[1]]$values[[i]][2] + -8.045226 / 100;
+            paramsI$schedule[[3]]$values[[i]][3] = paramsI$schedule[[1]]$values[[i]][3] + -2.476266 / 100;
+            paramsI$schedule[[3]]$values[[i]][4] = paramsI$schedule[[1]]$values[[i]][4] + -10.144043 / 100;
+            paramsI$schedule[[3]]$values[[i]][5] = paramsI$schedule[[1]]$values[[i]][5] + -7.681244 / 100;
         }
         paramsI$schedule[[3]]$mode = "bypass";
     
-        # contact placeholder for tier 3
-        paramsI$schedule[[4]] = rlang::duplicate(paramsI$schedule[[1]]);
-        for (i in seq_along(paramsI$schedule[[4]]$values)) {
-            paramsI$schedule[[4]]$values[[i]][1] = paramsI$schedule[[1]]$values[[i]][1] +  2.080457 / 100;
-            paramsI$schedule[[4]]$values[[i]][2] = paramsI$schedule[[1]]$values[[i]][2] + -8.045226 / 100;
-            paramsI$schedule[[4]]$values[[i]][3] = paramsI$schedule[[1]]$values[[i]][3] + -2.476266 / 100;
-            paramsI$schedule[[4]]$values[[i]][4] = paramsI$schedule[[1]]$values[[i]][4] + -10.144043 / 100;
-            paramsI$schedule[[4]]$values[[i]][5] = paramsI$schedule[[1]]$values[[i]][5] + -7.681244 / 100;
-        }
-        paramsI$schedule[[4]]$mode = "bypass";
-    
         # contact multiplier for gradual contact change
-        paramsI$schedule[[5]] = list(
+        paramsI$schedule[[4]] = list(
             parameter = "contact",
             pops = 0,
             mode = "multiply",
@@ -328,7 +324,7 @@ for (replic in REP_START:REP_END)
         )
     
         # contact multiplier for september boost
-        paramsI$schedule[[6]] = list(
+        paramsI$schedule[[5]] = list(
             parameter = "contact",
             pops = 0,
             mode = "multiply",

@@ -168,7 +168,7 @@ y = cbind(
     workplace = x[GPL_TYPE == "workplaces",         .(workplaces = value), keyby = .(region_name, t)][, workplaces]
 );
 
-# Fill in from Jan 1
+# Fill in from Jan 1 2020
 y = rbind(y, 
     data.table(region_name = rep(unique(y$region_name), each = 48), t = rep(0:47, length(unique(y$region_name))),
         grocpharm = 1, parks = 1, residential = 1, retrec = 1, transit = 1, workplace = 1)
@@ -185,15 +185,36 @@ for (added_fortnights in 1:45) {
     last_fortnight[, t := t + 14];
 }
 
-ggplot(y) + geom_line(aes(x = t, y = parks, colour = region_name, group = region_name))
-ggplot(y) + geom_line(aes(x = t, y = workplace, colour = region_name, group = region_name))
+# Add school terms: England
+# school_close =  c("2020-2-16", "2020-4-05", "2020-5-24", "2020-7-22", "2020-10-25", "2020-12-20", "2021-02-14", "2021-04-01", "2021-05-30", "2021-07-25");
+# school_reopen = c("2020-2-22", "2020-4-18", "2020-5-30", "2020-9-01", "2020-10-31", "2021-01-02", "2021-02-20", "2021-04-17", "2021-06-05", "2021-09-01");
+school_close =  c("2020-2-16", "2020-3-22", "2020-10-25", "2020-12-20", "2021-02-14", "2021-04-01", "2021-05-30", "2021-07-25");
+school_reopen = c("2020-2-22", "2020-9-01", "2020-10-31", "2021-01-09", "2021-02-20", "2021-04-17", "2021-06-05", "2021-09-01"); # Note: changed 20201-01-02 to 2021-01-09 for school closures so far
+stop("See comment above.")
+school_c = as.numeric(ymd(school_close) - ymd("2020-01-01"))
+school_r = as.numeric(ymd(school_reopen) - ymd("2020-01-01"))
+
+days = y[, unique(t)]
+
+n_closures = rowSums(matrix(days, ncol = length(school_c), nrow = length(days), byrow = FALSE) >= 
+        matrix(school_c, ncol = length(school_c), nrow = length(days), byrow = TRUE));
+n_reopenings = rowSums(matrix(days, ncol = length(school_r), nrow = length(days), byrow = FALSE) > 
+        matrix(school_r, ncol = length(school_r), nrow = length(days), byrow = TRUE));
+y_school = data.table(t = days, school = 1 - (n_closures - n_reopenings))
+y = merge(y, y_school, by = "t")
+y[, date := ymd("2020-01-01") + t]
+
+ggplot(y) + geom_line(aes(x = date, y = parks, colour = region_name, group = region_name))
+ggplot(y) + geom_line(aes(x = date, y = workplace, colour = region_name, group = region_name))
+ggplot(y) + geom_line(aes(x = date, y = school, colour = region_name, group = region_name))
 region_names = y[, sort(unique(region_name))]
 y[, pop := match(region_name, region_names) - 1]
 y = y[order(pop, t)]
 
-make_schedule = function(y, scenario)
+
+make_schedule = function(y)
 {
-    # Create schedule from Google data
+    # Create schedule from Google data and school closures
     schedule = list()
     schedule[[1]]  = list(parameter = "contact", pops = 0,  mode = "assign", values = list(), times = numeric(0))
     schedule[[2]]  = list(parameter = "contact", pops = 1,  mode = "assign", values = list(), times = numeric(0))
@@ -207,48 +228,17 @@ make_schedule = function(y, scenario)
     schedule[[10]] = list(parameter = "contact", pops = 9,  mode = "assign", values = list(), times = numeric(0))
     schedule[[11]] = list(parameter = "contact", pops = 10, mode = "assign", values = list(), times = numeric(0))
     schedule[[12]] = list(parameter = "contact", pops = 11, mode = "assign", values = list(), times = numeric(0))
-    schedule[[13]] = list(parameter = "fIs",     pops = 0,  mode = "multiply", values = list(), times = numeric(0))
-    schedule[[14]] = list(parameter = "fIs",     pops = 1,  mode = "multiply", values = list(), times = numeric(0))
-    schedule[[15]] = list(parameter = "fIs",     pops = 2,  mode = "multiply", values = list(), times = numeric(0))
-    schedule[[16]] = list(parameter = "fIs",     pops = 3,  mode = "multiply", values = list(), times = numeric(0))
-    schedule[[17]] = list(parameter = "fIs",     pops = 4,  mode = "multiply", values = list(), times = numeric(0))
-    schedule[[18]] = list(parameter = "fIs",     pops = 5,  mode = "multiply", values = list(), times = numeric(0))
-    schedule[[19]] = list(parameter = "fIs",     pops = 6,  mode = "multiply", values = list(), times = numeric(0))
-    schedule[[20]] = list(parameter = "fIs",     pops = 7,  mode = "multiply", values = list(), times = numeric(0))
-    schedule[[21]] = list(parameter = "fIs",     pops = 8,  mode = "multiply", values = list(), times = numeric(0))
-    schedule[[22]] = list(parameter = "fIs",     pops = 9,  mode = "multiply", values = list(), times = numeric(0))
-    schedule[[23]] = list(parameter = "fIs",     pops = 10, mode = "multiply", values = list(), times = numeric(0))
-    schedule[[24]] = list(parameter = "fIs",     pops = 11, mode = "multiply", values = list(), times = numeric(0))
-
-    if (scenario == 0) {
-        W = rep(0, 713);
-        S = rep(0, 713);
-        L = rep(0, 713);
-    }
 
     for (r in 1:nrow(y))
     {
-        # schedule[[y[r, pop]+1]]$values = c(schedule[[y[r, pop]+1]]$values,
-        #     list(y[r, c(0.5 + 0.5*transit, workplace + W[t], ifelse(t >= 81 & t <= 244, 0, 1) + S[t], 0.05*parks + 0.15*grocpharm + 0.4*retrec + 0.4*transit + L[t],
-        #               c(0.5 + 0.5*transit, workplace       , ifelse(t >= 81 & t <= 244, 0, 1)       , 0.05*parks + 0.15*grocpharm + 0.4*retrec + 0.4*transit + L[t]/2) * 1)]));
-        # schedule[[y[r, pop]+1]]$times = c(schedule[[y[r, pop]+1]]$times, y[r, t])
-        # 
-        # schedule[[y[r, pop]+11]]$values = c(schedule[[y[r, pop]+11]]$values,
-        #     list(y[r, rep(0.5 + 0.5*transit, 16)]));
-        # schedule[[y[r, pop]+11]]$times = c(schedule[[y[r, pop]+11]]$times, y[r, t])
-        # below for schedule3
         schedule[[y[r, pop]+1]]$values = c(schedule[[y[r, pop]+1]]$values,
-            list(y[r, c(residential, workplace, grocpharm, retrec, transit, 1, 1, 1)]));
+            list(y[r, c(residential, workplace, grocpharm, retrec, transit, school)]));
         schedule[[y[r, pop]+1]]$times = c(schedule[[y[r, pop]+1]]$times, y[r, t])
-
-        schedule[[y[r, pop]+13]]$values = c(schedule[[y[r, pop]+13]]$values,
-            list(y[r, c(transit, rep(1, 15))]));
-        schedule[[y[r, pop]+13]]$times = c(schedule[[y[r, pop]+13]]$times, y[r, t])
     }
 
     return (schedule)
 }
 
-schedule = make_schedule(y, 0);
-saveRDS(schedule, "~/Documents/newcovid/fitting_data/schedule3-2021-01-05.rds")
+schedule = make_schedule(y);
+saveRDS(schedule, "~/Documents/newcovid/fitting_data/schedule3-2021-01-06.rds")
 
