@@ -67,6 +67,9 @@ cm_check_parameters = function(parameters)
         reqp(i, "dIs",  "is.numeric(dIs) & all(dIs >= 0) & any(dIs > 0)");
         reqp(i, "dIa",  "is.numeric(dIa) & all(dIa >= 0) & any(dIa > 0)");
         reqp(i, "dE2",  "is.numeric(dE2) & all(dE2 >= 0) & any(dE2 > 0)");
+        reqp(i, "dIp2", "is.numeric(dIp2) & all(dIp2 >= 0) & any(dIp2 > 0)");
+        reqp(i, "dIs2", "is.numeric(dIs2) & all(dIs2 >= 0) & any(dIs2 > 0)");
+        reqp(i, "dIa2", "is.numeric(dIa2) & all(dIa2 >= 0) & any(dIa2 > 0)");
         reqp(i, "size", "is.numeric(size) & all(size >= 0) & any(size > 0)");
         reqp(i, "imm0", "is.numeric(imm0) & length(imm0) == length(size) & all(imm0 >= 0) & all(imm0 <= 1)");
         reqp(i, "matrices", "is.list(matrices) & length(matrices) > 0");
@@ -244,6 +247,9 @@ cm_base_pop_SEI3R = function(n_groups)
         dIa = cm_delay_gamma(7.0, 4.0, t_max = 60, t_step = 0.25)$p, # Assumed 7 days subclinical shedding
         dIs = cm_delay_gamma(3.2, 3.7, t_max = 60, t_step = 0.25)$p, # Zhang et al 2020
         dE2 = numeric(),
+        dIp2 = numeric(),
+        dIa2 = numeric(),
+        dIs2 = numeric(),
 
         size = rep(1000, n_groups),
         imm0 = rep(0, n_groups),
@@ -290,7 +296,7 @@ cm_base_pop_SEI3R = function(n_groups)
 
 # Build parameters for a single location, SEI3R model
 cm_build_pop_SEI3R = function(dem_location, mat_location = "guess",
-    dE = NULL, dIp = NULL, dIs = NULL, dIa = NULL, dE2 = NULL, contact = NULL, imm0 = NULL, 
+    dE = NULL, dIp = NULL, dIs = NULL, dIa = NULL, dE2 = NULL, dIp2 = NULL, dIs2 = NULL, dIa2 = NULL, contact = NULL, imm0 = NULL, 
     u = NULL, u2 = NULL, y = NULL, y2 = NULL, fIp = NULL, fIa = NULL, fIs = NULL, omega = NULL, tau = NULL,
     pi_r = NULL, pi_r2 = NULL, pi2_r = NULL, pi2_r2 = NULL, wn = NULL, wn2 = NULL,
     v = NULL, wv = NULL, ei_v = NULL, ei2_v = NULL, ed_vi = NULL, ed_vi2 = NULL, 
@@ -332,6 +338,9 @@ cm_build_pop_SEI3R = function(dem_location, mat_location = "guess",
     pop = assign(pop, "dIs", dIs);
     pop = assign(pop, "dIa", dIa);
     pop = assign(pop, "dE2", dE2);
+    pop = assign(pop, "dIp2", dIp2);
+    pop = assign(pop, "dIs2", dIs2);
+    pop = assign(pop, "dIa2", dIa2);
     pop$size = demographics[, round((f + m) * 1000)];
     pop$matrices = matrices;
     pop$contact = rep(1, length(matrices));
@@ -400,7 +409,7 @@ cm_base_parameters_SEI3R = function(n_groups = 1, pop = cm_base_pop_SEI3R(n_grou
 
 # Build parameters for one or several locations, SEI3R model
 cm_parameters_SEI3R = function(dem_locations, mat_locations = "guess", date_start = "2020-03-01", date_end = "2021-03-01", deterministic = T, processes = NULL,
-    dE = NULL, dIp = NULL, dIs = NULL, dIa = NULL, dE2 = NULL, contact = NULL, imm0 = NULL, 
+    dE = NULL, dIp = NULL, dIs = NULL, dIa = NULL, dE2 = NULL, dIp2 = NULL, dIs2 = NULL, dIa2 = NULL, contact = NULL, imm0 = NULL, 
     u = NULL, u2 = NULL, y = NULL, y2 = NULL, fIp = NULL, fIa = NULL, fIs = NULL, omega = NULL, tau = NULL,
     pi_r = NULL, pi_r2 = NULL, pi2_r = NULL, pi2_r2 = NULL, wn = NULL, wn2 = NULL,
     v = NULL, wv = NULL, ei_v = NULL, ei2_v = NULL, ed_vi = NULL, ed_vi2 = NULL, 
@@ -421,7 +430,7 @@ cm_parameters_SEI3R = function(dem_locations, mat_locations = "guess", date_star
     for (i in seq_along(dem_locations))
     {
         pop[[i]] = cm_build_pop_SEI3R(dem_locations[i], mat_locations[i],
-            dE = dE, dIp = dIp, dIs = dIs, dIa = dIa, dE2 = dE2, contact = contact, imm0 = imm0,
+            dE = dE, dIp = dIp, dIs = dIs, dIa = dIa, dE2 = dE2, dIp2 = dIp2, dIs2 = dIs2, dIa2 = dIa2, contact = contact, imm0 = imm0,
             u = u, u2 = u2, y = y, y2 = y2, fIp = fIp, fIa = fIa, fIs = fIs, omega = omega, tau = tau,
             pi_r = pi_r, pi_r2 = pi_r2, pi2_r = pi2_r, pi2_r2 = pi2_r2, wn = wn, wn2 = wn2,
             v = v, wv = wv, ei_v = ei_v, ei2_v = ei2_v, ed_vi = ed_vi, ed_vi2 = ed_vi2, 

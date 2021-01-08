@@ -40,6 +40,12 @@ double nbinom(unsigned int x, double mean, double size)
     return gsl_sf_lngamma(n + k) - gsl_sf_lngamma(k + 1) - gsl_sf_lngamma(n) + n * log(p) + k * log(1 - p);
 }
 
+// poisson log density
+double poisson(double x, double lambda)
+{
+    return x * log(lambda) - lambda - gsl_sf_lngamma(x + 1);
+}
+
 // beta binomial log density
 double bbinom(double k, double n, double mode, double conc)
 {
@@ -79,7 +85,7 @@ double dbeta(double x, double alpha, double beta)
 }
 
 // construct a delay distribution following a gamma distribution with mean mu and shape parameter shape.
-vector<double> delay_gamma(double mu, double shape, double t_max, double t_step, double mult)
+std::vector<double> delay_gamma(double mu, double shape, double t_max, double t_step, double mult)
 {
     double scale = mu / shape;
     vector<double> height;

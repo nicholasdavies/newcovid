@@ -316,12 +316,12 @@ void Population::Tick(Parameters& P, Randomizer& Rand, double t, vector<double>&
         double nE2_Ip2 = binomial(nE2_Ipa2, P.pop[p].y2[a]);
         double nE2_Ia2 = nE2_Ipa2 - nE2_Ip2;
         double nL2_Ia2 = L2[a].Mature();
-        Ip2[a].Add(P, Rand, nE2_Ip2, P.pop[p].dIp);
-        Ia2[a].Add(P, Rand, nE2_Ia2 + nL2_Ia2, P.pop[p].dIa);
+        Ip2[a].Add(P, Rand, nE2_Ip2, (P.pop[p].dIp2.weights.size() > 1 ? P.pop[p].dIp2 : P.pop[p].dIp));
+        Ia2[a].Add(P, Rand, nE2_Ia2 + nL2_Ia2, (P.pop[p].dIa2.weights.size() > 1 ? P.pop[p].dIa2 : P.pop[p].dIa));
 
         // Ip2 -> Is2
         double nIp2_Is2 = Ip2[a].Mature();
-        Is2[a].Add(P, Rand, nIp2_Is2, P.pop[p].dIs);
+        Is2[a].Add(P, Rand, nIp2_Is2, (P.pop[p].dIs2.weights.size() > 1 ? P.pop[p].dIs2 : P.pop[p].dIs));
 
         // Is2 -> R2
         double nIs2_R2 = Is2[a].Mature();
@@ -363,7 +363,7 @@ void Population::Tick(Parameters& P, Randomizer& Rand, double t, vector<double>&
                 case src_newEE2:
                     n_entering = nS_E + nR_E + nR2_E + nV_E + nS_E2 + nR_E2 + nR2_E2 + nV_E2; break;
                 case src_newII2:
-                    n_entering = nE_Ipa + nE2_Ipa2  + nL_Ia + nL2_Ia2; break;
+                    n_entering = nE_Ipa + nE2_Ipa2 + nL_Ia + nL2_Ia2; break;
                 case src_newIpIp2:
                     n_entering = nE_Ip + nE2_Ip2; break;
                 case src_newIsIs2:

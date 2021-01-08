@@ -11,7 +11,7 @@ using namespace std;
 
 // Declarations of C++ functions which require definition by the user
 void CppChanges(const vector<double>& x, Parameters& P);
-double CppLogLikelihood(const vector<double>& x, Reporter& dyn);
+double CppLogLikelihood(const vector<double>& x, Parameters& P, Reporter& dyn);
 bool CppObserver(Parameters& P, Randomizer& R, Reporter& dyn, double t, vector<double>& x);
 
 #endif

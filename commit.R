@@ -83,13 +83,16 @@ commit = function(previous_data, new_data)
         print(plot);
         cat(paste0("\n", "Indicator: ", ind, "\n", merged_indicator[, description[1]], "\n"));
         print(merged_indicator[, table(changes = change)]);
-        a = readline(prompt = "Commit changes for this indicator? (y/n/u) ");
+        a = readline(prompt = "Commit changes for this indicator? (y/n/u/a) ");
 
         if (a %in% c("Y", "y")) {
             setnames(new_indicator, "new_value", "value");
             final_data = rbind(final_data, new_indicator);
         } else if (a %in% c("U", "u")) {
             merged_indicator[, value := ifelse(is.na(new_value), previous_value, new_value)];
+            final_data = rbind(final_data, merged_indicator[, .(date, location, indicator, value, description)]);
+        } else if (a %in% c("A", "a")) {
+            merged_indicator[, value := ifelse(is.na(previous_value), new_value, previous_value)];
             final_data = rbind(final_data, merged_indicator[, .(date, location, indicator, value, description)]);
         } else {
             setnames(previous_indicator, "previous_value", "value");

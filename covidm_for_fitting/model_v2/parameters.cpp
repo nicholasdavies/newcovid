@@ -152,6 +152,9 @@ bool PopulationParameters::Set(Parameters* parent, string& name, Rcpp::RObject& 
     _CheckSet(dIa)
     _CheckSet(dIs)
     _CheckSet(dE2)
+    _CheckSet(dIp2)
+    _CheckSet(dIa2)
+    _CheckSet(dIs2)
     _CheckSet(size)
     _CheckSet(imm0)
     _CheckSet(matrices)
@@ -222,6 +225,9 @@ bool PopulationParameters::Set(Parameters* parent, string& name, vector<double>&
     _CheckSet(dIa)
     _CheckSet(dIs)
     _CheckSet(dE2)
+    _CheckSet(dIp2)
+    _CheckSet(dIa2)
+    _CheckSet(dIs2)
     _CheckSet(size)
     _CheckSet(imm0)
     //_CheckSet(matrices)
@@ -301,7 +307,7 @@ void SetParameters(Parameters& P, Rcpp::List list, Randomizer& Rand)
     ParamAssign(unsigned int, report_every);
     ParamAssign(bool, fast_multinomial);
     ParamAssign(bool, deterministic);
-
+    
     if (P.report_every != 1/P.time_step)
         throw("report_every must be the reciprocal of time_step.");
 
@@ -320,6 +326,9 @@ void SetParameters(Parameters& P, Rcpp::List list, Randomizer& Rand)
             ParamPopAssign(vector<double>, dIa, i);
             ParamPopAssign(vector<double>, dIs, i);
             ParamPopAssign(vector<double>, dE2, i);
+            ParamPopAssign(vector<double>, dIp2, i);
+            ParamPopAssign(vector<double>, dIa2, i);
+            ParamPopAssign(vector<double>, dIs2, i);
 
             if (P.fast_multinomial)
             {
@@ -328,6 +337,9 @@ void SetParameters(Parameters& P, Rcpp::List list, Randomizer& Rand)
                 P.pop[i].dIa.mn_approx.Set(P, Rand, P.pop[i].dIa.weights);
                 P.pop[i].dIs.mn_approx.Set(P, Rand, P.pop[i].dIs.weights);
                 P.pop[i].dE2.mn_approx.Set(P, Rand, P.pop[i].dE2.weights);
+                P.pop[i].dIp2.mn_approx.Set(P, Rand, P.pop[i].dIp2.weights);
+                P.pop[i].dIa2.mn_approx.Set(P, Rand, P.pop[i].dIa2.weights);
+                P.pop[i].dIs2.mn_approx.Set(P, Rand, P.pop[i].dIs2.weights);
             }
 
             ParamPopAssign(vector<double>, size, i);

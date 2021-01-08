@@ -37,19 +37,52 @@ void MCMCReporter::operator()(int TR, double LP, double CH, double LL, vector<do
 
 
 Likelihood::Likelihood(Parameters& bp, unsigned int m_seed)
- : base_parameters(bp), model_seed(m_seed)
+ : base_parameters(bp), model_seed(m_seed), multi(false)
 { }
+
+Likelihood::Likelihood(vector<Parameters>& bp, vector<vector<unsigned int>>& xs, vector<double>& fp, unsigned int m_seed)
+ : model_seed(m_seed), multi(true), multi_base_parameters(bp), x_source(xs), fixed_params(fp)
+{
+}
 
 double Likelihood::operator()(const vector<double>& theta)
 {
-    Randomizer r(model_seed);
-    Parameters p(base_parameters);
+    double ll = 0;
 
-    CppChanges(theta, p);
+    if (!multi)
+    {
+        Randomizer r(model_seed);
+        Parameters p(base_parameters);
 
-    Reporter rep = RunSimulation(p, r, theta);
+        CppChanges(theta, p);
 
-    double ll = CppLogLikelihood(theta, rep);
+        Reporter rep = RunSimulation(p, r, theta);
+
+        ll = CppLogLikelihood(theta, p, rep);
+    }
+    else
+    {
+        for (unsigned int i = 0; i < multi_base_parameters.size(); ++i)
+        {
+            Randomizer r(model_seed);
+            Parameters p(multi_base_parameters[i]);
+
+            vector<double> x(x_source.size(), 0);
+            for (unsigned int j = 0; j < x_source.size(); ++j)
+            {
+                if (x_source[j][i] >= 10000)
+                    x[j] = fixed_params[x_source[j][i] - 10000];
+                else
+                    x[j] = theta[x_source[j][i]];
+            }
+
+            CppChanges(x, p);
+
+            Reporter rep = RunSimulation(p, r, x);
+
+            ll += CppLogLikelihood(x, p, rep);
+        }
+    }
 
     return ll;
 }
@@ -150,7 +183,7 @@ void DEMCMC_Priors(Randomizer& R, Likelihood& likelihood, MCMCReporter& report,
         }
 
         // Prepare storage and random variates
-        bool migration = (i < burn_in * 0.75 && ((i / 100) & 1) == 0) ? R.Bernoulli(0.025) : false;
+        bool migration = (i < burn_in * 0.75 && ((i / 100) & 1) == 0) ? R.Bernoulli(0.0375) : false;
         vector<int> migration_indices(n_chains, 0);
         if (migration)
         {

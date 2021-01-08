@@ -102,6 +102,15 @@ burden_processes = list(
     
     list(source = "to_hosp2", type = "multinomial", names = "hosp_undetected2", report = c("po"),
         prob = matrix(1, nrow = 1, ncol = 16, byrow = T),
-        delays = matrix(cm_delay_gamma(6, 1, 60, 0.25)$p, nrow = 1, byrow = T))
+        delays = matrix(cm_delay_gamma(6, 1, 60, 0.25)$p, nrow = 1, byrow = T)),
+    
+    # Pillar 2
+    list(source = "newI", type = "multinomial", names = "test", report = c("o"),
+        prob = matrix(1, nrow = 1, ncol = 16, byrow = T),
+        delays = matrix(cm_delay_gamma(2.5 + 3.9, 2, 60, 0.25)$p, nrow = 1, byrow = T)),
+
+    list(source = "newI2", type = "multinomial", names = "test2", report = c("o"),
+        prob = matrix(1, nrow = 1, ncol = 16, byrow = T),
+        delays = matrix(cm_delay_gamma(2.5 + 3.9, 2, 60, 0.25)$p, nrow = 1, byrow = T))
 )
 

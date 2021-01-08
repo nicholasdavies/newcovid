@@ -29,12 +29,18 @@ struct Likelihood
 {
 public:
     Likelihood(Parameters& bp, unsigned int m_seed);
+    Likelihood(vector<Parameters>& bp, vector<vector<unsigned int>>& xs, vector<double>& fp, unsigned int m_seed);
 
     double operator()(const std::vector<double>& theta);
 
 private:
     Parameters base_parameters;
     unsigned int model_seed;
+
+    bool multi;
+    vector<Parameters> multi_base_parameters;
+    vector<vector<unsigned int>> x_source;
+    vector<double> fixed_params;
 };
 
 void DEMCMC_Priors(Randomizer& R, Likelihood& likelihood, MCMCReporter& report,

@@ -27,6 +27,7 @@ using namespace std;
 #include "compartment.h"
 #include "reporter.h"
 #include "observer.h"
+#include "user_include.h"
 
 struct Matrix;
 struct Change;
@@ -51,6 +52,9 @@ public:
     Discrete dIa;
     Discrete dIs;
     Discrete dE2;
+    Discrete dIp2;
+    Discrete dIa2;
+    Discrete dIs2;
 
     vector<double> size;
     vector<double> imm0;

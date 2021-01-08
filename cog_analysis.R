@@ -3,6 +3,9 @@ library(data.table)
 library(zoo)
 library(ogwrangler)
 library(lubridate)
+library(aod)
+library(binom)
+library(mgcv)
 CreateCache()
 
 # ONS Postcode Directory
@@ -93,7 +96,8 @@ nl = function()
 {
     #newlin = fread("./data/cog_metadata_microreact_public-2020-12-18.csv")
     #newlin = fread("./data/cog_metadata_microreact_public-2020-12-22.csv")
-    newlin = fread("./data/cog_metadata_microreact_public-2020-12-27.csv")
+    #newlin = fread("./data/cog_metadata_microreact_public-2020-12-27.csv")
+    newlin = fread("./data/cog_metadata_microreact_public-2020-12-29.csv")
     newlin = newlin[country == "UK"]
     newlin[, site := .GRP, by = .(longitude, latitude)]
     newlin[, B117 := lineage == "B.1.1.7"]
@@ -132,7 +136,7 @@ nl = function()
 }
 
 newlin = nl()
-
+#fwrite(newlin, "./data/cog_metadata_microreact_public-2020-12-29-annotated.csv");
 
 # View sites
 ggplot(unique(newlin[, .(latitude, longitude, nhs_name)])) + 
@@ -163,6 +167,7 @@ ggplot(varfreq[, sum(var1 > 0 | var2 > 0) / .N, by = .(date, nhs_name)]) +
     geom_vline(aes(xintercept = ymd("2020-11-25"))) +
     facet_wrap(~nhs_name)
 
+# Stain-glass plot
 data_site = newlin[, .(all = .N, var2 = sum(var2)), keyby = .(site, sample_date, nhs_name)]
 data_site[, site2 := as.numeric(match(site, unique(site))), by = nhs_name]
 data_site[, site2 := site2 / max(site2), by = nhs_name]
@@ -195,7 +200,7 @@ ggplot(v) +
     geom_line(aes(x = date, y = mode), alpha = 0.5) +
     facet_wrap(~nhs_name) + scale_y_log10()
 
-
+# Make COG data
 data = newlin[, .(all = .N, var2 = sum(var2)), keyby = .(sample_date, nhs_name)]
 ggplot(data[sample_date <= "2020-12-31"]) +
     geom_line(aes(x = sample_date, y = var2 / all, colour = nhs_name)) +
@@ -234,12 +239,14 @@ for (nhs in raw[, unique(nhs_name)])
 
 library(aod)
 model = betabin(cbind(var2, all - var2) ~ sample_date + nhs_name, ~ 1, data = raw[!nhs_name %in% c("Wales", "Northern Ireland", "Scotland")])
-model
+predicted2 = predict(model, newdata = raw[!nhs_name %in% c("Wales", "Northern Ireland", "Scotland")])
+raw[!nhs_name %in% c("Wales", "Northern Ireland", "Scotland"), predicted2 := ..predicted2]
 
 ggplot(raw[sample_date >= "2020-10-01"]) +
     geom_ribbon(aes(sample_date, ymin = lower, ymax = upper), fill = "darkorchid", alpha = 0.4) +
     geom_line(aes(sample_date, var2/all), colour = "darkorchid") +
     geom_line(aes(sample_date, predicted), colour = "black") +
+    geom_line(aes(sample_date, predicted2), colour = "black", linetype = "dashed") +
     geom_step(aes(sample_date, fnr), colour = "black", size = 0.2) +
     facet_wrap(~nhs_name) +
     labs(x = "Sample date", y = "Number of samples (black, 7 day rolling mean);\nFrequency of VOC 202012/01 (purple)") +
@@ -300,3 +307,53 @@ ggplot(weekly) +
 ww = weekly[, .(median(log((k/N)/(prevk/prevN))), sd(log((k/N)/(prevk/prevN))), .N), by = fullspec]
 View(ww[order(V1)])
 newlin[, fullspec]
+
+
+
+
+# . . .
+
+sep = fread(
+"nhs_name,sep_boost,sep_when
+East of England,1.286060,225.8318
+England,NA,NA
+London,1.150410,224.4728
+Midlands,1.246579,229.1717
+North East and Yorkshire,1.243735,226.6173
+North West,1.149471,224.6648
+Northern Ireland,1.096731,234.6402
+Scotland,1.108947,248.0260
+South East,1.171521,225.5470
+South West,1.310023,253.8089
+United Kingdom,NA,NA
+Wales,1.365682,227.7810")
+
+ggplot(newlin[, .(.N, sum(lineage == "B.1.177")), keyby = .(nhs_name, sample_date)]) + 
+    geom_line(aes(x = sample_date, y = V2 / N)) + 
+    geom_point(data = sep, aes(x = ymd("2020-01-01") + sep_when, y = sep_boost - 1), colour = "red") +
+    facet_wrap(~nhs_name)
+
+
+
+# 20A.EU1
+newlin[, var20A.EU1 := lineage %like% "B\\.1\\.177"]
+ggplot(newlin[, .(.N, sum(var20A.EU1 == TRUE)), keyby = .(nhs_name, sample_date)]) + 
+    geom_line(aes(x = sample_date, y = V2 / N)) + 
+    facet_wrap(~nhs_name)
+
+ae = newlin[, .(N_ae = sum(var20A.EU1 == TRUE), N_other = sum(var20A.EU1 == FALSE)), keyby = .(nhs_name, sample_date)]
+ae[, nhs_name := factor(nhs_name)]
+ae[, sample_t := as.numeric(as.Date(sample_date) - ymd("2020-01-01"))]
+
+model_ae = gam(cbind(N_ae, N_other) ~ s(sample_t, by = nhs_name), data = ae[sample_date > "2020-04-01"], family = "binomial")
+plot(model_ae)
+
+predict_ae = data.table(sample_t = rep(90:365, 10), nhs_name = rep(ae[, unique(nhs_name)], each = 276))
+predict_ae[, f_ae := predict(model_ae, newdata = .SD, type = "response")]
+
+ggplot(predict_ae) +
+    geom_line(aes(x = sample_t + ymd("2020-01-01"), y = f_ae, colour = nhs_name))
+
+
+ggplot(newlin[, .(.N), keyby = .(uk_lineage, sample_date)]) +
+    geom_area(aes(x = sample_date, y = N, fill = uk_lineage), position = "fill")

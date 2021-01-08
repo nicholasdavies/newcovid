@@ -49,6 +49,7 @@ if (cm_version_ == 1) {
     source(paste0(cm_path_, "/R/v1/cm1_fit.R"))
 } else if (cm_version_ == 2) {
     source(paste0(cm_path_, "/R/v2/cm2_backend.R"))
+    source(paste0(cm_path_, "/R/v2/cm2_funcs.R"))
     source(paste0(cm_path_, "/R/v2/cm2_run.R"))
     source(paste0(cm_path_, "/R/v2/cm2_params.R"))
     source(paste0(cm_path_, "/R/v2/cm2_interventions.R"))

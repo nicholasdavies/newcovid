@@ -7,8 +7,11 @@
 
 fasta/*
 output/*
+fits/*
 fits/other/*
 
 upload
+upload2
 download
+download2
 

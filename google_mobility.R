@@ -3,7 +3,7 @@ library(zoo)
 library(data.table)
 
 # Google visits data
-googmo = fread("~/Dropbox/uk_covid_data/fitting/data/Global_Mobility_Report-2020-12-27.csv");
+googmo = fread("~/Dropbox/uk_covid_data/fitting/data/Global_Mobility_Report-2021-01-05.csv");
 googmo = googmo[country_region_code == "GB" & sub_region_1 != "" & sub_region_2 == "" & metro_area == ""];
 
 # Melt mobility data
@@ -145,9 +145,10 @@ x = x[, .(date, t, value = rollmean(value, 7, fill = NA)), by = .(region_name, G
 x = x[!is.na(value)]
 
 # Plot to check
-ggplot(x[region_name %in% c("South East", "East of England", "London")]) +
+ggplot(x) +
     geom_line(aes(x = date, y = value, colour = region_name, group = region_name)) +
     geom_hline(aes(yintercept = 1), linetype = "22") +
+    geom_vline(aes(xintercept = ymd("2020-12-25")), size = 0.2) +
     facet_wrap(~GPL_TYPE) +
     ylim(0, NA)
 
@@ -247,5 +248,5 @@ make_schedule = function(y, scenario)
 }
 
 schedule = make_schedule(y, 0);
-saveRDS(schedule, "~/Documents/newcovid/fitting_data//schedule3-2020-12-27.rds")
+saveRDS(schedule, "~/Documents/newcovid/fitting_data/schedule3-2021-01-05.rds")
 

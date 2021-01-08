@@ -13,11 +13,11 @@ library(binom)
 # Lines with updated data: ###
 # Need to apply these also to other fits.R versions.
 
-N_THREADS = 36
-REP_START = 12
-REP_END = 12
+N_THREADS = 48
+REP_START = 17
+REP_END = 18
 BURN_IN = 1500
-BURN_IN_FINAL = 2500
+BURN_IN_FINAL = 1500
 ITER = 500
 
 which_pops = c(1, 3, 4, 5, 6, 9, 10)
@@ -31,7 +31,7 @@ datapath = function(x) paste0(uk_covid_data_path, x)
 
 # set up covidm
 cm_path = "./covidm_for_fitting/";
-cm_force_rebuild = F;
+cm_force_rebuild = T;
 cm_build_verbose = T;
 cm_version = 2;
 source(paste0(cm_path, "/R/covidm.R"))
@@ -52,12 +52,12 @@ source("./check_fit.R")
 nhs_regions = popUK[, unique(name)]
 pct = function(x) as.numeric(str_replace_all(x, "%", "")) / 100
 
-all_data = qread(datapath("processed-data-2020-12-29.qs")) ###
+all_data = qread(datapath("processed-data-2020-12-30.qs")) ###
 ld = all_data[[1]]
 sitreps = all_data[[2]]
 virus = all_data[[3]][!Data.source %like% "7a|7b|6a|6b"]
 sero = all_data[[4]]
-variant = all_data[[5]][sample_date >= "2020-10-01"]
+sgtf = all_data[[5]]
 
 #
 # FITTING
@@ -69,7 +69,7 @@ N_REG = 12;
 # Build parameters for NHS regions ###
 params = cm_parameters_SEI3R(nhs_regions[1:N_REG], deterministic = T, 
                              date_start = "2020-01-01", 
-                             date_end = as.character(max(ld$date, sitreps$date, virus$End.date, sero$End.date, variant$sample_date) + 1),
+                             date_end = as.character(max(ld$date, sitreps$date, virus$End.date, sero$End.date, sgtf$date) + 1), ###
     dE  = cm_delay_gamma(2.5, 2.5, t_max = 15, t_step = 0.25)$p,
     dIp = cm_delay_gamma(2.5, 4.0, t_max = 15, t_step = 0.25)$p,
     dIs = cm_delay_gamma(2.5, 4.0, t_max = 15, t_step = 0.25)$p,
@@ -144,9 +144,11 @@ priorsI = list(
     cfr_rel2 = "N 0.45 0.1 T 0 1", # <<<
     sep_when = "U 224 264",
     v2_when = "U 144 365",
-    v2_relu = "L 0.0 0.2 T 0.25 4",
+    v2_relu = "L 0.0 0.4 T 0.25 4",
     v2_hosp_rlo = "N 0 0.1 T -2 2", # hosp x[20]
-    v2_cfr_rel = "N 1 0.1 T 0.1 4" # cfr_rel x[21]
+    v2_cfr_rel = "N 1 0.1 T 0.1 4", # cfr_rel x[21]
+    v2_conc = "E 0.1 0.1 T 2 1000", # x[22] conc ###
+    v2_sgtf0 = "B 1.5 15"  # x[23] sgtf0 ###
 )
 
 posteriorsI = list()
@@ -248,30 +250,30 @@ for (replic in REP_START:REP_END)
         seroI = seroI[pid == p - 1 & Data.source != "NHSBT"];   # sero: all but NHSBT
         virusI = rlang::duplicate(virus);
         virusI = virusI[pid == p - 1 & Data.source %like% "REACT"]; # virus: REACT only
-        variantI = copy(variant);
-        variantI = variantI[pid == p - 1];
+        sgtfI = copy(sgtf); ###
+        sgtfI = sgtfI[pid == p - 1]; ###
     
         # load user defined functions
         cm_source_backend(
             user_defined = list(
                 model_v2 = list(
                     cpp_changes = cpp_chgI(TRUE),
-                    cpp_loglikelihood = cpp_likI(paramsI, ldI, sitrepsI, seroI, virusI, variantI, p),
+                    cpp_loglikelihood = cpp_likI(paramsI, ldI, sitrepsI, seroI, virusI, sgtfI, p),
                     cpp_observer = cpp_obsI(P.death)
                 )
             )
         )
-        
+
         priorsI2 = rlang::duplicate(priorsI)
         if (init_previous) {
             for (k in seq_along(priorsI2)) {
                 pname = names(priorsI2)[k];
-                # if (p == 3 && (pname == "v2_when" || pname == "v2_relu")) {
-                #     next;
-                # }
+                if (replic == 17 && (pname == "v2_when" || pname == "v2_relu")) {
+                    next;
+                }
                 if (length(posteriorsI) >= p && pname %in% names(posteriorsI[[p]])) {
-                    init_values = quantile(posteriorsI[[p]][[pname]], c(0.25, 0.75));
-                    cat(paste0("Using IQR ", init_values[1], " - ", init_values[2], " for initial values of parameter ", pname, 
+                    init_values = quantile(posteriorsI[[p]][[pname]], c(0.025, 0.975));
+                    cat(paste0("Using 95% CI ", init_values[1], " - ", init_values[2], " for initial values of parameter ", pname, 
                         " with probability ", init_previous_amount, "\n"));
                     priorsI2[[pname]] = paste0(priorsI2[[pname]], " I ", init_values[1], " ", init_values[2], " ", init_previous_amount);
                     cat(paste0(priorsI2[[pname]], "\n"));
@@ -354,22 +356,39 @@ for (replic in REP_START:REP_END)
     test0 = rbindlist(dynamics0, fill = TRUE)
     test0[, population := nhs_regions[population]]
     
-    # Fit to COG data
-    variant[, qlo := qbeta(0.025, var2 + 1, all - var2 + 1)]
-    variant[, qhi := qbeta(0.975, var2 + 1, all - var2 + 1)]
+    # Fit to SGTF data ###
+    sgtf[, qlo := qbeta(0.025, sgtf + 1, other + 1)]
+    sgtf[, qhi := qbeta(0.975, sgtf + 1, other + 1)]
     vmodel = test[, .(p2 = sum(Ip2 + Is2 + Ia2) / sum(Ip + Is + Ia + Ip2 + Is2 + Ia2)), by = .(t, population, run)]
     vmodel[is.nan(p2), p2 := 0]
     vmodel = vmodel[, as.list(quantile(p2, c(0.025, 0.5, 0.975))), by = .(t, nhs_name = population)]
-    plot1 = ggplot(variant[(pid + 1) %in% which_pops]) +
-        geom_ribbon(aes(x = sample_date, ymin = qlo, ymax = qhi), fill = "black", alpha = 0.1) +
+    plotS = ggplot(sgtf[(pid + 1) %in% which_pops]) +
+        geom_ribbon(aes(x = date, ymin = qlo, ymax = qhi), fill = "black", alpha = 0.1) +
         geom_ribbon(data = vmodel[t + ymd("2020-01-01") >= "2020-10-01"], 
             aes(x = ymd("2020-01-01") + t, ymin = `2.5%`, ymax = `97.5%`), fill = "darkorchid", alpha = 0.5) +
-        geom_line(aes(x = sample_date, y = var2 / all), size = 0.25) +
+        geom_line(aes(x = date, y = sgtf / (sgtf + other)), size = 0.25) +
         facet_wrap(~nhs_name) +
-        labs(x = NULL, y = "Relative frequency of\nVOC 202012/01") +
+        labs(x = NULL, y = "Relative frequency of\nS gene target failure") +
         scale_x_date(date_breaks = "1 month", date_labels = "%b")
-    ggsave(paste0("./output/variant_check_", replic, ".pdf"), plot1, width = 20, height = 6, units = "cm", useDingbats = FALSE)
-    ggsave(paste0("./output/variant_check_", replic, ".png"), plot1, width = 20, height = 6, units = "cm")
+    ggsave(paste0("./output/sgtf_check_", replic, ".pdf"), plotS, width = 20, height = 6, units = "cm", useDingbats = FALSE)
+    #ggsave(paste0("./output/sgtf_check_", replic, ".png"), plotS, width = 20, height = 6, units = "cm")
+    
+    # # Fit to COG data ###
+    # variant[, qlo := qbeta(0.025, var2 + 1, all - var2 + 1)]
+    # variant[, qhi := qbeta(0.975, var2 + 1, all - var2 + 1)]
+    # vmodel = test[, .(p2 = sum(Ip2 + Is2 + Ia2) / sum(Ip + Is + Ia + Ip2 + Is2 + Ia2)), by = .(t, population, run)]
+    # vmodel[is.nan(p2), p2 := 0]
+    # vmodel = vmodel[, as.list(quantile(p2, c(0.025, 0.5, 0.975))), by = .(t, nhs_name = population)]
+    # plot1 = ggplot(variant[(pid + 1) %in% which_pops]) +
+    #     geom_ribbon(aes(x = sample_date, ymin = qlo, ymax = qhi), fill = "black", alpha = 0.1) +
+    #     geom_ribbon(data = vmodel[t + ymd("2020-01-01") >= "2020-10-01"], 
+    #         aes(x = ymd("2020-01-01") + t, ymin = `2.5%`, ymax = `97.5%`), fill = "darkorchid", alpha = 0.5) +
+    #     geom_line(aes(x = sample_date, y = var2 / all), size = 0.25) +
+    #     facet_wrap(~nhs_name) +
+    #     labs(x = NULL, y = "Relative frequency of\nVOC 202012/01") +
+    #     scale_x_date(date_breaks = "1 month", date_labels = "%b")
+    # ggsave(paste0("./output/variant_check_", replic, ".pdf"), plot1, width = 20, height = 6, units = "cm", useDingbats = FALSE)
+    # #ggsave(paste0("./output/variant_check_", replic, ".png"), plot1, width = 20, height = 6, units = "cm")
     
     # Posteriors of interest
     post = rbindlist(posteriorsI[which_pops], idcol = "population")
@@ -397,27 +416,26 @@ for (replic in REP_START:REP_END)
         labs(x = NULL, y = NULL, colour = NULL) +
         expand_limits(x = 1)
     ggsave(paste0("./output/variant_stats_", replic, ".pdf"), plot2, width = 20, height = 6, units = "cm", useDingbats = FALSE)
-    ggsave(paste0("./output/variant_stats_", replic, ".png"), plot2, width = 20, height = 6, units = "cm")
+    #ggsave(paste0("./output/variant_stats_", replic, ".png"), plot2, width = 20, height = 6, units = "cm")
 
-    qsave(plot1, "./output/cog-plot-0.qs")
+    qsave(plotS, "./output/sgtf-plot-0.qs")
+    # qsave(plot1, "./output/cog-plot-0.qs") ###
     qsave(plot2, "./output/post-plot-0.qs")
-    
-    
     
     post[variable == "Relative transmission rate", quantile(value, c(0.025, 0.5, 0.975))]
 
     # Visually inspect fit
-    plot_a = check_fit(test0, ld, sitreps, virus, sero, nhs_regions[which_pops], "2020-12-18")
-    plot_b = check_fit(test, ld, sitreps, virus, sero, nhs_regions[which_pops], "2020-12-18")
+    plot_a = check_fit(test0, ld, sitreps, virus, sero, nhs_regions[which_pops], "2020-12-30")
+    plot_b = check_fit(test, ld, sitreps, virus, sero, nhs_regions[which_pops], "2020-12-30")
     plot3 = cowplot::plot_grid(plot_a, plot_b, nrow = 1, labels = LETTERS)
     ggsave(paste0("./output/fit_", replic, ".pdf"), plot3, width = 30, height = 25, units = "cm", useDingbats = FALSE)
-    ggsave(paste0("./output/fit_", replic, ".png"), plot3, width = 30, height = 25, units = "cm")
+    #ggsave(paste0("./output/fit_", replic, ".png"), plot3, width = 30, height = 25, units = "cm")
 
-    plot_a = check_fit(test0, ld, sitreps, virus, sero, nhs_regions[which_pops], "2020-12-18", "2020-09-01")
-    plot_b = check_fit(test, ld, sitreps, virus, sero, nhs_regions[which_pops], "2020-12-18", "2020-09-01")
+    plot_a = check_fit(test0, ld, sitreps, virus, sero, nhs_regions[which_pops], "2020-12-30", "2020-09-01")
+    plot_b = check_fit(test, ld, sitreps, virus, sero, nhs_regions[which_pops], "2020-12-30", "2020-09-01")
     plot3L = cowplot::plot_grid(plot_a, plot_b, nrow = 1, labels = LETTERS)
     ggsave(paste0("./output/fitL_", replic, ".pdf"), plot3L, width = 30, height = 25, units = "cm", useDingbats = FALSE)
-    ggsave(paste0("./output/fitL_", replic, ".png"), plot3L, width = 30, height = 25, units = "cm")
+    #ggsave(paste0("./output/fitL_", replic, ".png"), plot3L, width = 30, height = 25, units = "cm")
     
     # england_pops = c(1, 3, 4, 5, 6, 9, 10)
     # plot = compare_fit(test, test0, ld, sitreps, virus, sero, nhs_regions[which_pops], nhs_regions[england_pops], "2020-12-18")

@@ -18,7 +18,7 @@ cm_source_backend = function(user_defined = NULL)
         paste0("    ", user_defined$model_v2$cpp_changes),
         "}",
         "",
-        "double CppLogLikelihood(const vector<double>& x, Reporter& dyn)",
+        "double CppLogLikelihood(const vector<double>& x, Parameters& P, Reporter& dyn)",
         "{",
         "    (void)dyn;",
         "    double ll = 0.0;",

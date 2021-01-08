@@ -45,7 +45,7 @@ nhs_regions = popUK[, unique(name)]
 pct = function(x) as.numeric(str_replace_all(x, "%", "")) / 100
 
 # Process new data
-new_data = fread(datapath("data-2020-12-18.csv"))
+new_data = fread(datapath("data-2021-01-06.csv"))
 
 # removing problematic data with under reporting of hospital incidence
 days_to_remove_scot <- 1  ## VISUALLY INSPECT DATA TO DETERMINE THESE VALUES
@@ -105,6 +105,7 @@ virus[, pid := match(NHS.region, nhs_regions) - 1]
 ld = rbind(ld,
     ld[!name %in% c("Northern Ireland", "Scotland", "Wales"), .(N = sum(N), name = "England", pid = 1), by = date]
 )
+ld[, date := as.Date(date)]
 
 # Add England to sitrep series
 sitreps = rbind(sitreps,
@@ -114,15 +115,25 @@ sitreps = rbind(sitreps,
         by = date]
 )
 
-# Variant data, add England
-variant = fread(datapath("var2-2020-12-21.csv"))
-variant = rbind(variant, 
-    variant[!nhs_name %in% c("Northern Ireland", "Scotland", "Wales"),
-        .(all = sum(all, na.rm = T), var2 = sum(var2, na.rm = T), nhs_name = "England"),
-        by = sample_date], fill = TRUE
+# # Variant data, add England
+# variant = fread(datapath("var2-2020-12-21.csv"))
+# variant = rbind(variant, 
+#     variant[!nhs_name %in% c("Northern Ireland", "Scotland", "Wales"),
+#         .(all = sum(all, na.rm = T), var2 = sum(var2, na.rm = T), nhs_name = "England"),
+#         by = sample_date], fill = TRUE
+# )
+# variant[, pid := match(nhs_name, nhs_regions) - 1]
+# variant[, sample_date := as.Date(sample_date)]
+
+# SGTF data, add England
+sgtf = fread(datapath("sgtf-2021-01-06.csv"))
+sgtf = rbind(sgtf, 
+    sgtf[!nhs_name %in% c("Northern Ireland", "Scotland", "Wales"),
+        .(sgtf = sum(sgtf, na.rm = T), other = sum(other, na.rm = T), nhs_name = "England"),
+        by = date], fill = TRUE
 )
-variant[, pid := match(nhs_name, nhs_regions) - 1]
-variant[, sample_date := as.Date(sample_date)]
+sgtf[, pid := match(nhs_name, nhs_regions) - 1]
+sgtf[, date := as.Date(date)]
 
 
-qsave(list(ld, sitreps, virus, sero, variant), datapath("processed-data-2020-12-29.qs"))
+qsave(list(ld, sitreps, virus, sero, sgtf), datapath("processed-data-2021-01-06.qs"))

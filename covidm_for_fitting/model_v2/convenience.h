@@ -19,6 +19,9 @@ double binom(double x, double size, double prob);
 // negative binomial log density
 double nbinom(unsigned int x, double mean, double size);
 
+// poisson log density
+double poisson(double x, double lambda);
+
 // beta binomial log density
 double bbinom(double k, double n, double mode, double conc);
 
@@ -35,6 +38,7 @@ double skewnorm(double x, double xi, double omega, double alpha);
 double dbeta(double x, double alpha, double beta);
 
 // construct a delay distribution following a gamma distribution with mean mu and shape parameter shape.
+// [[Rcpp::export]]
 std::vector<double> delay_gamma(double mu, double shape, double t_max, double t_step, double mult = 1.);
 
 // construct a delay distribution following a lognormal distribution with true mean mu and coefficient of variation cv.

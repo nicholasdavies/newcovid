@@ -559,7 +559,7 @@ project = function(popset, tiers = FALSE, tier2 = NULL, tier3 = NULL,
             user_defined = list(
                 model_v2 = list(
                     cpp_changes = c(
-                        cpp_chgI_proj(cb_days, se),
+                        cpp_chgI_proj(cb_days, se, ncol(posteriorsI[[p]]) - 4),
                         cpp_chgI_close_schools(school_breaks, school_factors_r, school_factors_c)
                     ),
                     cpp_loglikelihood = "",

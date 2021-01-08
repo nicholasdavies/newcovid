@@ -2,7 +2,7 @@
 # PLOT FITS.
 #
 
-gen_fit = function(test, ld, sitreps, virus, sero, populations)
+gen_fit = function(test, parametersI, ld, sitreps, virus, sero, populations)
 {
     test = copy(test)[population %in% populations]
     sero = copy(sero)[NHS.region %in% populations]
@@ -91,9 +91,9 @@ gen_fit = function(test, ld, sitreps, virus, sero, populations)
     return (list(data, output))
 }
 
-check_fit = function(test, ld, sitreps, virus, sero, populations, max_date, min_date = NULL)
+check_fit = function(test, parametersI, ld, sitreps, virus, sero, populations, death_cutoff, max_date, min_date = NULL)
 {
-    fit = gen_fit(test, ld, sitreps, virus, sero, populations)
+    fit = gen_fit(test, parametersI, ld, sitreps, virus, sero, populations)
     data = fit[[1]]
     output = fit[[2]]
     output = output[d <= max_date]
@@ -103,6 +103,10 @@ check_fit = function(test, ld, sitreps, virus, sero, populations, max_date, min_
         data = data[d >= min_date]
     }
     
+    # Augment deaths data
+    cutoff_date = ld[, max(date)] - death_cutoff;
+    data = data[ValueType != "Deaths" | (d <= cutoff_date)]
+
     # Make plot
     theme_set(cowplot::theme_cowplot(font_size = 10) + theme(strip.background = element_blank()))
     

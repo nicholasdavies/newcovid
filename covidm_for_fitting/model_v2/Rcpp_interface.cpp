@@ -221,6 +221,105 @@ Rcpp::DataFrame cm_backend_mcmc_test(Rcpp::List R_base_parameters, Rcpp::List pa
     return df;
 }
 
+void get_multi_params(Rcpp::List params_priors, unsigned int n_simulations,
+    vector<vector<unsigned int>>& x_source, vector<double>& fixed_params, vector<string>& theta_names, vector<Distribution>& theta_priors)
+{
+    x_source = vector<vector<unsigned int>>(params_priors.size(), vector<unsigned int>(n_simulations, 0));
+
+    for (unsigned int i = 0; i < params_priors.size(); ++i)
+    {
+        unsigned int length = Rcpp::as<Rcpp::List>(params_priors[i]).size();
+
+        // Use fixed params
+        if (Rf_isNumeric(params_priors[i]))
+        {
+            for (unsigned int j = 0; j < n_simulations; ++j)
+            {
+                x_source[i][j] = 10000 + fixed_params.size();
+                fixed_params.push_back(Rcpp::as<vector<double>>(params_priors[i])[j % length]);
+            }
+        }
+        // Use fitted params
+        else
+        {
+            // Single fitted param for all simulations
+            if (length == 1)
+            {
+                for (unsigned int j = 0; j < n_simulations; ++j)
+                {
+                    x_source[i][j] = theta_names.size();
+                }
+                theta_names.push_back(Rcpp::as<vector<string>>(params_priors.names())[i]);
+                theta_priors.push_back(Distribution(Rcpp::as<string>(params_priors[i])));
+            }
+            // Independent fitted param for each simulation
+            else if (length == n_simulations)
+            {
+                for (unsigned int j = 0; j < n_simulations; ++j)
+                {
+                    x_source[i][j] = theta_names.size();
+                    theta_names.push_back(Rcpp::as<vector<string>>(params_priors.names())[i] + to_string(j));
+                    theta_priors.push_back(Distribution(Rcpp::as<vector<string>>(params_priors[i])[j]));
+                }
+            }
+            else
+            {
+                throw("Fitted params -- need either 1 or same as number of simulations");
+            }
+        }
+    }
+}
+
+// [[Rcpp::export]]
+Rcpp::DataFrame cm_backend_mcmc_multi(Rcpp::List R_base_parameters_list, Rcpp::List params_priors, unsigned long int seed, 
+    unsigned int burn_in, unsigned int iterations, unsigned int n_threads, bool classic_gamma)
+{
+    // Initialise parameters for this simulation
+    // TODO Rand also used for setting parameters -- is it actually used? this may cause issues with seeds for sample fit etc
+    Randomizer Rand(seed); // randomizer for fitting; randomizers for model runs are created in the Likelihood class.
+
+    // Set each of base_parameters individually
+    vector<Parameters> base_parameters;
+    for (unsigned int i = 0; i < R_base_parameters_list.size(); ++i)
+    {
+        base_parameters.push_back(Parameters());
+        SetParameters(base_parameters.back(), Rcpp::as<Rcpp::List>(R_base_parameters_list[i]), Rand);
+    }
+
+    // xs = x_source[i][j] says what to use for x[i] in simulation j.
+    // if xs >= 10000, use fixed_params[xs - 10000]; if xs < 10000, use theta[xs].
+    vector<vector<unsigned int>> x_source;
+    vector<double> fixed_params;
+    vector<string> theta_names;
+    vector<Distribution> theta_priors;
+
+    get_multi_params(params_priors, base_parameters.size(), x_source, fixed_params, theta_names, theta_priors);
+
+    ///---
+    unsigned int n_chains = 2 * params_priors.size();
+    bool verbose = true;
+    bool reeval_likelihood = false;
+    bool in_parallel = n_threads > 1;
+    ///---
+
+    Likelihood lik(base_parameters, x_source, fixed_params, seed);
+    MCMCReporter rep(iterations, n_chains, theta_names);
+
+    DEMCMC_Priors(Rand, lik, rep, burn_in, iterations, n_chains, theta_priors, verbose, theta_names, 
+        reeval_likelihood, in_parallel, n_threads, classic_gamma);
+
+    // Get data.frame and return
+    Rcpp::DataFrame df = Rcpp::DataFrame::create();
+    df.push_back(Rcpp::IntegerVector::import(rep.trial.begin(), rep.trial.end()), "trial");
+    df.push_back(Rcpp::NumericVector::import(rep.lp.begin(), rep.lp.end()), "lp");
+    df.push_back(Rcpp::IntegerVector::import(rep.chain.begin(), rep.chain.end()), "chain");
+    df.push_back(Rcpp::NumericVector::import(rep.ll.begin(), rep.ll.end()), "ll");
+    for (unsigned int d = 0; d < rep.theta.size(); ++d)
+        df.push_back(Rcpp::NumericVector::import(rep.theta[d].begin(), rep.theta[d].end()), rep.pnames[d]);
+
+    return df;
+}
+
 // [[Rcpp::export]]
 Rcpp::DataFrame cm_backend_optimize_test(Rcpp::List R_base_parameters, Rcpp::List params_priors, 
     unsigned int maxeval, double ftol_abs, 
@@ -330,3 +429,111 @@ Rcpp::List cm_backend_sample_fit_test(Rcpp::List R_base_parameters, Rcpp::DataFr
 
     return dynamics;
 }
+
+// [[Rcpp::export]]
+Rcpp::NumericVector cm_backend_sample_fit_rows(Rcpp::List R_base_parameters, Rcpp::DataFrame posterior, unsigned int n, unsigned long int seed)
+{
+    // Initialise parameters for this simulation
+    Randomizer Rand(seed); // randomizer for fitting; randomizers for model runs are created in the Likelihood class.
+    Parameters base_parameters;
+
+    SetParameters(base_parameters, R_base_parameters, Rand);
+
+    Rcpp::NumericVector rows(n, 0);
+
+    for (unsigned int i = 0; i < n; ++i)
+    {
+        unsigned int row = Rand.Discrete(posterior.nrows());
+        rows[i] = row + 1;
+    }
+    return rows;
+}
+
+
+// [[Rcpp::export]]
+Rcpp::List cm_backend_sample_fit_multi(Rcpp::List R_base_parameters_list, Rcpp::List params_priors, 
+    Rcpp::DataFrame posterior, unsigned int n, unsigned long int seed)
+{
+    // Initialise parameters for this simulation
+    // TODO Rand also used for setting parameters -- is it actually used? this may cause issues with seeds for sample fit etc
+    Randomizer Rand(seed); // randomizer for fitting; randomizers for model runs are created in the Likelihood class.
+
+    // Set each of base_parameters individually
+    vector<Parameters> base_parameters;
+    for (unsigned int i = 0; i < R_base_parameters_list.size(); ++i)
+    {
+        base_parameters.push_back(Parameters());
+        SetParameters(base_parameters.back(), Rcpp::as<Rcpp::List>(R_base_parameters_list[i]), Rand);
+    }
+
+    // xs = x_source[i][j] says what to use for x[i] in simulation j.
+    // if xs >= 10000, use fixed_params[xs - 10000]; if xs < 10000, use theta[xs].
+    vector<vector<unsigned int>> x_source;
+    vector<double> fixed_params;
+    vector<string> theta_names;
+    vector<Distribution> theta_priors;
+
+    get_multi_params(params_priors, base_parameters.size(), x_source, fixed_params, theta_names, theta_priors);
+
+    Rcpp::List dynamics;
+
+    for (unsigned int i = 0; i < n; ++i)
+    {
+        for (unsigned int j = 0; j < base_parameters.size(); ++j)
+        {
+            // TODO separate fitting and model seeds...
+            Randomizer r(seed);
+            Parameters P(base_parameters[j]);
+
+            unsigned int row = Rand.Discrete(posterior.nrows());
+            vector<double> theta(x_source.size(), 0);
+            for (unsigned int k = 0; k < theta.size(); ++k)
+            {
+                if (x_source[k][j] >= 10000)
+                    theta[k] = fixed_params[x_source[k][j] - 10000];
+                else
+                    theta[k] = Rcpp::as<Rcpp::NumericVector>(posterior[x_source[k][j] + 4])[row];
+
+            }
+
+            CppChanges(theta, P);
+
+            Reporter rep = RunSimulation(P, r, theta);
+
+            // TODO Dataframe construction -- copied from old reporter.cpp ----
+            // TODO Can move some of this outside the loop... and refactor with code above which is similar
+        
+            // Create times
+            Rcpp::NumericVector t(rep.n_times * rep.n_populations * rep.n_age_groups, 0.);
+            for (unsigned int it = 0; it < rep.n_times; ++it)
+                for (unsigned int j = 0; j < rep.n_populations * rep.n_age_groups; ++j)
+                    t[it * rep.n_populations * rep.n_age_groups + j] = P.time0 + it * P.time_step * P.report_every;
+
+            // Create identifier columns
+            int run = i + 1;
+            Rcpp::DataFrame dynamics_df = Rcpp::DataFrame::create(
+                Rcpp::Named("run") = Rcpp::rep(run, rep.n_times * rep.n_populations * rep.n_age_groups),
+                Rcpp::Named("t") = t,
+                Rcpp::Named("population") = Rcpp::rep(Rcpp::rep_each(Rcpp::seq(1, rep.n_populations), rep.n_age_groups), rep.n_times),
+                Rcpp::Named("group") = Rcpp::rep(Rcpp::seq(1, rep.n_age_groups), rep.n_times * rep.n_populations)
+            );
+
+            // Allocate all columns to the dataframe
+            for (unsigned int c = 0; c < rep.col_names.size(); ++c)
+                dynamics_df.push_back(rep.data[c], rep.col_names[c]);
+
+            // Add observer columns
+            for (unsigned int c = 0; c < rep.obs.size(); ++c)
+                dynamics_df.push_back(rep.obs[c], "obs" + to_string(c));
+
+            // Set dataframe as a data.table
+            Rcpp::Function setDT("setDT"); 
+            setDT(dynamics_df);
+
+            dynamics.push_back(dynamics_df);
+        }
+    }
+
+    return dynamics;
+}
+
