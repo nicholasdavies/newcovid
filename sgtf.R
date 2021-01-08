@@ -4,25 +4,50 @@ ll[, specimen_date := dmy(specimen_date)]
 sgtf[, specimen_date := ymd(specimen_date)]
 d = merge(ll, sgtf, by = c("FINALID", "specimen_date"), all = TRUE)
 
+d[, agegroup := cut(age, c(seq(0, 80, by = 10), 120))]
+
+plotby = function(d, what)
+{
+    d2 = d[, .SD, .SDcols = c("specimen_date", "sgtf", what)]
+    setnames(d2, what, "what")
+    d2 = d2[specimen_date >= "2020-11-01" & !is.na(what) & what != "",
+        .(voc = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
+        keyby = .(date = specimen_date, what)];
+    d2[, f_voc := rollmean(voc / (voc + other), 7, fill = NA), by = what]
+    ggplot(d2) +
+        geom_line(aes(x = date, y = f_voc, colour = what, group = what)) +
+        scale_y_continuous(trans = scales::logit_trans(), limits = c(0.01, 0.99))
+}
+
+plotby(d, "imd_decile")
+plotby(d, "agegroup")
+plotby(d, "NHSER_name")
+plotby(d, "ethnicity_final")
+plotby(d, "sex")
+plotby(d, "UTLA_name") + theme(legend.position = "none")
+
 # IMD
-ggplot(d[dmy(specimen_date) > "2020-10-01" & !is.na(imd_decile), 
+ggplot(d[specimen_date > "2020-10-01" & !is.na(imd_decile), 
     .(voc = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
-    keyby = .(date = dmy(specimen_date), imd_decile)]) + 
+    keyby = .(date = specimen_date, imd_decile)]) + 
     geom_line(aes(x = date, y = voc / (voc + other), colour = imd_decile, group = imd_decile))
 
-ggplot(d[dmy(specimen_date) > "2020-10-01" & !is.na(ethnicity_final), 
+# Ethnicity
+ggplot(d[specimen_date > "2020-10-01" & !is.na(ethnicity_final), 
     .(voc = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
-    keyby = .(date = dmy(specimen_date), ethnicity_final)]) + 
+    keyby = .(date = specimen_date, ethnicity_final)]) + 
     geom_line(aes(x = date, y = voc / (voc + other), colour = ethnicity_final, group = ethnicity_final))
 
-ggplot(d[dmy(specimen_date) > "2020-10-01" & !is.na(sex), 
+# Sex
+ggplot(d[specimen_date > "2020-10-01" & !is.na(sex), 
     .(voc = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
-    keyby = .(date = dmy(specimen_date), sex)]) + 
+    keyby = .(date = specimen_date, sex)]) + 
     geom_line(aes(x = date, y = voc / (voc + other), colour = sex, group = sex))
 
-ggplot(d[dmy(specimen_date) > "2020-10-01" & !is.na(age), 
+# Age
+ggplot(d[specimen_date > "2020-10-01" & !is.na(age), 
     .(voc = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
-    keyby = .(date = dmy(specimen_date), agegroup = cut(age, seq(0, 100, by = 10)))]) + 
+    keyby = .(date = specimen_date, agegroup = cut(age, seq(0, 100, by = 10)))]) + 
     geom_line(aes(x = date, y = voc / (voc + other), colour = agegroup, group = agegroup)) +
     scale_y_continuous(trans = scales::logit_trans())
 
