@@ -345,9 +345,10 @@ for (replic in REP_START:REP_END)
     
         # specify user defined functions
         model_v2I = list(
-            cpp_changes = cpp_chgI_voc(priorsI, v2 = TRUE, v2_relu = opt_relu, v2_latdur = opt_latdur, v2_infdur = opt_infdur, v2_immesc = opt_immesc, v2_ch_u = opt_ch_u),
+            cpp_changes = cpp_chgI_voc(priorsI, seasonality = opt_seas,
+                v2 = TRUE, v2_relu = opt_relu, v2_latdur = opt_latdur, v2_infdur = opt_infdur, v2_immesc = opt_immesc, v2_ch_u = opt_ch_u),
             cpp_loglikelihood = cpp_likI_voc(paramsI, ldI, sitrepsI, seroI, virusI, sgtfI, p, "2100-01-01", priorsI, death_cutoff = 7, use_sgtf = TRUE),
-            cpp_observer = cpp_obsI_voc(v2 = TRUE, P.death, P.critical, priorsI)
+            cpp_observer = cpp_obsI_voc(concentration = opt_conc, v2 = TRUE, P.death, P.critical, priorsI)
         )
 
         details$parameters[[pi]] = rlang::duplicate(paramsI);

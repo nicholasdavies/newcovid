@@ -1,5 +1,5 @@
-ll = fread("~/Documents/uk_covid_data_sensitive/phe/20210106/Anonymised Combined Line List 20210106.csv")
-sgtf = fread("~/Documents/uk_covid_data_sensitive/phe/20210106/SGTF_linelist_20210106.csv")
+ll = fread("~/Documents/uk_covid_data_sensitive/phe/20210113/Anonymised Combined Line List 20210113.csv")
+sgtf = fread("~/Documents/uk_covid_data_sensitive/phe/20210113/SGTF_linelist_20210113.csv")
 ll[, specimen_date := dmy(specimen_date)]
 sgtf[, specimen_date := ymd(specimen_date)]
 d = merge(ll, sgtf, by = c("FINALID", "specimen_date"), all = TRUE)
@@ -61,11 +61,11 @@ ggplot(dd[date > "2020-10-01"]) +
     geom_line(aes(x = date, y = sgtf / (other + sgtf), colour = pillar)) + 
     facet_wrap(~nhs_name)
 
-fwrite(dd[pillar == "Pillar 2" & date >= "2020-10-01", .(date, nhs_name, sgtf, other)], "./fitting_data/sgtf-2021-01-06.csv")
+fwrite(dd[pillar == "Pillar 2" & date >= "2020-10-01", .(date, nhs_name, sgtf, other)], "./fitting_data/sgtf-2021-01-08.csv")
 
 output = d[!is.na(specimen_date) & !is.na(NHSER_name) & NHSER_name != "" & pillar == "Pillar 2" & specimen_date >= "2020-09-01", 
     .(sgtf = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
-    keyby = .(date = specimen_date, nhser_name = NHSER_name, utla_name = UTLA_name, nhser_code = NHSER_code, utla_code = UTLA_code)]
+    keyby = .(date = specimen_date, nhser_name = NHSER_name, utla_name = UTLA_name, ltla_name = LTLA_name, nhser_code = NHSER_code, utla_code = UTLA_code, ltla_code = LTLA_code)]
 
 saveRDS(output, "~/Desktop/sgtf.rds")
 
@@ -125,16 +125,18 @@ ggplot(dd[date >= "2020-10-01"]) +
 
 library(colourpal)
 
-plotRaster = ggplot(dd[date >= "2020-10-01" & !is.na(sgtf) & sgtf + other > 0]) +
+plotRaster = ggplot(dd[date >= "2020-10-01" & date <= "2021-01-11" & !is.na(sgtf) & sgtf + other > 0]) +
     geom_tile(aes(x = date, y = utla_name, fill = sgtf/(sgtf+other))) +
     theme_cowplot(font_size = 10) +
-    theme(axis.text.y = element_text(size = unit(6, "pt")), panel.background = element_rect(fill = "#888888")) +
-    labs(x = NULL, y = NULL, fill = "SGTF frequency") +
+    theme(axis.text.y = element_text(size = unit(6, "pt")), panel.background = element_rect(fill = "#888888"), 
+        legend.position = c(-0.21, 0.96), legend.background = element_rect(fill = "#ffffff"), legend.margin = margin(2,2,5,2)) +
+    labs(x = NULL, y = NULL, fill = NULL) +
     scale_x_date(expand = expansion(0)) +
     ggpal("ocean.thermal")
+
 ggsave("./output/utla_raster.pdf", plotRaster, width = 24, height = 30, units = "cm", useDingbats = FALSE)
 ggsave("./output/utla_raster.png", plotRaster, width = 24, height = 30, units = "cm")
-
+qsave(plotRaster, "./output/fig_raster.qs")
 
 ggplot(dd[date >= "2020-10-01"]) +
     geom_smooth(aes(x = date, y = sgtf/(sgtf+other), colour = lat, group = lat), se = FALSE, method = "glm", method.args = list(family = "binomial")) +

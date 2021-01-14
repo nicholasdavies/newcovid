@@ -4,11 +4,16 @@
 
 gen_fit = function(test, parametersI, ld, sitreps, virus, sero, populations)
 {
-    test = copy(test)[population %in% populations]
-    sero = copy(sero)[NHS.region %in% populations]
-    virus = copy(virus)[NHS.region %in% populations]
-    ld = copy(ld)[name %in% populations]
-    sitreps = copy(sitreps)[name %in% populations]
+    test = copy(test);
+    test = test[population %in% populations];
+    sero = copy(sero);
+    sero = sero[NHS.region %in% populations];
+    virus = copy(virus);
+    virus = virus[NHS.region %in% populations];
+    ld = copy(ld);
+    ld = ld[name %in% populations];
+    sitreps = copy(sitreps);
+    sitreps = sitreps[name %in% populations]
     
     # Calculate total population
     popsize = NULL

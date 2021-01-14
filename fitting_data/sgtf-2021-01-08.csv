@@ -1,0 +1,694 @@
+date,nhs_name,sgtf,other
+2020-10-01,East of England,13,239
+2020-10-01,London,42,898
+2020-10-01,Midlands,14,1050
+2020-10-01,North East and Yorkshire,54,2894
+2020-10-01,North West,65,3124
+2020-10-01,South East,19,306
+2020-10-01,South West,11,277
+2020-10-02,East of England,14,181
+2020-10-02,London,25,618
+2020-10-02,Midlands,12,1101
+2020-10-02,North East and Yorkshire,32,2972
+2020-10-02,North West,66,2872
+2020-10-02,South East,16,350
+2020-10-02,South West,12,263
+2020-10-03,East of England,3,106
+2020-10-03,London,8,279
+2020-10-03,Midlands,8,583
+2020-10-03,North East and Yorkshire,43,2371
+2020-10-03,North West,42,2042
+2020-10-03,South East,7,146
+2020-10-03,South West,7,158
+2020-10-04,East of England,6,132
+2020-10-04,London,21,478
+2020-10-04,Midlands,8,713
+2020-10-04,North East and Yorkshire,42,2669
+2020-10-04,North West,42,2469
+2020-10-04,South East,13,230
+2020-10-04,South West,11,172
+2020-10-05,East of England,5,218
+2020-10-05,London,35,597
+2020-10-05,Midlands,24,1467
+2020-10-05,North East and Yorkshire,61,2887
+2020-10-05,North West,74,3400
+2020-10-05,South East,16,264
+2020-10-05,South West,8,249
+2020-10-06,East of England,29,397
+2020-10-06,London,41,908
+2020-10-06,Midlands,16,1441
+2020-10-06,North East and Yorkshire,60,3283
+2020-10-06,North West,60,3483
+2020-10-06,South East,15,523
+2020-10-06,South West,17,520
+2020-10-07,East of England,33,397
+2020-10-07,London,51,855
+2020-10-07,Midlands,18,1720
+2020-10-07,North East and Yorkshire,66,3754
+2020-10-07,North West,75,3748
+2020-10-07,South East,22,594
+2020-10-07,South West,27,647
+2020-10-08,East of England,25,407
+2020-10-08,London,47,1046
+2020-10-08,Midlands,26,1420
+2020-10-08,North East and Yorkshire,60,3091
+2020-10-08,North West,50,3095
+2020-10-08,South East,26,656
+2020-10-08,South West,12,608
+2020-10-09,East of England,8,179
+2020-10-09,London,30,421
+2020-10-09,Midlands,15,991
+2020-10-09,North East and Yorkshire,45,2166
+2020-10-09,North West,45,2172
+2020-10-09,South East,9,194
+2020-10-09,South West,13,261
+2020-10-10,East of England,0,40
+2020-10-10,London,4,78
+2020-10-10,Midlands,6,430
+2020-10-10,North East and Yorkshire,38,1635
+2020-10-10,North West,22,1695
+2020-10-10,South East,3,48
+2020-10-10,South West,1,70
+2020-10-11,East of England,2,74
+2020-10-11,London,15,309
+2020-10-11,Midlands,10,454
+2020-10-11,North East and Yorkshire,25,1726
+2020-10-11,North West,31,2551
+2020-10-11,South East,3,156
+2020-10-11,South West,6,161
+2020-10-12,East of England,10,238
+2020-10-12,London,28,687
+2020-10-12,Midlands,31,1920
+2020-10-12,North East and Yorkshire,59,3497
+2020-10-12,North West,64,4430
+2020-10-12,South East,13,282
+2020-10-12,South West,14,487
+2020-10-13,East of England,18,495
+2020-10-13,London,72,1112
+2020-10-13,Midlands,21,1670
+2020-10-13,North East and Yorkshire,67,3203
+2020-10-13,North West,53,3409
+2020-10-13,South East,19,573
+2020-10-13,South West,12,211
+2020-10-14,East of England,19,316
+2020-10-14,London,60,1095
+2020-10-14,Midlands,11,938
+2020-10-14,North East and Yorkshire,80,3206
+2020-10-14,North West,38,3239
+2020-10-14,South East,21,479
+2020-10-14,South West,9,112
+2020-10-15,East of England,26,596
+2020-10-15,London,74,1421
+2020-10-15,Midlands,22,1713
+2020-10-15,North East and Yorkshire,59,3109
+2020-10-15,North West,39,3346
+2020-10-15,South East,41,552
+2020-10-15,South West,3,117
+2020-10-16,East of England,18,422
+2020-10-16,London,58,1264
+2020-10-16,Midlands,8,825
+2020-10-16,North East and Yorkshire,35,1338
+2020-10-16,North West,42,2892
+2020-10-16,South East,27,489
+2020-10-16,South West,6,104
+2020-10-17,East of England,5,35
+2020-10-17,London,3,75
+2020-10-17,Midlands,14,667
+2020-10-17,North East and Yorkshire,29,1445
+2020-10-17,North West,39,3009
+2020-10-17,South East,2,33
+2020-10-17,South West,1,35
+2020-10-18,East of England,1,47
+2020-10-18,London,3,101
+2020-10-18,Midlands,15,662
+2020-10-18,North East and Yorkshire,22,1370
+2020-10-18,North West,44,2734
+2020-10-18,South East,1,55
+2020-10-18,South West,0,32
+2020-10-19,East of England,22,861
+2020-10-19,London,103,2187
+2020-10-19,Midlands,49,2749
+2020-10-19,North East and Yorkshire,105,4703
+2020-10-19,North West,81,5477
+2020-10-19,South East,46,877
+2020-10-19,South West,11,194
+2020-10-20,East of England,22,606
+2020-10-20,London,85,1848
+2020-10-20,Midlands,35,2363
+2020-10-20,North East and Yorkshire,92,4167
+2020-10-20,North West,43,4458
+2020-10-20,South East,65,954
+2020-10-20,South West,7,150
+2020-10-21,East of England,19,567
+2020-10-21,London,102,1953
+2020-10-21,Midlands,39,2456
+2020-10-21,North East and Yorkshire,69,4144
+2020-10-21,North West,56,4432
+2020-10-21,South East,85,943
+2020-10-21,South West,15,221
+2020-10-22,East of England,15,553
+2020-10-22,London,88,1857
+2020-10-22,Midlands,27,2369
+2020-10-22,North East and Yorkshire,66,3780
+2020-10-22,North West,47,3869
+2020-10-22,South East,62,890
+2020-10-22,South West,18,439
+2020-10-23,East of England,19,511
+2020-10-23,London,73,1543
+2020-10-23,Midlands,27,1831
+2020-10-23,North East and Yorkshire,59,2795
+2020-10-23,North West,51,3466
+2020-10-23,South East,61,810
+2020-10-23,South West,6,199
+2020-10-24,East of England,8,226
+2020-10-24,London,34,630
+2020-10-24,Midlands,27,1575
+2020-10-24,North East and Yorkshire,47,2653
+2020-10-24,North West,40,2816
+2020-10-24,South East,22,379
+2020-10-24,South West,11,290
+2020-10-25,East of England,4,48
+2020-10-25,London,10,126
+2020-10-25,Midlands,23,1589
+2020-10-25,North East and Yorkshire,43,2592
+2020-10-25,North West,20,2754
+2020-10-25,South East,3,56
+2020-10-25,South West,3,56
+2020-10-26,East of England,40,694
+2020-10-26,London,131,2160
+2020-10-26,Midlands,37,2707
+2020-10-26,North East and Yorkshire,95,4440
+2020-10-26,North West,61,4657
+2020-10-26,South East,116,1138
+2020-10-26,South West,21,311
+2020-10-27,East of England,18,548
+2020-10-27,London,111,1681
+2020-10-27,Midlands,49,3117
+2020-10-27,North East and Yorkshire,74,4146
+2020-10-27,North West,37,4135
+2020-10-27,South East,116,957
+2020-10-27,South West,39,489
+2020-10-28,East of England,19,574
+2020-10-28,London,91,1599
+2020-10-28,Midlands,44,2743
+2020-10-28,North East and Yorkshire,84,3957
+2020-10-28,North West,40,3257
+2020-10-28,South East,122,880
+2020-10-28,South West,16,222
+2020-10-29,East of England,15,414
+2020-10-29,London,53,949
+2020-10-29,Midlands,53,2113
+2020-10-29,North East and Yorkshire,62,3808
+2020-10-29,North West,37,3660
+2020-10-29,South East,53,458
+2020-10-29,South West,14,176
+2020-10-30,East of England,21,539
+2020-10-30,London,65,1359
+2020-10-30,Midlands,39,2575
+2020-10-30,North East and Yorkshire,79,3969
+2020-10-30,North West,35,3520
+2020-10-30,South East,95,826
+2020-10-30,South West,9,217
+2020-10-31,East of England,21,468
+2020-10-31,London,98,1255
+2020-10-31,Midlands,31,2271
+2020-10-31,North East and Yorkshire,78,3101
+2020-10-31,North West,43,2658
+2020-10-31,South East,78,751
+2020-10-31,South West,3,94
+2020-11-01,East of England,12,380
+2020-11-01,London,64,873
+2020-11-01,Midlands,16,728
+2020-11-01,North East and Yorkshire,75,3388
+2020-11-01,North West,34,2649
+2020-11-01,South East,114,602
+2020-11-01,South West,19,343
+2020-11-02,East of England,45,894
+2020-11-02,London,152,2236
+2020-11-02,Midlands,84,4041
+2020-11-02,North East and Yorkshire,90,5409
+2020-11-02,North West,54,5340
+2020-11-02,South East,208,1527
+2020-11-02,South West,30,544
+2020-11-03,East of England,28,590
+2020-11-03,London,111,1491
+2020-11-03,Midlands,60,3137
+2020-11-03,North East and Yorkshire,87,4607
+2020-11-03,North West,32,3501
+2020-11-03,South East,121,945
+2020-11-03,South West,5,245
+2020-11-04,East of England,31,518
+2020-11-04,London,115,1374
+2020-11-04,Midlands,49,2372
+2020-11-04,North East and Yorkshire,66,4170
+2020-11-04,North West,35,3155
+2020-11-04,South East,147,901
+2020-11-04,South West,12,220
+2020-11-05,East of England,40,476
+2020-11-05,London,110,1184
+2020-11-05,Midlands,59,2678
+2020-11-05,North East and Yorkshire,96,4358
+2020-11-05,North West,34,3231
+2020-11-05,South East,126,697
+2020-11-05,South West,13,273
+2020-11-06,East of England,36,525
+2020-11-06,London,133,1409
+2020-11-06,Midlands,51,2874
+2020-11-06,North East and Yorkshire,83,4378
+2020-11-06,North West,21,2441
+2020-11-06,South East,146,900
+2020-11-06,South West,14,210
+2020-11-07,East of England,25,372
+2020-11-07,London,80,760
+2020-11-07,Midlands,38,2498
+2020-11-07,North East and Yorkshire,68,3757
+2020-11-07,North West,25,2292
+2020-11-07,South East,126,647
+2020-11-07,South West,8,104
+2020-11-08,East of England,65,524
+2020-11-08,London,126,1133
+2020-11-08,Midlands,86,2583
+2020-11-08,North East and Yorkshire,97,4932
+2020-11-08,North West,30,2780
+2020-11-08,South East,245,1280
+2020-11-08,South West,56,832
+2020-11-09,East of England,62,591
+2020-11-09,London,211,1760
+2020-11-09,Midlands,68,3199
+2020-11-09,North East and Yorkshire,140,6036
+2020-11-09,North West,41,3936
+2020-11-09,South East,277,1085
+2020-11-09,South West,15,289
+2020-11-10,East of England,55,368
+2020-11-10,London,165,1197
+2020-11-10,Midlands,82,2748
+2020-11-10,North East and Yorkshire,95,4521
+2020-11-10,North West,24,3002
+2020-11-10,South East,244,1184
+2020-11-10,South West,61,894
+2020-11-11,East of England,91,659
+2020-11-11,London,224,1778
+2020-11-11,Midlands,93,3207
+2020-11-11,North East and Yorkshire,100,4694
+2020-11-11,North West,32,2913
+2020-11-11,South East,350,1083
+2020-11-11,South West,18,416
+2020-11-12,East of England,73,535
+2020-11-12,London,223,1502
+2020-11-12,Midlands,48,2860
+2020-11-12,North East and Yorkshire,73,4143
+2020-11-12,North West,30,2698
+2020-11-12,South East,342,1088
+2020-11-12,South West,31,653
+2020-11-13,East of England,82,525
+2020-11-13,London,218,1295
+2020-11-13,Midlands,46,2517
+2020-11-13,North East and Yorkshire,97,3976
+2020-11-13,North West,28,2398
+2020-11-13,South East,294,1160
+2020-11-13,South West,48,756
+2020-11-14,East of England,43,448
+2020-11-14,London,187,1065
+2020-11-14,Midlands,54,2322
+2020-11-14,North East and Yorkshire,72,3152
+2020-11-14,North West,31,1904
+2020-11-14,South East,251,901
+2020-11-14,South West,33,630
+2020-11-15,East of England,43,294
+2020-11-15,London,120,764
+2020-11-15,Midlands,35,1883
+2020-11-15,North East and Yorkshire,48,2648
+2020-11-15,North West,21,1665
+2020-11-15,South East,183,719
+2020-11-15,South West,23,447
+2020-11-16,East of England,87,551
+2020-11-16,London,261,1427
+2020-11-16,Midlands,73,3417
+2020-11-16,North East and Yorkshire,80,3987
+2020-11-16,North West,28,2479
+2020-11-16,South East,373,1187
+2020-11-16,South West,41,720
+2020-11-17,East of England,121,648
+2020-11-17,London,253,1235
+2020-11-17,Midlands,89,3748
+2020-11-17,North East and Yorkshire,143,4335
+2020-11-17,North West,28,2396
+2020-11-17,South East,341,969
+2020-11-17,South West,34,562
+2020-11-18,East of England,109,527
+2020-11-18,London,249,1130
+2020-11-18,Midlands,94,3405
+2020-11-18,North East and Yorkshire,91,3184
+2020-11-18,North West,24,1960
+2020-11-18,South East,329,897
+2020-11-18,South West,22,360
+2020-11-19,East of England,104,421
+2020-11-19,London,234,1038
+2020-11-19,Midlands,52,2936
+2020-11-19,North East and Yorkshire,72,2705
+2020-11-19,North West,24,1580
+2020-11-19,South East,288,672
+2020-11-19,South West,17,350
+2020-11-20,East of England,72,356
+2020-11-20,London,221,959
+2020-11-20,Midlands,70,2731
+2020-11-20,North East and Yorkshire,66,2276
+2020-11-20,North West,18,1520
+2020-11-20,South East,305,674
+2020-11-20,South West,29,307
+2020-11-21,East of England,68,319
+2020-11-21,London,182,698
+2020-11-21,Midlands,59,1995
+2020-11-21,North East and Yorkshire,40,1665
+2020-11-21,North West,17,1083
+2020-11-21,South East,295,565
+2020-11-21,South West,19,215
+2020-11-22,East of England,98,359
+2020-11-22,London,201,701
+2020-11-22,Midlands,62,1900
+2020-11-22,North East and Yorkshire,42,1540
+2020-11-22,North West,16,1086
+2020-11-22,South East,251,547
+2020-11-22,South West,13,158
+2020-11-23,East of England,145,385
+2020-11-23,London,336,1012
+2020-11-23,Midlands,87,2796
+2020-11-23,North East and Yorkshire,68,2257
+2020-11-23,North West,29,1633
+2020-11-23,South East,472,662
+2020-11-23,South West,31,319
+2020-11-24,East of England,111,316
+2020-11-24,London,319,885
+2020-11-24,Midlands,70,2320
+2020-11-24,North East and Yorkshire,56,1784
+2020-11-24,North West,24,1360
+2020-11-24,South East,319,484
+2020-11-24,South West,16,208
+2020-11-25,East of England,130,377
+2020-11-25,London,401,856
+2020-11-25,Midlands,88,2356
+2020-11-25,North East and Yorkshire,60,1824
+2020-11-25,North West,37,1373
+2020-11-25,South East,420,526
+2020-11-25,South West,23,232
+2020-11-26,East of England,157,369
+2020-11-26,London,385,710
+2020-11-26,Midlands,88,2033
+2020-11-26,North East and Yorkshire,48,1604
+2020-11-26,North West,17,1162
+2020-11-26,South East,384,476
+2020-11-26,South West,28,231
+2020-11-27,East of England,146,411
+2020-11-27,London,462,795
+2020-11-27,Midlands,54,1822
+2020-11-27,North East and Yorkshire,72,1482
+2020-11-27,North West,26,1077
+2020-11-27,South East,515,563
+2020-11-27,South West,15,232
+2020-11-28,East of England,81,215
+2020-11-28,London,342,647
+2020-11-28,Midlands,77,1455
+2020-11-28,North East and Yorkshire,47,1174
+2020-11-28,North West,17,908
+2020-11-28,South East,385,398
+2020-11-28,South West,23,134
+2020-11-29,East of England,117,200
+2020-11-29,London,351,615
+2020-11-29,Midlands,62,1338
+2020-11-29,North East and Yorkshire,34,1152
+2020-11-29,North West,22,768
+2020-11-29,South East,432,303
+2020-11-29,South West,18,141
+2020-11-30,East of England,270,427
+2020-11-30,London,621,920
+2020-11-30,Midlands,121,2093
+2020-11-30,North East and Yorkshire,74,1844
+2020-11-30,North West,24,1357
+2020-11-30,South East,650,489
+2020-11-30,South West,28,213
+2020-12-01,East of England,249,438
+2020-12-01,London,650,811
+2020-12-01,Midlands,136,1813
+2020-12-01,North East and Yorkshire,69,1541
+2020-12-01,North West,28,1164
+2020-12-01,South East,568,546
+2020-12-01,South West,25,186
+2020-12-02,East of England,280,383
+2020-12-02,London,701,852
+2020-12-02,Midlands,150,1699
+2020-12-02,North East and Yorkshire,86,1413
+2020-12-02,North West,37,1022
+2020-12-02,South East,657,499
+2020-12-02,South West,18,156
+2020-12-03,East of England,271,374
+2020-12-03,London,624,690
+2020-12-03,Midlands,128,1648
+2020-12-03,North East and Yorkshire,72,1218
+2020-12-03,North West,31,945
+2020-12-03,South East,663,474
+2020-12-03,South West,25,178
+2020-12-04,East of England,252,300
+2020-12-04,London,536,536
+2020-12-04,Midlands,135,1636
+2020-12-04,North East and Yorkshire,81,958
+2020-12-04,North West,40,930
+2020-12-04,South East,626,488
+2020-12-04,South West,32,196
+2020-12-05,East of England,354,350
+2020-12-05,London,790,723
+2020-12-05,Midlands,136,1391
+2020-12-05,North East and Yorkshire,51,803
+2020-12-05,North West,43,739
+2020-12-05,South East,790,452
+2020-12-05,South West,29,143
+2020-12-06,East of England,446,383
+2020-12-06,London,907,829
+2020-12-06,Midlands,160,1461
+2020-12-06,North East and Yorkshire,80,842
+2020-12-06,North West,36,842
+2020-12-06,South East,861,480
+2020-12-06,South West,33,130
+2020-12-07,East of England,665,422
+2020-12-07,London,1316,1004
+2020-12-07,Midlands,252,2017
+2020-12-07,North East and Yorkshire,125,1411
+2020-12-07,North West,77,1195
+2020-12-07,South East,1341,696
+2020-12-07,South West,69,241
+2020-12-08,East of England,655,377
+2020-12-08,London,1121,718
+2020-12-08,Midlands,235,1836
+2020-12-08,North East and Yorkshire,108,1233
+2020-12-08,North West,74,1007
+2020-12-08,South East,1203,563
+2020-12-08,South West,65,176
+2020-12-09,East of England,702,397
+2020-12-09,London,1453,800
+2020-12-09,Midlands,305,1900
+2020-12-09,North East and Yorkshire,117,1246
+2020-12-09,North West,75,1095
+2020-12-09,South East,1149,524
+2020-12-09,South West,77,214
+2020-12-10,East of England,439,240
+2020-12-10,London,998,617
+2020-12-10,Midlands,326,1779
+2020-12-10,North East and Yorkshire,136,1114
+2020-12-10,North West,117,1056
+2020-12-10,South East,941,487
+2020-12-10,South West,76,201
+2020-12-11,East of England,807,426
+2020-12-11,London,2103,1059
+2020-12-11,Midlands,354,1820
+2020-12-11,North East and Yorkshire,162,1127
+2020-12-11,North West,125,979
+2020-12-11,South East,1478,620
+2020-12-11,South West,69,195
+2020-12-12,East of England,944,425
+2020-12-12,London,2389,1066
+2020-12-12,Midlands,348,1408
+2020-12-12,North East and Yorkshire,145,920
+2020-12-12,North West,109,851
+2020-12-12,South East,1636,527
+2020-12-12,South West,54,159
+2020-12-13,East of England,1223,444
+2020-12-13,London,3116,1204
+2020-12-13,Midlands,411,1331
+2020-12-13,North East and Yorkshire,177,954
+2020-12-13,North West,120,856
+2020-12-13,South East,2002,693
+2020-12-13,South West,70,183
+2020-12-14,East of England,1527,696
+2020-12-14,London,4145,1752
+2020-12-14,Midlands,709,2356
+2020-12-14,North East and Yorkshire,292,1402
+2020-12-14,North West,243,1397
+2020-12-14,South East,2626,934
+2020-12-14,South West,127,244
+2020-12-15,East of England,1443,459
+2020-12-15,London,4333,1522
+2020-12-15,Midlands,688,2019
+2020-12-15,North East and Yorkshire,314,1377
+2020-12-15,North West,294,1276
+2020-12-15,South East,2255,742
+2020-12-15,South West,147,245
+2020-12-16,East of England,1014,326
+2020-12-16,London,4318,1436
+2020-12-16,Midlands,473,1084
+2020-12-16,North East and Yorkshire,307,1148
+2020-12-16,North West,289,1202
+2020-12-16,South East,2116,703
+2020-12-16,South West,167,242
+2020-12-17,East of England,1111,272
+2020-12-17,London,4090,1231
+2020-12-17,Midlands,276,573
+2020-12-17,North East and Yorkshire,303,907
+2020-12-17,North West,276,990
+2020-12-17,South East,1788,507
+2020-12-17,South West,123,203
+2020-12-18,East of England,938,216
+2020-12-18,London,2328,615
+2020-12-18,Midlands,251,526
+2020-12-18,North East and Yorkshire,195,442
+2020-12-18,North West,311,1107
+2020-12-18,South East,1561,554
+2020-12-18,South West,140,219
+2020-12-19,East of England,1074,272
+2020-12-19,London,2178,573
+2020-12-19,Midlands,441,728
+2020-12-19,North East and Yorkshire,171,507
+2020-12-19,North West,148,467
+2020-12-19,South East,1245,280
+2020-12-19,South West,93,126
+2020-12-20,East of England,1617,408
+2020-12-20,London,2376,526
+2020-12-20,Midlands,347,581
+2020-12-20,North East and Yorkshire,484,1016
+2020-12-20,North West,343,937
+2020-12-20,South East,2244,619
+2020-12-20,South West,236,210
+2020-12-21,East of England,1627,327
+2020-12-21,London,2312,520
+2020-12-21,Midlands,1023,1297
+2020-12-21,North East and Yorkshire,650,1571
+2020-12-21,North West,594,1216
+2020-12-21,South East,1615,412
+2020-12-21,South West,240,299
+2020-12-22,East of England,1884,416
+2020-12-22,London,2027,413
+2020-12-22,Midlands,1182,1401
+2020-12-22,North East and Yorkshire,769,1771
+2020-12-22,North West,520,1180
+2020-12-22,South East,1363,266
+2020-12-22,South West,71,112
+2020-12-23,East of England,1255,254
+2020-12-23,London,1672,395
+2020-12-23,Midlands,1064,1170
+2020-12-23,North East and Yorkshire,757,1390
+2020-12-23,North West,490,1006
+2020-12-23,South East,1743,521
+2020-12-23,South West,491,501
+2020-12-24,East of England,1812,339
+2020-12-24,London,4190,923
+2020-12-24,Midlands,1052,1010
+2020-12-24,North East and Yorkshire,598,1049
+2020-12-24,North West,718,1272
+2020-12-24,South East,2961,723
+2020-12-24,South West,426,380
+2020-12-25,East of England,1216,242
+2020-12-25,London,2799,444
+2020-12-25,Midlands,609,598
+2020-12-25,North East and Yorkshire,283,490
+2020-12-25,North West,275,337
+2020-12-25,South East,1170,212
+2020-12-25,South West,6,5
+2020-12-26,East of England,2518,425
+2020-12-26,London,5008,822
+2020-12-26,Midlands,1488,1033
+2020-12-26,North East and Yorkshire,867,1185
+2020-12-26,North West,569,827
+2020-12-26,South East,3167,560
+2020-12-26,South West,40,52
+2020-12-27,East of England,2124,345
+2020-12-27,London,4923,643
+2020-12-27,Midlands,1665,1308
+2020-12-27,North East and Yorkshire,1150,1465
+2020-12-27,North West,862,1175
+2020-12-27,South East,2955,456
+2020-12-27,South West,353,264
+2020-12-28,East of England,988,176
+2020-12-28,London,1642,199
+2020-12-28,Midlands,1554,1054
+2020-12-28,North East and Yorkshire,1166,1466
+2020-12-28,North West,914,1080
+2020-12-28,South East,1624,279
+2020-12-28,South West,286,175
+2020-12-29,East of England,2811,472
+2020-12-29,London,3474,430
+2020-12-29,Midlands,2995,1897
+2020-12-29,North East and Yorkshire,2233,2172
+2020-12-29,North West,2133,2207
+2020-12-29,South East,3631,578
+2020-12-29,South West,544,322
+2020-12-30,East of England,1776,222
+2020-12-30,London,5128,886
+2020-12-30,Midlands,2886,1700
+2020-12-30,North East and Yorkshire,2156,2434
+2020-12-30,North West,2679,2592
+2020-12-30,South East,3554,449
+2020-12-30,South West,561,357
+2020-12-31,East of England,1327,239
+2020-12-31,London,5306,896
+2020-12-31,Midlands,2662,1277
+2020-12-31,North East and Yorkshire,1551,1508
+2020-12-31,North West,1606,1326
+2020-12-31,South East,2552,352
+2020-12-31,South West,503,336
+2021-01-01,East of England,2186,275
+2021-01-01,London,2956,381
+2021-01-01,Midlands,1938,957
+2021-01-01,North East and Yorkshire,1066,987
+2021-01-01,North West,1122,944
+2021-01-01,South East,1968,215
+2021-01-01,South West,375,133
+2021-01-02,East of England,2402,333
+2021-01-02,London,6608,781
+2021-01-02,Midlands,3495,1679
+2021-01-02,North East and Yorkshire,2075,1794
+2021-01-02,North West,2165,1743
+2021-01-02,South East,3980,467
+2021-01-02,South West,634,368
+2021-01-03,East of England,1380,121
+2021-01-03,London,3064,241
+2021-01-03,Midlands,2589,1081
+2021-01-03,North East and Yorkshire,1951,1493
+2021-01-03,North West,2389,1875
+2021-01-03,South East,2010,176
+2021-01-03,South West,531,246
+2021-01-04,East of England,1638,186
+2021-01-04,London,3880,227
+2021-01-04,Midlands,3880,1492
+2021-01-04,North East and Yorkshire,2875,1901
+2021-01-04,North West,3099,2134
+2021-01-04,South East,2568,227
+2021-01-04,South West,825,375
+2021-01-05,East of England,1670,150
+2021-01-05,London,3891,241
+2021-01-05,Midlands,3100,1090
+2021-01-05,North East and Yorkshire,1931,1285
+2021-01-05,North West,2439,1522
+2021-01-05,South East,3197,302
+2021-01-05,South West,709,319
+2021-01-06,East of England,815,82
+2021-01-06,London,997,62
+2021-01-06,Midlands,2391,751
+2021-01-06,North East and Yorkshire,1524,876
+2021-01-06,North West,770,461
+2021-01-06,South East,1175,108
+2021-01-06,South West,29,13
+2021-01-07,East of England,8,0
+2021-01-07,London,4,2
+2021-01-07,Midlands,7,1
+2021-01-07,North East and Yorkshire,36,19
+2021-01-07,North West,2,5
+2021-01-07,South East,1,0
+2021-01-07,South West,0,1

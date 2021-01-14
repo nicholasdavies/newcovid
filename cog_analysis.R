@@ -97,13 +97,14 @@ nl = function()
     #newlin = fread("./data/cog_metadata_microreact_public-2020-12-18.csv")
     #newlin = fread("./data/cog_metadata_microreact_public-2020-12-22.csv")
     #newlin = fread("./data/cog_metadata_microreact_public-2020-12-27.csv")
-    newlin = fread("./data/cog_metadata_microreact_public-2020-12-29.csv")
+    #newlin = fread("./data/cog_metadata_microreact_public-2020-12-29.csv")
+    newlin = fread("./data/cog_metadata_microreact_public-2021-01-11.csv")
     newlin = newlin[country == "UK"]
     newlin[, site := .GRP, by = .(longitude, latitude)]
     newlin[, B117 := lineage == "B.1.1.7"]
     newlin[, N_B117 := sum(B117), by = site]
-    newlin[, var2 := B117 & n501y == "Y"]
-    newlin[, N_var2 := sum(var2), by = site]
+    newlin[, voc := B117 & n501y == "Y" & del_21765_6 == "del"]
+    newlin[, N_voc := sum(voc), by = site]
     newlin[, spec := paste0(d614g, n439k, p323l, a222v, y453f, n501y, del_21765_6)]
     
     # Assign localities
@@ -136,7 +137,7 @@ nl = function()
 }
 
 newlin = nl()
-#fwrite(newlin, "./data/cog_metadata_microreact_public-2020-12-29-annotated.csv");
+#fwrite(newlin, "./data/cog_metadata_microreact_public-2021-01-11-annotated.csv");
 
 # View sites
 ggplot(unique(newlin[, .(latitude, longitude, nhs_name)])) + 

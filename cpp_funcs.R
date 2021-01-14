@@ -43,7 +43,7 @@ named_schedules = function()
 }
 
 # create cpp changes
-cpp_chgI_voc = function(priors, v2, v2_relu, v2_latdur, v2_infdur, v2_immesc, v2_ch_u)
+cpp_chgI_voc = function(priors, seasonality, v2, v2_relu, v2_latdur, v2_serial, v2_infdur, v2_immesc, v2_ch_u)
 {
     glue::glue(
         named_params(priors),
@@ -53,7 +53,7 @@ cpp_chgI_voc = function(priors, v2, v2_relu, v2_latdur, v2_infdur, v2_immesc, v2
         'auto interp = [&](double y, vector<double>& curve) {',
         '    if (y < 0) return curve[0];',
         '    unsigned int i = (unsigned int)(y * 100);',
-        '    if (i >= curve.size()) return curve.back();',
+        '    if (i >= curve.size() - 1) return curve.back();',
         '    double f = y * 100 - i;',
         '    return (1 - f) * curve[i] + f * curve[i + 1];',
         '};',
@@ -62,6 +62,10 @@ cpp_chgI_voc = function(priors, v2, v2_relu, v2_latdur, v2_infdur, v2_immesc, v2
         '    double a = v / (1 - v);',
         '    return a * exp(lo) / (a * exp(lo) + 1);',
         '};',
+        
+        if (seasonality) {
+        '    P.pop[0].season_A[0] = x_seasonality;'
+        } else '',
 
         'for (unsigned int g = 0; g < P.processes[0].prob.size(); ++g) {',
         '    // To hospital',
@@ -91,26 +95,31 @@ cpp_chgI_voc = function(priors, v2, v2_relu, v2_latdur, v2_infdur, v2_immesc, v2
         } else '',
         '}',
 
-        if (v2_ch_u && v2_relu) {
-        'P.pop[0].u2[0] = P.pop[0].u2[0] + x_v2_ch_u * x_u * x_v2_relu;
-        P.pop[0].u2[1] = P.pop[0].u2[1] + x_v2_ch_u * x_u * x_v2_relu;
-        P.pop[0].u2[2] = P.pop[0].u2[2] + x_v2_ch_u * x_u * x_v2_relu;
-        P.pop[0].u2[3] = P.pop[0].u2[3] + x_v2_ch_u * x_u * x_v2_relu;'
-        } else if (v2_ch_u && !v2_relu) {
-        'P.pop[0].u2[0] = P.pop[0].u2[0] + x_v2_ch_u * x_u;
-        P.pop[0].u2[1] = P.pop[0].u2[1] + x_v2_ch_u * x_u;
-        P.pop[0].u2[2] = P.pop[0].u2[2] + x_v2_ch_u * x_u;
-        P.pop[0].u2[3] = P.pop[0].u2[3] + x_v2_ch_u * x_u;'
+        if (v2_ch_u) {
+        'P.pop[0].u2[0] = P.pop[0].u2[0] * x_v2_ch_u;
+        P.pop[0].u2[1] = P.pop[0].u2[1] * x_v2_ch_u;
+        P.pop[0].u2[2] = P.pop[0].u2[2] * x_v2_ch_u;
+        P.pop[0].u2[3] = P.pop[0].u2[3] * x_v2_ch_u;'
         } else '',
 
         if (v2_latdur) {
         'P.pop[0].dE2 = delay_gamma(x_v2_latdur * 2.5, 2.5, 15, 0.25);'
         } else '',
 
+        if (v2_serial) {
+        'P.pop[0].dE2 = delay_gamma(x_v2_serial * 2.5, 2.5, 15, 0.25);
+        P.pop[0].dIp2 = delay_gamma(x_v2_serial * 2.5, 4.0, 30, 0.25);
+        P.pop[0].dIs2 = delay_gamma(x_v2_serial * 2.5, 4.0, 30, 0.25);
+        P.pop[0].dIa2 = delay_gamma(x_v2_serial * 5.0, 4.0, 30, 0.25);
+        for (unsigned int g = 0; g < P.pop[0].u2.size(); ++g) {
+            P.pop[0].u2[g] /= x_v2_serial;
+        }'
+        } else '',
+
         if (v2_infdur) {
-        'P.pop[0].dIp2 = delay_gamma(x_v2_infdur * 2.5, 4.0, 15, 0.25);
-        P.pop[0].dIs2 = delay_gamma(x_v2_infdur * 2.5, 4.0, 15, 0.25);
-        P.pop[0].dIa2 = delay_gamma(x_v2_infdur * 5.0, 4.0, 15, 0.25);'
+        'P.pop[0].dIp2 = delay_gamma(x_v2_infdur * 2.5, 4.0, 30, 0.25);
+        P.pop[0].dIs2 = delay_gamma(x_v2_infdur * 2.5, 4.0, 30, 0.25);
+        P.pop[0].dIa2 = delay_gamma(x_v2_infdur * 5.0, 4.0, 30, 0.25);'
         } else '',
         
         '// Delays to admission to hospital & ICU',
@@ -144,8 +153,8 @@ cpp_chgI_voc = function(priors, v2, v2_relu, v2_latdur, v2_infdur, v2_immesc, v2
         '}',
 
         # Sep boost
-        'P.changes.ch[CH_SEP_BOOST].values[0] = vector<double>(8, x_sep_boost);',
-        'P.changes.ch[CH_SEP_BOOST].times[0] = x_sep_when;',
+        #'P.changes.ch[CH_SEP_BOOST].values[0] = vector<double>(8, x_sep_boost);',
+        #'P.changes.ch[CH_SEP_BOOST].times[0] = x_sep_when;',
 
         # fitting of google mobility indices
         'for (unsigned int k : vector<unsigned int> { CH_CONTACT, CH_TIER_2, CH_TIER_3 }) {',
@@ -236,7 +245,8 @@ cpp_likI_voc = function(params, ld, sitreps, sero, virus, sgtfd, popid, max_date
             double s2 = dyn("test2_o", sgtf_t[i], {}, {});
             double p2 = (s1 + s2) > 0 ? s2 / (s1 + s2) : 0;
             double model_sgtf = p2 + (1 - p2) * x_v2_sgtf0;
-            ll += 10 * bbinom(sgtf_s[i], sgtf_s[i] + sgtf_o[i], model_sgtf, x_v2_conc);
+            // ll += 10 * bbinom(sgtf_s[i], sgtf_s[i] + sgtf_o[i], model_sgtf, x_v2_conc);
+            ll += 10 * bbinom(sgtf_s[i], sgtf_s[i] + sgtf_o[i], model_sgtf, size_param(x_v2_disp));
         }'
         } else '',
 
@@ -245,7 +255,7 @@ cpp_likI_voc = function(params, ld, sitreps, sero, virus, sgtfd, popid, max_date
 }
 
 # create c++ observer function
-cpp_obsI_voc = function(v2, P.death, P.critical, priors)
+cpp_obsI_voc = function(concentration, v2, P.death, P.critical, priors)
 {
     glue::glue(
         named_params(priors),
@@ -271,39 +281,41 @@ cpp_obsI_voc = function(v2, P.death, P.critical, priors)
         'dyn.Obs(t, 0, 3, 0) = estimate_R0(P, dyn, t, 0, 50);',
         
         # increase in young person mobility
-        'if (t == 182) {',
-        '    double mode = 0.2;',
-        '    double conc = x_concentration1;',
-        '    double constant = 0.2;',
-        '    for (unsigned int a = 0; a < P.pop[0].u.size(); ++a) {',
-        '        P.pop[0].u[a]  *= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc - 2) + 1, (1 - mode) * (conc - 2) + 1) + constant;',
-        '        P.pop[0].u2[a] *= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc - 2) + 1, (1 - mode) * (conc - 2) + 1) + constant;',
-        '    }',
-        '}',
-        'if (t == 213) {',
-        '    double mode = 0.2;',
-        '    double conc_prev = x_concentration1;',
-        '    double conc = x_concentration2;',
-        '    double constant = 0.2;',
-        '    for (unsigned int a = 0; a < P.pop[0].u.size(); ++a) {',
-        '        P.pop[0].u[a]  /= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc_prev - 2) + 1, (1 - mode) * (conc_prev - 2) + 1) + constant;',
-        '        P.pop[0].u[a]  *= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc - 2) + 1, (1 - mode) * (conc - 2) + 1) + constant;',
-        '        P.pop[0].u2[a] /= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc_prev - 2) + 1, (1 - mode) * (conc_prev - 2) + 1) + constant;',
-        '        P.pop[0].u2[a] *= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc - 2) + 1, (1 - mode) * (conc - 2) + 1) + constant;',
-        '    }',
-        '}',
-        'if (t == 244) {',
-        '    double mode = 0.2;',
-        '    double conc_prev = x_concentration2;',
-        '    double conc = x_concentration3;',
-        '    double constant = 0.2;',
-        '    for (unsigned int a = 0; a < P.pop[0].u.size(); ++a) {',
-        '        P.pop[0].u[a]  /= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc_prev - 2) + 1, (1 - mode) * (conc_prev - 2) + 1) + constant;',
-        '        P.pop[0].u[a]  *= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc - 2) + 1, (1 - mode) * (conc - 2) + 1) + constant;',
-        '        P.pop[0].u2[a] /= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc_prev - 2) + 1, (1 - mode) * (conc_prev - 2) + 1) + constant;',
-        '        P.pop[0].u2[a] *= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc - 2) + 1, (1 - mode) * (conc - 2) + 1) + constant;',
-        '    }',
-        '}',
+        if (concentration) {
+        'if (t == 182) {
+            double mode = 0.2;
+            double conc = x_concentration1;
+            double constant = 0.2;
+            for (unsigned int a = 0; a < P.pop[0].u.size(); ++a) {
+                P.pop[0].u[a]  *= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc - 2) + 1, (1 - mode) * (conc - 2) + 1) + constant;
+                P.pop[0].u2[a] *= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc - 2) + 1, (1 - mode) * (conc - 2) + 1) + constant;
+            }
+        }
+        if (t == 213) {
+            double mode = 0.2;
+            double conc_prev = x_concentration1;
+            double conc = x_concentration2;
+            double constant = 0.2;
+            for (unsigned int a = 0; a < P.pop[0].u.size(); ++a) {
+                P.pop[0].u[a]  /= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc_prev - 2) + 1, (1 - mode) * (conc_prev - 2) + 1) + constant;
+                P.pop[0].u[a]  *= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc - 2) + 1, (1 - mode) * (conc - 2) + 1) + constant;
+                P.pop[0].u2[a] /= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc_prev - 2) + 1, (1 - mode) * (conc_prev - 2) + 1) + constant;
+                P.pop[0].u2[a] *= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc - 2) + 1, (1 - mode) * (conc - 2) + 1) + constant;
+            }
+        }
+        if (t == 244) {
+            double mode = 0.2;
+            double conc_prev = x_concentration2;
+            double conc = x_concentration3;
+            double constant = 0.2;
+            for (unsigned int a = 0; a < P.pop[0].u.size(); ++a) {
+                P.pop[0].u[a]  /= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc_prev - 2) + 1, (1 - mode) * (conc_prev - 2) + 1) + constant;
+                P.pop[0].u[a]  *= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc - 2) + 1, (1 - mode) * (conc - 2) + 1) + constant;
+                P.pop[0].u2[a] /= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc_prev - 2) + 1, (1 - mode) * (conc_prev - 2) + 1) + constant;
+                P.pop[0].u2[a] *= (1 - constant) * dbeta((a + 0.5) / P.pop[0].u.size(), mode * (conc - 2) + 1, (1 - mode) * (conc - 2) + 1) + constant;
+            }
+        }'
+        } else '',
 
         # changing CFR and ICU admission
         'if ((int)t % 7 == 0) {',
@@ -335,6 +347,26 @@ cpp_obsI_voc = function(v2, P.death, P.critical, priors)
 }
 
 
+# Observer for vaccination programmes
+cpp_obsI_vax = function(params, vacc)
+{
+    glue::glue(
+        'if (t == 0) { dyn.scratch["vaxphase"] = 0; }',
+        '{',
+        'vector<double> vt  = ${ cpp_vec(as.numeric(ymd(vacc$vt) - ymd(params$date0))) };',
+        'vector<double> v   = ${ cpp_vec(unlist(vacc$v)) };',
+        'unsigned int phase = dyn.scratch["vaxphase"];',
+        'if (vt.size() > phase && t >= vt[phase]) {',
+        '    int age_groups = P.pop[0].size.size();',
+        '    P.pop[0].v   = vector<double>(v.begin()   + age_groups * phase, v.begin()   + age_groups * (phase + 1));',
+        '    dyn.scratch["vaxphase"] = phase + 1;',
+        '}',
+        'dyn.Obs(t, 0, 5, 0) = dyn.scratch["vaxphase"];',
+        '}',
+        .sep = "\n", .open = "${", .close = "}")
+}
+
+
 
 
 
@@ -349,7 +381,7 @@ cpp_obsI_voc = function(v2, P.death, P.critical, priors)
 #         'auto interp = [&](double y, vector<double>& curve) {',
 #         '    if (y < 0) return curve[0];',
 #         '    unsigned int i = (unsigned int)(y * 100);',
-#         '    if (i >= curve.size()) return curve.back();',
+#         '    if (i >= curve.size() - 1) return curve.back();',
 #         '    double f = y * 100 - i;',
 #         '    return (1 - f) * curve[i] + f * curve[i + 1];',
 #         '};',
@@ -619,7 +651,7 @@ cpp_obsI_voc = function(v2, P.death, P.critical, priors)
 #         'auto interp = [&](double x, vector<double>& curve) {',
 #         '    if (x < 0) return curve[0];',
 #         '    unsigned int i = (unsigned int)(x * 100);',
-#         '    if (i >= curve.size()) return curve.back();',
+#         '    if (i >= curve.size() - 1) return curve.back();',
 #         '    double f = x * 100 - i;',
 #         '    return (1 - f) * curve[i] + f * curve[i + 1];',
 #         '};',
@@ -721,7 +753,7 @@ cpp_obsI_voc = function(v2, P.death, P.critical, priors)
 #         'auto interp = [&](double x, vector<double>& curve) {',
 #         '    if (x < 0) return curve[0];',
 #         '    unsigned int i = (unsigned int)(x * 100);',
-#         '    if (i >= curve.size()) return curve.back();',
+#         '    if (i >= curve.size() - 1) return curve.back();',
 #         '    double f = x * 100 - i;',
 #         '    return (1 - f) * curve[i] + f * curve[i + 1];',
 #         '};',
@@ -831,7 +863,7 @@ cpp_obsI_voc = function(v2, P.death, P.critical, priors)
 #         'auto interp = [&](double x, vector<double>& curve) {',
 #         '    if (x < 0) return curve[0];',
 #         '    unsigned int i = (unsigned int)(x * 100);',
-#         '    if (i >= curve.size()) return curve.back();',
+#         '    if (i >= curve.size() - 1) return curve.back();',
 #         '    double f = x * 100 - i;',
 #         '    return (1 - f) * curve[i] + f * curve[i + 1];',
 #         '};',
@@ -1079,7 +1111,7 @@ cpp_obsI_voc = function(v2, P.death, P.critical, priors)
 #         'auto interp = [&](double x, vector<double>& curve) {',
 #         '    if (x < 0) return curve[0];',
 #         '    unsigned int i = (unsigned int)(x * 100);',
-#         '    if (i >= curve.size()) return curve.back();',
+#         '    if (i >= curve.size() - 1) return curve.back();',
 #         '    double f = x * 100 - i;',
 #         '    return (1 - f) * curve[i] + f * curve[i + 1];',
 #         '};',
@@ -1189,7 +1221,7 @@ cpp_obsI_voc = function(v2, P.death, P.critical, priors)
 #         'auto interp = [&](double x, vector<double>& curve) {',
 #         '    if (x < 0) return curve[0];',
 #         '    unsigned int i = (unsigned int)(x * 100);',
-#         '    if (i >= curve.size()) return curve.back();',
+#         '    if (i >= curve.size() - 1) return curve.back();',
 #         '    double f = x * 100 - i;',
 #         '    return (1 - f) * curve[i] + f * curve[i + 1];',
 #         '};',
@@ -1291,7 +1323,7 @@ cpp_obsI_voc = function(v2, P.death, P.critical, priors)
 #         'auto interp = [&](double x, vector<double>& curve) {',
 #         '    if (x < 0) return curve[0];',
 #         '    unsigned int i = (unsigned int)(x * 100);',
-#         '    if (i >= curve.size()) return curve.back();',
+#         '    if (i >= curve.size() - 1) return curve.back();',
 #         '    double f = x * 100 - i;',
 #         '    return (1 - f) * curve[i] + f * curve[i + 1];',
 #         '};',
@@ -1393,7 +1425,7 @@ cpp_obsI_voc = function(v2, P.death, P.critical, priors)
 #         'auto interp = [&](double x, vector<double>& curve) {',
 #         '    if (x < 0) return curve[0];',
 #         '    unsigned int i = (unsigned int)(x * 100);',
-#         '    if (i >= curve.size()) return curve.back();',
+#         '    if (i >= curve.size() - 1) return curve.back();',
 #         '    double f = x * 100 - i;',
 #         '    return (1 - f) * curve[i] + f * curve[i + 1];',
 #         '};',

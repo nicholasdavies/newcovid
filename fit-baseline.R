@@ -13,17 +13,28 @@ library(mgcv)
 library(binom)
 
 N_THREADS = 46
-REP_START = 1
-REP_END = 1
-BURN_IN = 2000
-BURN_IN_FINAL = 2000
+REP_START = 4
+REP_END = 6
+BURN_IN = 2500
+BURN_IN_FINAL = 2500
 ITER = 500
 
 which_pops = c(1, 3, 4, 5, 6, 9, 10)
 set_id = ""
 
+data_file = "processed-data-2021-01-06.qs"
+mobility_file = "schedule3-2021-01-06.rds"
+
 # Command line
 FIT_TYPE = commandArgs(trailingOnly = TRUE)[[1]];
+
+opt_conc = TRUE;
+opt_seas = FALSE;
+extra_priors = list(
+    concentration1 = "N 2 .3 T 2 10",
+    concentration2 = "N 2 .2 T 2 10",
+    concentration3 = "N 2 .1 T 2 10"
+);
 
 if (FIT_TYPE == "a") {
     which_pops = c(1, 3, 4, 5)
@@ -31,9 +42,21 @@ if (FIT_TYPE == "a") {
 } else if (FIT_TYPE == "b") {
     which_pops = c(6, 9, 10)
     set_id = "b"
+} else if (FIT_TYPE == "seas") {
+    set_id = "seas"
+    opt_seas = TRUE;
+    opt_conc = FALSE;
+    extra_priors = list(
+        seasonality = "N 0 0.05 T 0 0.5"
+    );
+} else if (FIT_TYPE == "conc") {
+    set_id = ""
 } else {
-    stop("FIT_TYPE needed at command line (a or b)")
+    stop("Invalid FIT_TYPE at command line")
 }
+
+# Adjust number of threads for fitting
+N_THREADS = 36 + length(extra_priors) * 2;
 
 uk_covid_data_path = "./fitting_data/";
 datapath = function(x) paste0(uk_covid_data_path, x)
@@ -65,10 +88,10 @@ source("./check_fit.R")
 nhs_regions = popUK[, unique(name)]
 pct = function(x) as.numeric(str_replace_all(x, "%", "")) / 100
 
-all_data = qread(datapath("processed-data-2021-01-01.qs"))
+all_data = qread(datapath(data_file))
 ld = all_data[[1]]
 sitreps = all_data[[2]]
-virus = all_data[[3]][!Data.source %like% "7a|7b|6a|6b"]
+virus = all_data[[3]][!Data.source %like% "7\\.weighted|7b|6a|6b"]
 sero = all_data[[4]]
 sgtf = all_data[[5]]
 
@@ -84,7 +107,7 @@ N_REG = 12;
 # Build parameters for NHS regions ###
 params = cm_parameters_SEI3R(nhs_regions[1:N_REG], deterministic = T, 
                              date_start = "2020-01-01", 
-                             date_end = "2020-11-23",
+                             date_end = "2020-11-24",
     dE  = cm_delay_gamma(2.5, 2.5, t_max = 15, t_step = 0.25)$p,
     dIp = cm_delay_gamma(2.5, 4.0, t_max = 15, t_step = 0.25)$p,
     dIs = cm_delay_gamma(2.5, 4.0, t_max = 15, t_step = 0.25)$p,
@@ -108,7 +131,7 @@ source("./processes.R")
 params$processes = burden_processes
 
 # changes
-schedule_all = readRDS(datapath("schedule3-2021-01-06.rds"));
+schedule_all = readRDS(datapath(mobility_file));
 schedule = list();
 for (i in seq_along(schedule_all)) {
     if (schedule_all[[i]]$pops < N_REG) {
@@ -135,7 +158,7 @@ params$schedule = schedule
 source("./cpp_funcs.R")
 
 # Fitting
-priorsI = list(
+priorsI = c(list(
     tS = "U 0 60",
     u = "N 0.09 0.02 T 0.04 0.2",
     death_mean = "N 15 2 T 5 30",    # <<< co-cin
@@ -150,16 +173,13 @@ priorsI = list(
     contact_final = "N 1 0.1 T 0 1",
     contact_s0 = "E 0.1 0.1",
     contact_s1 = "E 0.1 0.1",
-    concentration1 = "N 2 .3 T 2 10",
-    concentration2 = "N 2 .2 T 2 10",
-    concentration3 = "N 2 .1 T 2 10",
-    sep_boost = "N 1 0.05",
-    sep_when = "U 214 274",
+    #sep_boost = "N 1 0.05",
+    #sep_when = "U 214 274",
     disp_deaths = "E 10 10",
     disp_hosp_inc = "E 10 10",
     disp_hosp_prev = "E 10 10",
     disp_icu_prev = "E 10 10"
-)
+), extra_priors)
 
 
 posteriorsI = list()
@@ -255,9 +275,10 @@ for (replic in REP_START:REP_END)
         cm_source_backend(
             user_defined = list(
                 model_v2 = list(
-                    cpp_changes = cpp_chgI_voc(priorsI, v2 = FALSE, v2_relu = FALSE, v2_latdur = FALSE, v2_infdur = FALSE, v2_immesc = FALSE, v2_ch_u = FALSE),
-                    cpp_loglikelihood = cpp_likI_voc(paramsI, ldI, sitrepsI, seroI, virusI, sgtfI, p, "2020-11-23", priorsI, death_cutoff = 0, use_sgtf = FALSE),
-                    cpp_observer = cpp_obsI_voc(FALSE, P.death, P.critical, priorsI)
+                    cpp_changes = cpp_chgI_voc(priorsI, seasonality = opt_seas, 
+                        v2 = FALSE, v2_relu = FALSE, v2_latdur = FALSE, v2_serial = FALSE, v2_infdur = FALSE, v2_immesc = FALSE, v2_ch_u = FALSE),
+                    cpp_loglikelihood = cpp_likI_voc(paramsI, ldI, sitrepsI, seroI, virusI, sgtfI, p, "2020-11-24", priorsI, death_cutoff = 0, use_sgtf = FALSE),
+                    cpp_observer = cpp_obsI_voc(concentration = opt_conc, v2 = FALSE, P.death, P.critical, priorsI)
                 )
             )
         )
@@ -309,9 +330,10 @@ for (replic in REP_START:REP_END)
         cm_source_backend(
             user_defined = list(
                 model_v2 = list(
-                    cpp_changes = cpp_chgI_voc(priorsI, v2 = FALSE, v2_relu = FALSE, v2_latdur = FALSE, v2_infdur = FALSE, v2_immesc = FALSE, v2_ch_u = FALSE),
+                    cpp_changes = cpp_chgI_voc(priorsI, seasonality = opt_seas, 
+                        v2 = FALSE, v2_relu = FALSE, v2_latdur = FALSE, v2_serial = FALSE, v2_infdur = FALSE, v2_immesc = FALSE, v2_ch_u = FALSE),
                     cpp_loglikelihood = "",
-                    cpp_observer = cpp_obsI_voc(FALSE, P.death, P.critical, priorsI)
+                    cpp_observer = cpp_obsI_voc(concentration = opt_conc, v2 = FALSE, P.death, P.critical, priorsI)
                 )
             )
         )
@@ -338,7 +360,7 @@ for (replic in REP_START:REP_END)
     test[, population := nhs_regions[population]]
 
     # Visually inspect fit
-    plot = check_fit(test, ld, sitreps, virus, sero, nhs_regions[which_pops], death_cutoff = 0, "2020-12-30")
-    plot = plot + geom_vline(aes(xintercept = ymd("2020-11-23")), size = 0.25, linetype = "42")
+    plot = check_fit(test, parametersI, ld, sitreps, virus, sero, nhs_regions[which_pops], death_cutoff = 0, "2020-12-30")
+    plot = plot + geom_vline(aes(xintercept = ymd("2020-11-24")), size = 0.25, linetype = "42")
     ggsave(paste0("./output/fit_baseline", replic, set_id, ".pdf"), plot, width = 40, height = 25, units = "cm", useDingbats = FALSE)
 }

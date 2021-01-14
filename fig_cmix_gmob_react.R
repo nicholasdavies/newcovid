@@ -212,7 +212,7 @@ p_gmob <- gmob_tier[date > as.Date("2020-09-01")] %>%
     axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
     legend.key = element_rect(size = 6, fill = "white", colour = NA), legend.key.size = unit(1, "cm")
   ) + 
-  labs(title = "C")
+  labs(title = "B")
   
 
 p_gmob
@@ -244,7 +244,7 @@ p_cmix <- avg_contacts[!age %in% c("All", "Adult")] %>%
   theme(
     axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
     panel.spacing.y =  unit(1, "lines")) + 
-  labs(title = "D")
+  labs(title = "C")
 
 
 # Input data ----------------------------------------------------------------
@@ -262,7 +262,7 @@ p_r0 <- ggplot(cmix_eng) +
     geom_point(aes(x = start_date, y = R_50), fill = "red", col = "grey", pch =21) +
     scale_fill_manual(values = c("#3b70bf", "#7dba5d"), labels = c("Single round", "Two rounds")) +
     scale_y_continuous(expand = expansion(0), limits = c(0,3)) +
-    labs(fill = "REACT R estimate", y = "R", x = "", title = "E")  +
+    labs(fill = "REACT R estimate", y = "R", x = "", title = "D")  +
     scale_x_date(breaks = "month", date_labels = "%b") +
     theme(
         legend.position = c(.05, .85),
@@ -289,7 +289,7 @@ p_corr_plot <- ggplot(cmix_react, aes(R_50, `0.5`, col = estimate)) +
   scale_colour_manual(values = c("#3b70bf", "#7dba5d"), labels = c("Single round", "Two rounds")) +
   scale_x_continuous(expand = expansion(0), limits = c(0,2)) +
   scale_y_continuous(expand = expansion(0), limits = c(0,2)) +
-  labs(colour = "REACT R estimate", y = "R", x = "", title = "F")  +
+  labs(colour = "REACT R estimate", y = "R", x = "", title = "E")  +
   geom_abline(aes(slope = 1, intercept = 0)) +
   ylab("REACT") +
   xlab("CoMix")
@@ -299,35 +299,37 @@ cmix_react[estimate == "two_rounds", cor.test(R_50, `0.5`)]
 cmix_react[estimate == "per_round", cor.test(R_50, `0.5`)]
 
 
+# Load UTLA raster plot
+library(qs)
+p_raster = qread("./output/fig_raster.qs") + labs(title = "A") + theme(plot.title = element_text(size = 9))
+
+
 # Combine plots -----------------------------------------------------------
 
 layout <- "
-    AABB
-    AABB
-    AABB
-    CCDD
-    CCDD
-    CCDD
-    CCDD
-    CCDD
-    EEEF
-    EEEF
-    EEEF
+    AAAAAABBBBCCCC
+    AAAAAABBBBCCCC
+    AAAAAABBBBCCCC
+    AAAAAABBBBCCCC
+    AAAAAABBBBCCCC
+    AAAAAADDDDDEEE
+    AAAAAADDDDDEEE
+    AAAAAADDDDDEEE
     "
 
-plot_final <- p_var + p_corr + p_gmob + p_cmix + p_r0 + p_corr_plot + plot_layout(design = layout)
+#plot_final <- p_var + p_corr + p_gmob + p_cmix + p_r0 + p_corr_plot + plot_layout(design = layout)
+plot_final <- p_raster + p_gmob + p_cmix + p_r0 + p_corr_plot + plot_layout(design = layout)
 
-plot_final
-
-ggsave(filename = "ouputs/figure_1.pdf", 
+ggsave(filename = "./output/new_figure_1.png", 
        plot_final,
-       width = 10,
-       height = 15)
-
-ggsave(filename = "ouputs/figure_1.png", 
-       plot_final,
-       width = 10,
+       width = 20,
        height = 12)
+
+ggsave(filename = "./output/new_figure_1.pdf", 
+       plot_final,
+       width = 20,
+       height = 12)
+
 
 
 

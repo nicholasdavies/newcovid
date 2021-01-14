@@ -9,6 +9,7 @@ fasta/*
 output/*
 fits/*
 fits/other/*
+other/*
 
 upload
 upload2

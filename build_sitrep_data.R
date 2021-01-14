@@ -7,7 +7,7 @@ library(ogwrangler)
 source("./commit.R")
 
 # Note: this file contains sensitive NHS data, so it is not included wth the repo.
-spim_data = read_excel("~/Documents/uk_covid_data_sensitive/spi-m_data/20210106_All_SPIM_trust_001.xlsx", "Extracted Data", col_type = "text")
+spim_data = read_excel("~/Documents/uk_covid_data_sensitive/spi-m_data/20210108_All_SPIM_trust_001.xlsx", "Extracted Data", col_type = "text")
 setDT(spim_data)
 spim_data[, DateVal := as.Date(DateVal)]
 spim_data = cbind(
@@ -82,11 +82,11 @@ di = rbindlist(list(diE, diN, diS, diW))
 data = rbindlist(list(hp, ip, hi, di))
 
 # Save
-existing = fread("~/Dropbox/uk_covid_data/data-2021-01-05.csv")
+existing = fread("~/Dropbox/uk_covid_data/data-2021-01-06.csv")
 existing[, date := as.Date(date)]
 committed = commit(existing, data)
-fwrite(committed, "~/Dropbox/uk_covid_data/data-2021-01-06.csv")
-fwrite(committed, "./fitting_data/data-2021-01-06.csv")
+fwrite(committed, "~/Dropbox/uk_covid_data/data-2021-01-08.csv")
+fwrite(committed, "./fitting_data/data-2021-01-08.csv")
 
 #######
 
@@ -120,7 +120,7 @@ for (dir in dirs)
 {
     cat(".")
     searchdir = paste0("~/Documents/uk_covid_data_sensitive/folder_20127408/Archive/", dir);
-    file = list.files(path = searchdir, pattern = "^Covid sitrep report.*(xlsx|XLSX)$")
+    file = list.files(path = searchdir, pattern = "^Covid.sitrep.report.*(xlsx|XLSX)$")
     dat = as.data.table(read_excel(paste0(searchdir, "/", file), "R Data", skip = 1))
     dat = dat[, .(date = as.Date(period), region = Region, sitecode = `Site/Org Code`, type = `Organisation Type`,
         mv_occ_cov = SIT032_OccupiedCov, mv_occ_sus = SIT032_OccupiedSuspected, mv_occ_non = SIT032_OccupiedNonCovNS, mv_unocc = SIT032_Unoccupied, # mechanical ventilation beds
@@ -177,7 +177,8 @@ ggplot(w2) + geom_line(aes(x = date, y = value, colour = nhscd)) + facet_wrap(~v
 
 # Standardise absences
 w2[variable %in% c("medstaff_abs", "nursing_abs"), value := (value - mean(value)) / sd(value), by = .(nhscd, variable)]
-w2[, value := rollmean(value, 7, fill = "extend"), by = .(nhscd, variable)]
+w2[, value := zoo::rollmean(value, 7, fill = "extend"), by = .(nhscd, variable)]
 ggplot(w2) + geom_line(aes(x = date, y = value, colour = nhscd)) + facet_wrap(~variable, scales = "free")
 
 pressure = dcast(w2, nhscd + date ~ variable)
+fwrite(pressure, "~/Documents/uk_covid_data_sensitive/pressure.csv")
