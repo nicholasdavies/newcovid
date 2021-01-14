@@ -17,6 +17,7 @@ which_pops = c(1, 3, 9)
 uk_covid_data_path = "./fitting_data/";
 datapath = function(x) paste0(uk_covid_data_path, x)
 pct = function(x) as.numeric(str_replace_all(x, "%", "")) / 100
+data_file = "processed-data-2021-01-08.qs"
 
 #
 # SETUP
@@ -42,6 +43,13 @@ source("./processes.R")
 
 nhs_regions = popUK[, unique(name)]
 
+all_data = qread(datapath(data_file))
+ld = all_data[[1]]
+sitreps = all_data[[2]]
+virus = all_data[[3]][!Data.source %like% "7a|7b|6a|6b"]
+sero = all_data[[4]]
+sgtf = all_data[[5]]
+
 
 load_hyp = function(filename)
 {
@@ -51,7 +59,8 @@ load_hyp = function(filename)
     # Run fit
     posteriorsI = fit[[1]]
     parametersI = fit[[2]]
-    priorsI = names(post)[6:(ncol(post)-1)];
+    post1 = posteriorsI[[which_pops[1]]]
+    priorsI = names(post1)[5:(ncol(post1))];
     names(priorsI) = priorsI;
     opt_seas = FALSE;
     opt_conc = TRUE;
@@ -118,7 +127,11 @@ load_hyp = function(filename)
     # Fit to SGTF data
     sgtf[, qlo := qbeta(0.025, sgtf + 1, other + 1)]
     sgtf[, qhi := qbeta(0.975, sgtf + 1, other + 1)]
-    vmodel = test[, .(I1 = sum(test_o), I2 = sum(test2_o), sgtf0 = v2_sgtf0[1], conc = v2_conc[1]), by = .(t, population, run)]
+    if ("v2_conc" %in% names(test)) {
+        vmodel = test[, .(I1 = sum(test_o), I2 = sum(test2_o), sgtf0 = v2_sgtf0[1], conc = v2_conc[1]), by = .(t, population, run)]
+    } else {
+        vmodel = test[, .(I1 = sum(test_o), I2 = sum(test2_o), sgtf0 = v2_sgtf0[1], conc = 1 / (v2_disp[1] * v2_disp[1])), by = .(t, population, run)]
+    }
     vmodel[, p2 := I2 / (I1 + I2)]
     vmodel[is.nan(p2), p2 := 0]
     vmodel[, sgtf := (1 - p2) * sgtf0 + p2];
@@ -167,16 +180,18 @@ load_hyp = function(filename)
     return (list(post = post_melted, dic = dic, vmodel = quants))
 }
 
-w = qread("./fits/immesc_ELSE6.qs")
-sapply(w[[1]], function(x) mean(x$v2_conc))
+hu = load_hyp("./fits/relu12.qs")
+he = load_hyp("./fits/immesc_ELSE6.qs")
+hc = load_hyp("./fits/ch_u_ELSE6.qs")
+hi = load_hyp("./fits/infdur_ELSE8.qs")
+hs = load_hyp("./fits/serial_ELSE4.qs")
 
+ggplot(hu$vmodel) +
+    geom_ribbon(aes(x = t, ymin = `2.5%`, ymax = `97.5%`), fill = "darkorchid", alpha = 0.4) +
+    geom_line(aes(x = t, y = `50%`), colour = "darkorchid") +
+    facet_wrap(~population)
 
-load_hyp("./fits/immesc_ELSE6.qs")
-load_hyp("./fits/ch_u_ELSE6.qs")
-w = load_hyp("./fits/infdur_ELSE8.qs")
-w = load_hyp("./fits/serial_ELSE1.qs")
-
-qread("./fits/serial_ELSE9-progress.qs")
+w = qread("./fits/serial_ELSE3.qs")
 
 pa1 = qread("./output/cog-plot-0.qs")
 pa2 = qread("./output/post-plot-0.qs")

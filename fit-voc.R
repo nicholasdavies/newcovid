@@ -15,8 +15,8 @@ library(binom)
 theme_set(cowplot::theme_cowplot(font_size = 10) + theme(strip.background = element_blank()))
 
 N_THREADS = 46
-REP_START = 3
-REP_END = 4
+REP_START = 5
+REP_END = 6
 BURN_IN = 2500
 ITER = 500
 BURN_IN_FINAL = 2500
@@ -259,12 +259,8 @@ if (file.exists(existing_file)) {
     rm(saved)
 }
 
-if (FIT_TYPE == "serial" && REP_START == 9) {
-    for (i in seq_along(posteriorsI)) {
-        if (!is.null(posteriorsI[[i]])) {
-            posteriorsI[[i]][, v2_when := rnorm(.N, 285, 2)];
-        }
-    }
+if (FIT_TYPE == "serial" && REP_START == 5) {
+    posteriorsI[[1]][, v2_when := rnorm(.N, 280, 2)];
     priorsI[["v2_when"]] = "U 144 310";
 }
 
