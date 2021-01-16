@@ -1,5 +1,5 @@
-ll = fread("~/Documents/uk_covid_data_sensitive/phe/20210113/Anonymised Combined Line List 20210113.csv")
-sgtf = fread("~/Documents/uk_covid_data_sensitive/phe/20210113/SGTF_linelist_20210113.csv")
+ll = fread("~/Documents/uk_covid_data_sensitive/phe/20210115/Anonymised Combined Line List 20210115.csv")
+sgtf = fread("~/Documents/uk_covid_data_sensitive/phe/20210115/SGTF_linelist_20210115.csv")
 ll[, specimen_date := dmy(specimen_date)]
 sgtf[, specimen_date := ymd(specimen_date)]
 d = merge(ll, sgtf, by = c("FINALID", "specimen_date"), all = TRUE)
@@ -51,7 +51,7 @@ ggplot(d[specimen_date > "2020-10-01" & !is.na(age),
     geom_line(aes(x = date, y = voc / (voc + other), colour = agegroup, group = agegroup)) +
     scale_y_continuous(trans = scales::logit_trans())
 
-# by NHS region
+# MAKE OUTPUT
 dd = d[!is.na(specimen_date) & !is.na(NHSER_name) & NHSER_name != "", 
     .(sgtf = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
     keyby = .(date = specimen_date, pillar, nhs_name = NHSER_name)]
@@ -61,7 +61,7 @@ ggplot(dd[date > "2020-10-01"]) +
     geom_line(aes(x = date, y = sgtf / (other + sgtf), colour = pillar)) + 
     facet_wrap(~nhs_name)
 
-fwrite(dd[pillar == "Pillar 2" & date >= "2020-10-01", .(date, nhs_name, sgtf, other)], "./fitting_data/sgtf-2021-01-08.csv")
+fwrite(dd[pillar == "Pillar 2" & date >= "2020-10-01", .(date, nhs_name, sgtf, other)], "./fitting_data/sgtf-2021-01-15.csv")
 
 output = d[!is.na(specimen_date) & !is.na(NHSER_name) & NHSER_name != "" & pillar == "Pillar 2" & specimen_date >= "2020-09-01", 
     .(sgtf = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 

@@ -7,7 +7,7 @@ library(ogwrangler)
 source("./commit.R")
 
 # Note: this file contains sensitive NHS data, so it is not included wth the repo.
-spim_data = read_excel("~/Documents/uk_covid_data_sensitive/spi-m_data/20210108_All_SPIM_trust_001.xlsx", "Extracted Data", col_type = "text")
+spim_data = read_excel("~/Documents/uk_covid_data_sensitive/spi-m_data/20210115_All_SPIM_trust_002.xlsx", "Extracted Data", col_type = "text")
 setDT(spim_data)
 spim_data[, DateVal := as.Date(DateVal)]
 spim_data = cbind(
@@ -82,11 +82,11 @@ di = rbindlist(list(diE, diN, diS, diW))
 data = rbindlist(list(hp, ip, hi, di))
 
 # Save
-existing = fread("~/Dropbox/uk_covid_data/data-2021-01-06.csv")
+existing = fread("~/Dropbox/uk_covid_data/data-2021-01-08.csv")
 existing[, date := as.Date(date)]
 committed = commit(existing, data)
-fwrite(committed, "~/Dropbox/uk_covid_data/data-2021-01-08.csv")
-fwrite(committed, "./fitting_data/data-2021-01-08.csv")
+fwrite(committed, "~/Dropbox/uk_covid_data/data-2021-01-15.csv")
+fwrite(committed, "./fitting_data/data-2021-01-15.csv")
 
 #######
 

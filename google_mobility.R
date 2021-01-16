@@ -18,7 +18,7 @@ matricesUK = readRDS(datapath("matricesNHS.rds"));
 # Google visits data
 # We don't upload full Google Mobility Report files to the repo because they are 200+ MB, 
 # but if you download the "global CSV" from https://www.google.com/covid19/mobility/, that's it.
-googmo = fread("~/Dropbox/uk_covid_data/fitting/data/Global_Mobility_Report-2021-01-07.csv");
+googmo = fread("~/Dropbox/uk_covid_data/fitting/data/Global_Mobility_Report-2021-01-14.csv");
 googmo = googmo[country_region_code == "GB" & sub_region_1 != "" & sub_region_2 == "" & metro_area == ""];
 
 # Melt mobility data
@@ -202,7 +202,7 @@ for (added_fortnights in 1:45) {
 # school_close =  c("2020-2-16", "2020-4-05", "2020-5-24", "2020-7-22", "2020-10-25", "2020-12-20", "2021-02-14", "2021-04-01", "2021-05-30", "2021-07-25");
 # school_reopen = c("2020-2-22", "2020-4-18", "2020-5-30", "2020-9-01", "2020-10-31", "2021-01-02", "2021-02-20", "2021-04-17", "2021-06-05", "2021-09-01");
 school_close =  c("2020-2-16", "2020-3-22", "2020-10-25", "2020-12-20", "2021-02-14", "2021-04-01", "2021-05-30", "2021-07-25");
-school_reopen = c("2020-2-22", "2020-9-01", "2020-10-31", "2021-01-09", "2021-02-20", "2021-04-17", "2021-06-05", "2021-09-01"); # Note: changed 20201-01-02 to 2021-01-09 for school closures so far
+school_reopen = c("2020-2-22", "2020-9-01", "2020-10-31", "2021-01-02", "2021-02-20", "2021-04-17", "2021-06-05", "2021-09-01");
 stop("See comment above.")
 school_c = as.numeric(ymd(school_close) - ymd("2020-01-01"))
 school_r = as.numeric(ymd(school_reopen) - ymd("2020-01-01"))
@@ -254,7 +254,7 @@ make_schedule = function(y)
 }
 
 schedule = make_schedule(y);
-saveRDS(schedule, "~/Documents/newcovid/fitting_data/schedule3-2021-01-07.rds")
+saveRDS(schedule, "~/Documents/newcovid/fitting_data/schedule3-2021-01-14.rds")
 
 
 

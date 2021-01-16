@@ -9,6 +9,7 @@ library(qs)
 library(stringr)
 library(mgcv)
 library(binom)
+library(extraDistr)
 
 theme_set(cowplot::theme_cowplot(font_size = 10) + theme(strip.background = element_blank()))
 
@@ -17,7 +18,10 @@ which_pops = c(1, 3, 9)
 uk_covid_data_path = "./fitting_data/";
 datapath = function(x) paste0(uk_covid_data_path, x)
 pct = function(x) as.numeric(str_replace_all(x, "%", "")) / 100
-data_file = "processed-data-2021-01-08.qs"
+#data_file = "processed-data-2021-01-08.qs"
+data_file = "processed-data-2021-01-15.qs"
+date_fitting = "2020-12-24"
+date_predict = "2021-01-07"
 
 #
 # SETUP
@@ -46,7 +50,7 @@ nhs_regions = popUK[, unique(name)]
 all_data = qread(datapath(data_file))
 ld = all_data[[1]]
 sitreps = all_data[[2]]
-virus = all_data[[3]][!Data.source %like% "7a|7b|6a|6b"]
+virus = all_data[[3]][!Data.source %like% "7a|7b|6a|6b" & omega > 1e-9]
 sero = all_data[[4]]
 sgtf = all_data[[5]]
 
@@ -64,6 +68,7 @@ load_hyp = function(filename)
     names(priorsI) = priorsI;
     opt_seas = FALSE;
     opt_conc = TRUE;
+    opt_v2 = "v2_when" %in% priorsI;
     opt_relu = "v2_relu" %in% priorsI;
     opt_latdur = "v2_latdur" %in% priorsI;
     opt_serial = "v2_serial" %in% priorsI;
@@ -74,17 +79,31 @@ load_hyp = function(filename)
     # Generate SPI-M output
     # Sample dynamics from fit
     dynamicsI = list()
+    ll_mean_theta = list()
+    prev_ll = list()
+    new_ll = list()
     for (p in which_pops)  {
         cat(paste0("Sampling fit for population ", p, "...\n"))
+        
+        ldI = rlang::duplicate(ld);
+        ldI = ldI[pid == p - 1];
+        sitrepsI = rlang::duplicate(sitreps);
+        sitrepsI = sitrepsI[pid == p - 1];
+        seroI = rlang::duplicate(sero);
+        seroI = seroI[pid == p - 1 & Data.source != "NHSBT"];   # sero: all but NHSBT
+        virusI = rlang::duplicate(virus);
+        virusI = virusI[pid == p - 1 & Data.source %like% "REACT"]; # virus: REACT only
+        sgtfI = copy(sgtf);
+        sgtfI = sgtfI[pid == p - 1];
         
         # Source backend
         cm_source_backend(
             user_defined = list(
                 model_v2 = list(
                     cpp_changes = cpp_chgI_voc(priorsI, seasonality = opt_seas, 
-                        v2 = TRUE, v2_relu = opt_relu, v2_latdur = opt_latdur, v2_serial = opt_serial, v2_infdur = opt_infdur, v2_immesc = opt_immesc, v2_ch_u = opt_ch_u),
-                    cpp_loglikelihood = "",
-                    cpp_observer = cpp_obsI_voc(concentration = opt_conc, v2 = TRUE, P.death, P.critical, priorsI)
+                        v2 = opt_v2, v2_relu = opt_relu, v2_latdur = opt_latdur, v2_serial = opt_serial, v2_infdur = opt_infdur, v2_immesc = opt_immesc, v2_ch_u = opt_ch_u),
+                    cpp_loglikelihood = cpp_likI_voc(parametersI[[p]], ldI, sitrepsI, seroI, virusI, sgtfI, p, date_predict, priorsI, death_cutoff = 7, use_sgtf = opt_v2),
+                    cpp_observer = cpp_obsI_voc(concentration = opt_conc, v2 = opt_v2, P.death, P.critical, priorsI)
                 )
             )
         )
@@ -104,6 +123,19 @@ load_hyp = function(filename)
         test = merge(test, disp, by = "run")
 
         dynamicsI[[p]] = test
+        
+        # Posterior mean sampling
+        post_mean = posteriorsI[[p]][, lapply(.SD, mean)]
+        theta = unname(unlist(c(post_mean[, 5:ncol(post_mean)])))
+        ll_mean_theta[[p]] = cm_backend_loglik(cm_translate_parameters(paramsI2), theta, seed = 0);
+        
+        # Recover previous and predictive LL
+        prev_ll[[p]] = posteriorsI[[p]][rows, ll]
+        new_ll[[p]] = rep(0, 100);
+        for (i in 1:100) {
+            theta = unname(unlist(c(posteriorsI[[p]][rows[i], 5:ncol(posteriorsI[[p]])])))
+            new_ll[[p]][i] = cm_backend_loglik(cm_translate_parameters(paramsI2), theta, seed = 0);
+        }
     }
     
     # Concatenate dynamics for SPI-M output
@@ -116,15 +148,19 @@ load_hyp = function(filename)
     # ggsave(paste0("./output/hypothesis_fit_", filename, ".pdf"), plot, width = 40, height = 25, units = "cm", useDingbats = FALSE)
 
     # Posteriors
-    post = rbindlist(posteriorsI, idcol = "population")
+    post = rbindlist(posteriorsI, idcol = "population", fill = TRUE)
     post[, pop := nhs_regions[population]]
+    post = post[population %in% which_pops]
     post_melted = melt(post, id.vars = c(1:5, ncol(post)))
 
     # Calculate DIC
     post[, D := -2 * ll]
-    dic = post[, 0.5 * var(D) + mean(D), by = population][, mean(V1)];
+    dic1 = post[, 0.5 * var(D) + mean(D), by = population][, mean(V1)];
+    ED = post[, mean(D), by = population]$V1
+    pD = post[, mean(D), by = population]$V1 + 2 * unlist(ll_mean_theta[which_pops])
+    dic2 = mean(pD + ED)
 
-    # Fit to SGTF data
+    # Assess fit to SGTF data
     sgtf[, qlo := qbeta(0.025, sgtf + 1, other + 1)]
     sgtf[, qhi := qbeta(0.975, sgtf + 1, other + 1)]
     if ("v2_conc" %in% names(test)) {
@@ -160,35 +196,76 @@ load_hyp = function(filename)
         quants = rbind(quants, quants0);
     }
     
-    # vmodel[, q025 := qbeta(0.025, alpha, beta)]
-    # vmodel[, q500 := qbeta(0.500, alpha, beta)]
-    # vmodel[, q975 := qbeta(0.975, alpha, beta)]
-    # vmodel = vmodel[, lapply(.SD, mean), .SDcols = c("q025", "q500", "q975"), by = .(nhs_name = population, t)]
-    # plotS = ggplot(sgtf[(pid + 1) %in% which_pops]) +
-    #     geom_ribbon(aes(x = date, ymin = qlo, ymax = qhi), fill = "black", alpha = 0.1) +
-    #     geom_ribbon(data = vmodel[t + ymd("2020-01-01") >= "2020-10-01"], 
-    #         aes(x = ymd("2020-01-01") + t, ymin = q025, ymax = q975), fill = "darkorchid", alpha = 0.5) +
-    #     geom_line(data = vmodel[t + ymd("2020-01-01") >= "2020-10-01"], 
-    #         aes(x = ymd("2020-01-01") + t, y = q500), colour = "darkorchid") +
-    #     geom_line(aes(x = date, y = sgtf / (sgtf + other)), size = 0.25) +
-    #     #scale_y_continuous(trans = scales::logit_trans(), breaks = c(0.01, 0.1, 0.2, 0.3, 0.5, 0.7, 0.8, 0.9, 0.99), limits = c(0.01, 0.99)) +
-    #     facet_wrap(~nhs_name) +
-    #     labs(x = NULL, y = "Relative frequency of\nS gene target failure") +
-    #     scale_x_date(date_breaks = "1 month", date_labels = "%b")
-    # #ggsave(paste0("./output/sgtf_check_", set_id, replic, ".pdf"), plotS, width = 20, height = 6, units = "cm", useDingbats = FALSE)
-    
-    return (list(post = post_melted, dic = dic, vmodel = quants))
+    # Predictive value (strain frequencies)
+    pv = merge(vmodel[, .(date = ymd("2020-01-01") + t, population, run, alpha, beta)], sgtf[, .(date, population = nhs_name, sgtf, other)], 
+        by = c("population", "date"))
+    pv = pv[, sum(dbbinom(sgtf, sgtf + other, alpha, beta, log = TRUE)), by = .(population, run)]
+
+    return (list(post = post_melted, dic1 = dic1, dic2 = dic2, vmodel = quants, 
+        ll_mean_theta = ll_mean_theta, pv = pv, prev_ll = prev_ll, new_ll = new_ll))
 }
 
-hu = load_hyp("./fits/relu12.qs")
-he = load_hyp("./fits/immesc_ELSE6.qs")
-hc = load_hyp("./fits/ch_u_ELSE6.qs")
-hi = load_hyp("./fits/infdur_ELSE8.qs")
-hs = load_hyp("./fits/serial_ELSE4.qs")
+predictive = function(hyp)
+{
+    diff = 0;
+    for (p in which_pops) {
+        diff = diff + hyp$new_ll[[p]] - hyp$prev_ll[[p]]
+    }
+    cat("Mean", mean(diff), "sd", sd(diff), "\n")
+}
 
-ggplot(hu$vmodel) +
-    geom_ribbon(aes(x = t, ymin = `2.5%`, ymax = `97.5%`), fill = "darkorchid", alpha = 0.4) +
-    geom_line(aes(x = t, y = `50%`), colour = "darkorchid") +
+hu = load_hyp("./fits/relu_ELSE15.qs")
+hm = load_hyp("./fits/immesc_ELSE8.qs")
+hc = load_hyp("./fits/ch_u_ELSE8.qs")
+hi = load_hyp("./fits/infdur_ELSE10.qs")
+hs = load_hyp("./fits/serial_ELSE8.qs")
+he = load_hyp("./fits/everything_ELSE6.qs")
+hp = load_hyp("./fits/infec_profile_ELSE2-progress.qs")
+
+hu$dic1
+hu$dic2
+hc$dic1
+hc$dic2
+
+hu$pv[, mean(V1), by = population][, sum(V1)]
+hm$pv[, mean(V1), by = population][, sum(V1)]
+hc$pv[, mean(V1), by = population][, sum(V1)]
+hi$pv[, mean(V1), by = population][, sum(V1)]
+hs$pv[, mean(V1), by = population][, sum(V1)]
+he$pv[, mean(V1), by = population][, sum(V1)]
+
+hi$ll_mean_theta
+
+predictive(hu)
+predictive(hm)
+predictive(hc)
+predictive(hi)
+predictive(hs)
+predictive(he)
+
+w = qread("./fits/relu_ELSE14.qs")
+w = qread("./fits/relu_ELSE15.qs")
+sapply(w[[1]], function(x) mean(x$ll))
+
+sgtf2 = sgtf[date >= "2020-10-01" & nhs_name %in% nhs_regions[which_pops], .(date, population = nhs_name, sgtf, other)]
+sgtf2[, c("mean", "lo", "hi") := binom.confint(sgtf, sgtf + other, methods = "bayes", prior.shape1 = 1, prior.shape2 = 1)[, 4:6]]
+
+ggplot(hp$vmodel[t > 280]) +
+    geom_ribbon(aes(x = t + ymd("2020-01-01"), ymin = `2.5%`, ymax = `97.5%`), fill = "darkorchid", alpha = 0.4) +
+    geom_line(aes(x = t + ymd("2020-01-01"), y = `50%`), colour = "darkorchid") +
+    geom_ribbon(data = sgtf2, aes(x = date, ymin = lo, ymax = hi), alpha = 0.4) +
+    geom_line(data = sgtf2, aes(x = date, y = mean)) +
+    #scale_y_continuous(trans = scales::logit_trans(), breaks = c(0.01, 0.1, 0.2, 0.3, 0.5, 0.7, 0.8, 0.9, 0.99), limits = c(0.01, 0.99)) +
+    facet_wrap(~population)
+
+
+sgtf3 = sgtf[date >= "2020-10-01", .(date, population = nhs_name, sgtf, other)]
+sgtf3[, c("mean", "lo", "hi") := binom.confint(sgtf, sgtf + other, methods = "exact")[, 4:6]]
+
+ggplot() +
+    geom_ribbon(data = sgtf3, aes(x = date, ymin = lo, ymax = hi), alpha = 0.4) +
+    geom_line(data = sgtf3, aes(x = date, y = mean)) +
+    #scale_y_continuous(trans = scales::logit_trans(), breaks = c(0.01, 0.1, 0.2, 0.3, 0.5, 0.7, 0.8, 0.9, 0.99), limits = c(0.01, 0.99)) +
     facet_wrap(~population)
 
 w = qread("./fits/serial_ELSE3.qs")

@@ -11,7 +11,7 @@ library(mgcv)
 library(binom)
 
 N_THREADS = 36
-which_pops = c(3,1,9)
+which_pops = c(1, 3, 4, 5, 6, 9, 10)
 
 uk_covid_data_path = "./fitting_data/";
 datapath = function(x) paste0(uk_covid_data_path, x)
@@ -78,7 +78,7 @@ england_only = function(tables_list, names)
     return (t)
 }
 
-arrange_projection = function(proj, from_date = NULL, england = FALSE)
+arrange_projection = function(proj, cumulative_deaths = FALSE, from_date = NULL, england = FALSE)
 {
     ft = 0;
     if (!is.null(from_date)) {
@@ -88,53 +88,23 @@ arrange_projection = function(proj, from_date = NULL, england = FALSE)
     if (england == FALSE) {
         w = proj[t >= ft, .(deaths = sum(death_o + death2_o), admissions = sum(hosp_undetected_o + hosp_undetected2_o),
             beds = sum(hosp_p + hosp2_p - hosp_undetected_p - hosp_undetected2_p), icu = sum(icu_p + icu2_p), 
-            disp_deaths = mean(disp_deaths), disp_hosp_inc = mean(disp_hosp_inc), disp_hosp_prev = mean(disp_hosp_prev), disp_icu_prev = mean(disp_icu_prev),
             Rt = obs0[1], tier = obs0[2], cb = obs0[3]), keyby = .(run, t, population)]
     } else {
         w = proj[t >= ft, .(population = "England", deaths = sum(death_o + death2_o), admissions = sum(hosp_undetected_o + hosp_undetected2_o),
             beds = sum(hosp_p + hosp2_p - hosp_undetected_p - hosp_undetected2_p), icu = sum(icu_p + icu2_p), 
-            disp_deaths = mean(disp_deaths), disp_hosp_inc = mean(disp_hosp_inc), disp_hosp_prev = mean(disp_hosp_prev), disp_icu_prev = mean(disp_icu_prev),
             Rt = mean(obs0[seq(1, .N, by = 16)]), tier = mean(obs0[seq(2, .N, by = 16)]), cb = mean(obs0[seq(3, .N, by = 16)])), keyby = .(run, t)]
     }
     
-    quants = function(x, qu, disp)
-    {
-        size = 1/(disp^2);
-        qnbinom(qu, size = size, mu = x)
+    if (cumulative_deaths) {
+        w[, cum_deaths := cumsum(deaths), by = .(run, population)]
     }
-    
-    w[, deaths_lo := quants(deaths, 0.025, disp_deaths)]
-    w[, deaths_md := quants(deaths, 0.500, disp_deaths)]
-    w[, deaths_hi := quants(deaths, 0.975, disp_deaths)]
-    w[, admissions_lo := quants(admissions, 0.025, disp_hosp_inc)]
-    w[, admissions_md := quants(admissions, 0.500, disp_hosp_inc)]
-    w[, admissions_hi := quants(admissions, 0.975, disp_hosp_inc)]
-    w[, beds_lo := quants(beds, 0.025, disp_hosp_prev)]
-    w[, beds_md := quants(beds, 0.500, disp_hosp_prev)]
-    w[, beds_hi := quants(beds, 0.975, disp_hosp_prev)]
-    w[, icu_lo := quants(icu, 0.025, disp_icu_prev)]
-    w[, icu_md := quants(icu, 0.500, disp_icu_prev)]
-    w[, icu_hi := quants(icu, 0.975, disp_icu_prev)]
-    
-    w = cbind(
-        w[, lapply(.SD, mean), .SDcols = patterns("_lo$|_md$|_hi$"), keyby = .(t, population)],
-        w[, .(Rt_lo = quantile(Rt, 0.025)), keyby = .(t, population)][, .(Rt_lo)],
-        w[, .(Rt_md = quantile(Rt, 0.500)), keyby = .(t, population)][, .(Rt_md)],
-        w[, .(Rt_hi = quantile(Rt, 0.975)), keyby = .(t, population)][, .(Rt_hi)]
-    )
-
-    w = melt(w, id.vars = 1:2)
-    w[, quant := str_remove_all(variable, ".*_")];
-    w[, variable := str_remove_all(variable, "_lo$|_md$|_hi$")];
-    w = dcast(w, t + population + variable ~ quant, value.var = "value")
-
+    w = melt(w, id.vars = 1:3)
+    w = w[, as.list(quantile(value, c(0.025, 0.5, 0.975))), by = .(population, variable, t)]
     w[variable == "deaths", variable := "Deaths"]
+    w[variable == "cum_deaths", variable := "Cumulative deaths"]
     w[variable == "admissions", variable := "Admissions"]
     w[variable == "beds", variable := "Hospital beds"]
     w[variable == "icu", variable := "ICU beds"]
-    
-    setnames(w, c("t", "population", "variable", "2.5%", "50%", "97.5%"))
-    return (w)
 }
 
 plot_projection = function(proj_list, proj_names, from_date, pal = "Accent")

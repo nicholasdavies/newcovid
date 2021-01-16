@@ -8,12 +8,6 @@ library(sn)
 library(qs)
 library(stringr)
  
-# N_THREADS = 36
-# REP_START = 10
-# N_REPS = 12
-# BURN_IN = 1500
-# BURN_IN_FINAL = 1500
-
 uk_covid_data_path = "./fitting_data/";
 datapath = function(x) paste0(uk_covid_data_path, x)
 
@@ -45,7 +39,7 @@ nhs_regions = popUK[, unique(name)]
 pct = function(x) as.numeric(str_replace_all(x, "%", "")) / 100
 
 # Process new data
-new_data = fread(datapath("data-2021-01-08.csv"))
+new_data = fread(datapath("data-2021-01-15.csv"))
 
 # removing problematic data with under reporting of hospital incidence
 days_to_remove_scot <- 1  ## VISUALLY INSPECT DATA TO DETERMINE THESE VALUES
@@ -126,7 +120,7 @@ sitreps = rbind(sitreps,
 # variant[, sample_date := as.Date(sample_date)]
 
 # SGTF data, add England
-sgtf = fread(datapath("sgtf-2021-01-08.csv"))
+sgtf = fread(datapath("sgtf-2021-01-15.csv"))
 sgtf = rbind(sgtf, 
     sgtf[!nhs_name %in% c("Northern Ireland", "Scotland", "Wales"),
         .(sgtf = sum(sgtf, na.rm = T), other = sum(other, na.rm = T), nhs_name = "England"),
@@ -136,4 +130,4 @@ sgtf[, pid := match(nhs_name, nhs_regions) - 1]
 sgtf[, date := as.Date(date)]
 
 
-qsave(list(ld, sitreps, virus, sero, sgtf), datapath("processed-data-2021-01-08.qs"))
+qsave(list(ld, sitreps, virus, sero, sgtf), datapath("processed-data-2021-01-15.qs"))

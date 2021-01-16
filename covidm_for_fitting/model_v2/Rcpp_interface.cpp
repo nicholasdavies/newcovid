@@ -221,6 +221,20 @@ Rcpp::DataFrame cm_backend_mcmc_test(Rcpp::List R_base_parameters, Rcpp::List pa
     return df;
 }
 
+// [[Rcpp::export]]
+double cm_backend_loglik(Rcpp::List R_base_parameters, Rcpp::NumericVector theta, unsigned int seed)
+{
+    // Initialise parameters for this simulation
+    // TODO Rand also used for setting parameters -- is it actually used? this may cause issues with seeds for sample fit etc
+    Randomizer Rand(seed); // randomizer for fitting; randomizers for model runs are created in the Likelihood class.
+    Parameters base_parameters;
+
+    SetParameters(base_parameters, R_base_parameters, Rand);
+
+    Likelihood lik(base_parameters, seed);
+    return lik(Rcpp::as<vector<double>>(theta));
+}
+
 void get_multi_params(Rcpp::List params_priors, unsigned int n_simulations,
     vector<vector<unsigned int>>& x_source, vector<double>& fixed_params, vector<string>& theta_names, vector<Distribution>& theta_priors)
 {

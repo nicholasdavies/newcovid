@@ -15,8 +15,8 @@ library(binom)
 theme_set(cowplot::theme_cowplot(font_size = 10) + theme(strip.background = element_blank()))
 
 N_THREADS = 46
-REP_START = 5
-REP_END = 6
+REP_START = 1
+REP_END = 2
 BURN_IN = 2500
 ITER = 500
 BURN_IN_FINAL = 2500
@@ -25,30 +25,40 @@ ITER_FINAL = 500
 which_pops = c(1, 3, 4, 5, 6, 9, 10)
 set_id = ""
 
-data_file = "processed-data-2021-01-08.qs"
-mobility_file = "schedule3-2021-01-07.rds"
-date_fitting = "2020-12-24"
+# data_file = "processed-data-2021-01-08.qs"
+# mobility_file = "schedule3-2021-01-07.rds"
+# date_fitting = "2020-12-24"
+data_file = "processed-data-2021-01-15.qs"
+mobility_file = "schedule3-2021-01-14.rds"
+date_fitting = "2021-01-15"
+
 
 # Command line
-FIT_TYPE = commandArgs(trailingOnly = TRUE)[[1]];
-POP_SET = commandArgs(trailingOnly = TRUE)[[2]];
+c_args = commandArgs(trailingOnly = TRUE);
+FIT_TYPE = c_args[[1]];
+POP_SET = c_args[[2]];
+if (length(c_args) > 2) {
+    REP_START = as.numeric(c_args[[3]]);
+    REP_END = as.numeric(c_args[[4]]);
+}
 
 opt_conc = TRUE;
 opt_seas = FALSE;
 
+opt_v2 = TRUE;
 opt_relu = FALSE;
 opt_latdur = FALSE;
 opt_serial = FALSE;
 opt_infdur = FALSE;
 opt_immesc = FALSE;
 opt_ch_u = FALSE;
+extra_priors = list();
 
 if (FIT_TYPE == "relu") {
     extra_priors = list(v2_relu = "L 0.0 0.4 T 0.25 4");
     opt_relu = TRUE;
 } else if (FIT_TYPE == "latdur") {
-    ##extra_priors = list(v2_latdur = "L 0.0 0.4 T 0.01 8");
-    extra_priors = list(v2_latdur = "L 0.0 0.4 T 0.01 1");
+    extra_priors = list(v2_latdur = "L 0.0 0.4 T 0.01 8");
     opt_latdur = TRUE;
 } else if (FIT_TYPE == "serial") {
     extra_priors = list(v2_serial = "L 0.0 0.4 T 0.01 1");
@@ -74,14 +84,14 @@ if (FIT_TYPE == "relu") {
     opt_infdur = TRUE;
     opt_immesc = TRUE;
     opt_ch_u = TRUE;
-} else if (FIT_TYPE == "infec_profile") {
+} else if (FIT_TYPE == "infec_profile" || FIT_TYPE == "ip_test") {
     extra_priors = list(
-        v2_relu = "L 0.0 0.4 T 0.125 8", 
-        v2_latdur = "L 0.0 0.4 T 0.01 8", 
-        v2_infdur = "L 0.0 0.4 T 0.01 8");
+        v2_relu = "L 0.0 0.4 T 0.125 8",
+        v2_serial = "L 0.0 0.4 T 0.01 1");
     opt_relu = TRUE;
-    opt_latdur = TRUE;
-    opt_infdur = TRUE;
+    opt_serial = TRUE;
+} else if (FIT_TYPE == "novoc") {
+    opt_v2 = FALSE;
 } else {
     stop("Need to specify fit type at command line.");
 }
@@ -89,6 +99,9 @@ if (FIT_TYPE == "relu") {
 if (POP_SET == "else") {
     which_pops = c(1, 3, 9)
     pop_letter = "ELSE"
+} else if (POP_SET == "mnsw") {
+    which_pops = c(4, 5, 6, 10)
+    pop_letter = "MNSW"
 } else if (POP_SET == "all") {
     which_pops = c(1, 3, 4, 5, 6, 9, 10)
     pop_letter = ""
@@ -202,7 +215,7 @@ params$schedule = schedule
 source("./cpp_funcs.R")
 
 # Fitting
-priorsI = c(list(
+priorsI = list(
     tS = "U 0 60",
     u = "N 0.09 0.02 T 0.04 0.2",
     death_mean = "N 15 2 T 5 30",    # <<< co-cin
@@ -223,16 +236,22 @@ priorsI = c(list(
     disp_icu_prev = "E 10 10",
     concentration1 = "N 2 .3 T 2 10",
     concentration2 = "N 2 .2 T 2 10",
-    concentration3 = "N 2 .1 T 2 10",
-    
-    v2_when = "U 144 365",
-    v2_sgtf0 = "B 1.5 15",
-    #v2_conc = "E 0.1 0.1 T 2 1000",
-    v2_disp = "E 10 10 T 0 0.7",
-    v2_hosp_rlo = "N 0 0.1 T -4 4",
-    v2_icu_rlo = "N 0 0.1 T -4 4",
-    v2_cfr_rlo = "N 0 0.1 T -4 4"
-), extra_priors)
+    concentration3 = "N 2 .1 T 2 10"
+);
+
+if (opt_v2) {
+    priorsI = c(priorsI, list(
+        v2_when = "U 144 365",
+        v2_sgtf0 = "B 1.5 15",
+        #v2_conc = "E 0.1 0.1 T 2 1000",
+        v2_disp = "E 10 10 T 0 0.7",
+        v2_hosp_rlo = "N 0 0.1 T -4 4",
+        v2_icu_rlo = "N 0 0.1 T -4 4",
+        v2_cfr_rlo = "N 0 0.1 T -4 4"
+    ));
+}
+
+priorsI = c(priorsI, extra_priors);
 
 
 posteriorsI = list()
@@ -245,12 +264,7 @@ virus = virus[omega > 1e-9]
 init_previous = TRUE
 init_previous_amount = 1
 
-if (FIT_TYPE == "serial" & REP_START == 7) {
-    existing_file = paste0("./fits/latdur_ELSE6.qs");
-    init_previous_amount = 0.5
-} else {
-    existing_file = paste0("./fits/", set_id, REP_START - 1, ".qs");
-}
+existing_file = paste0("./fits/", set_id, REP_START - 1, ".qs");
 
 if (file.exists(existing_file)) {
     saved = qread(existing_file)
@@ -259,11 +273,11 @@ if (file.exists(existing_file)) {
     rm(saved)
 }
 
-if (FIT_TYPE == "serial" && REP_START == 5) {
-    posteriorsI[[1]][, v2_when := rnorm(.N, 280, 2)];
-    priorsI[["v2_when"]] = "U 144 310";
+for (i in seq_along(posteriorsI)) {
+    if (!is.null(posteriorsI[[i]]) && "v2_conc" %in% names(posteriorsI[[i]])) {
+        posteriorsI[[i]][, v2_disp := 1 / sqrt(v2_conc)];
+    }
 }
-
 
 for (replic in REP_START:REP_END)
 {
@@ -341,9 +355,9 @@ for (replic in REP_START:REP_END)
             user_defined = list(
                 model_v2 = list(
                     cpp_changes = cpp_chgI_voc(priorsI, seasonality = opt_seas, 
-                        v2 = TRUE, v2_relu = opt_relu, v2_latdur = opt_latdur, v2_serial = opt_serial, v2_infdur = opt_infdur, v2_immesc = opt_immesc, v2_ch_u = opt_ch_u),
-                    cpp_loglikelihood = cpp_likI_voc(paramsI, ldI, sitrepsI, seroI, virusI, sgtfI, p, date_fitting, priorsI, death_cutoff = 0, use_sgtf = TRUE),
-                    cpp_observer = cpp_obsI_voc(concentration = opt_conc, v2 = TRUE, P.death, P.critical, priorsI)
+                        v2 = opt_v2, v2_relu = opt_relu, v2_latdur = opt_latdur, v2_serial = opt_serial, v2_infdur = opt_infdur, v2_immesc = opt_immesc, v2_ch_u = opt_ch_u),
+                    cpp_loglikelihood = cpp_likI_voc(paramsI, ldI, sitrepsI, seroI, virusI, sgtfI, p, date_fitting, priorsI, death_cutoff = 0, use_sgtf = opt_v2),
+                    cpp_observer = cpp_obsI_voc(concentration = opt_conc, v2 = opt_v2, P.death, P.critical, priorsI)
                 )
             )
         )
@@ -397,9 +411,9 @@ for (replic in REP_START:REP_END)
             user_defined = list(
                 model_v2 = list(
                     cpp_changes = cpp_chgI_voc(priorsI, seasonality = opt_seas, 
-                        v2 = TRUE, v2_relu = opt_relu, v2_latdur = opt_latdur, v2_serial = opt_serial, v2_infdur = opt_infdur, v2_immesc = opt_immesc, v2_ch_u = opt_ch_u),
+                        v2 = opt_v2, v2_relu = opt_relu, v2_latdur = opt_latdur, v2_serial = opt_serial, v2_infdur = opt_infdur, v2_immesc = opt_immesc, v2_ch_u = opt_ch_u),
                     cpp_loglikelihood = "",
-                    cpp_observer = cpp_obsI_voc(concentration = opt_conc, v2 = TRUE, P.death, P.critical, priorsI)
+                    cpp_observer = cpp_obsI_voc(concentration = opt_conc, v2 = opt_v2, P.death, P.critical, priorsI)
                 )
             )
         )
@@ -438,28 +452,30 @@ for (replic in REP_START:REP_END)
     ggsave(paste0("./output/post_", set_id, replic, ".pdf"), plot, width = 20, height = 15, units = "cm", useDingbats = FALSE)
 
     # Fit to SGTF data
-    sgtf[, qlo := qbeta(0.025, sgtf + 1, other + 1)]
-    sgtf[, qhi := qbeta(0.975, sgtf + 1, other + 1)]
-    vmodel = test[, .(I1 = sum(test_o), I2 = sum(test2_o), sgtf0 = v2_sgtf0[1], conc = 1/(v2_disp[1]*v2_disp[1])), by = .(t, population, run)]
-    vmodel[, p2 := I2 / (I1 + I2)]
-    vmodel[is.nan(p2), p2 := 0]
-    vmodel[, sgtf := (1 - p2) * sgtf0 + p2];
-    vmodel[, alpha := sgtf * (conc - 2) + 1]
-    vmodel[, beta := (1 - sgtf) * (conc - 2) + 1]
-    vmodel[, q025 := qbeta(0.025, alpha, beta)]
-    vmodel[, q500 := qbeta(0.500, alpha, beta)]
-    vmodel[, q975 := qbeta(0.975, alpha, beta)]
-    vmodel = vmodel[, lapply(.SD, mean), .SDcols = c("q025", "q500", "q975"), by = .(nhs_name = population, t)]
-    plotS = ggplot(sgtf[(pid + 1) %in% which_pops]) +
-        geom_ribbon(aes(x = date, ymin = qlo, ymax = qhi), fill = "black", alpha = 0.1) +
-        geom_ribbon(data = vmodel[t + ymd("2020-01-01") >= "2020-10-01"], 
-            aes(x = ymd("2020-01-01") + t, ymin = q025, ymax = q975), fill = "darkorchid", alpha = 0.5) +
-        geom_line(data = vmodel[t + ymd("2020-01-01") >= "2020-10-01"], 
-            aes(x = ymd("2020-01-01") + t, y = q500), colour = "darkorchid") +
-        geom_line(aes(x = date, y = sgtf / (sgtf + other)), size = 0.25) +
-        #scale_y_continuous(trans = scales::logit_trans(), breaks = c(0.01, 0.1, 0.2, 0.3, 0.5, 0.7, 0.8, 0.9, 0.99), limits = c(0.01, 0.99)) +
-        facet_wrap(~nhs_name) +
-        labs(x = NULL, y = "Relative frequency of\nS gene target failure") +
-        scale_x_date(date_breaks = "1 month", date_labels = "%b")
-    ggsave(paste0("./output/sgtf_check_", set_id, replic, ".pdf"), plotS, width = 20, height = 6, units = "cm", useDingbats = FALSE)
+    if (opt_v2) {
+        sgtf[, qlo := qbeta(0.025, sgtf + 1, other + 1)]
+        sgtf[, qhi := qbeta(0.975, sgtf + 1, other + 1)]
+        vmodel = test[, .(I1 = sum(test_o), I2 = sum(test2_o), sgtf0 = v2_sgtf0[1], conc = 1/(v2_disp[1]*v2_disp[1])), by = .(t, population, run)]
+        vmodel[, p2 := I2 / (I1 + I2)]
+        vmodel[is.nan(p2), p2 := 0]
+        vmodel[, sgtf := (1 - p2) * sgtf0 + p2];
+        vmodel[, alpha := sgtf * (conc - 2) + 1]
+        vmodel[, beta := (1 - sgtf) * (conc - 2) + 1]
+        vmodel[, q025 := qbeta(0.025, alpha, beta)]
+        vmodel[, q500 := qbeta(0.500, alpha, beta)]
+        vmodel[, q975 := qbeta(0.975, alpha, beta)]
+        vmodel = vmodel[, lapply(.SD, mean), .SDcols = c("q025", "q500", "q975"), by = .(nhs_name = population, t)]
+        plotS = ggplot(sgtf[(pid + 1) %in% which_pops]) +
+            geom_ribbon(aes(x = date, ymin = qlo, ymax = qhi), fill = "black", alpha = 0.1) +
+            geom_ribbon(data = vmodel[t + ymd("2020-01-01") >= "2020-10-01"], 
+                aes(x = ymd("2020-01-01") + t, ymin = q025, ymax = q975), fill = "darkorchid", alpha = 0.5) +
+            geom_line(data = vmodel[t + ymd("2020-01-01") >= "2020-10-01"], 
+                aes(x = ymd("2020-01-01") + t, y = q500), colour = "darkorchid") +
+            geom_line(aes(x = date, y = sgtf / (sgtf + other)), size = 0.25) +
+            #scale_y_continuous(trans = scales::logit_trans(), breaks = c(0.01, 0.1, 0.2, 0.3, 0.5, 0.7, 0.8, 0.9, 0.99), limits = c(0.01, 0.99)) +
+            facet_wrap(~nhs_name) +
+            labs(x = NULL, y = "Relative frequency of\nS gene target failure") +
+            scale_x_date(date_breaks = "1 month", date_labels = "%b")
+        ggsave(paste0("./output/sgtf_check_", set_id, replic, ".pdf"), plotS, width = 20, height = 6, units = "cm", useDingbats = FALSE)
+    }
 }
