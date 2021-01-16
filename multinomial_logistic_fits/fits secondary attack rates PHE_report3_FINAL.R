@@ -377,7 +377,7 @@ saveRDS(plot_fitdSA, file = ".\\multinomial_logistic_fits\\plots\\bGLM_plot seco
 graph2ppt(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_risk ratios VOC_byage.pptx", width=6, height=6)
 
 
-ggarrange(plot_fitdSA+theme(
+plot_fitSA_multipanel = ggarrange(plot_fitdSA+theme(
     legend.title = element_text(color = "black", size = 8),
     legend.text = element_text(color = "black", size = 7),
     legend.key.size = unit(0.3, "cm")
@@ -388,8 +388,10 @@ ggarrange(plot_fitdSA+theme(
         legend.text = element_text(color = "black", size = 6),
         legend.key.size = unit(0.3, "cm")), plot_fitSA_oddsratios+ggtitle(""), 
    nrow=2, common.legend=FALSE) 
+plot_fitSA_multipanel
+saveRDS(plot_fitSA_multipanel, file = ".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_multipanel.rds")
 ggsave(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_multipanel.png", width=6, height=7)
-graph2ppt(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_multipanel.pptx", width=6, height=8)
+graph2ppt(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_multipanel.pptx", width=6, height=7)
 
 
 
