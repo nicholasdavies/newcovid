@@ -1,7 +1,10 @@
 # MULTINOMIAL AND LOGISTIC FITS TO DETERMINE GROWTH RATE & 
-# COMPETITIVE ADVANTAGE OF VOC 202012/01 COMPARED TO OTHER CIRCULATING VARIANTS
-# ACROSS DIFFERENT REGIONS IN THE UK AS WELL AS DENMARK
-# T. Wenseleers, 15 Jan. 2021
+# COMPETITIVE ADVANTAGE OF VOC 202012/01 COMPARED TO OTHER 
+# CIRCULATING SARS-CoV2 VARIANTS ACROSS DIFFERENT REGIONS IN THE UK 
+# AS WELL AS DENMARK AND IMPLIED EXPECTED INCREASE IN R VALUES, 
+# ASSUMING UNALTERED GENERATION TIME
+
+# T. Wenseleers, last updated: 15 Jan. 2021
 
 library(lme4)
 library(emmeans)
@@ -194,6 +197,9 @@ data_agbydayregion$nhs_name = factor(data_agbydayregion$nhs_name, levels=levels_
 data_agbydayregion$sample_date_num = as.numeric(data_agbydayregion$sample_date)
 data_agbydayregion$prop = data_agbydayregion$count/data_agbydayregion$total
 data_agbydayregion = data_agbydayregion[data_agbydayregion$total!=0,]
+table2csv(data_agbydayregion, 
+          file=".\\multinomial_logistic_fits\\data\\data_agbydayregion.csv")
+
 
 # data aggregated by day, nhs_name and lad for selected variant lineages
 data_agbydayregionlad = as.data.frame(table(data$sample_date, data$nhs_name, data$lad, data$variant))
@@ -209,6 +215,9 @@ data_agbydayregionlad$sample_date_num = as.numeric(data_agbydayregionlad$sample_
 data_agbydayregionlad$prop = data_agbydayregionlad$count/data_agbydayregionlad$total
 data_agbydayregionlad = data_agbydayregionlad[data_agbydayregionlad$total!=0,]
 data_agbydayregionlad$obs = factor(1:nrow(data_agbydayregionlad))
+table2csv(data_agbydayregionlad, 
+          file=".\\multinomial_logistic_fits\\data\\data_agbydayregionlad.csv")
+
 
 # long version of data aggregated by day & nhs_name, including all the zeros here
 # (to be able to fit a Poisson mixed multinomial surrogate model)

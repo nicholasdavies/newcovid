@@ -3,7 +3,7 @@
 # "Investigation of novel SARS-CoV-2 variant Variant of Concern 202012/01, Technical briefing 3", Tables 6 & 7 in
 # https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/950823/Variant_of_Concern_VOC_202012_01_Technical_Briefing_3_-_England.pdf
 
-# T. Wenseleers, 15 January 2021
+# T. Wenseleers, last updated: 15 January 2021
 
 library(export)
 library(lme4)
