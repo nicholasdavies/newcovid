@@ -174,8 +174,8 @@ plot_fitdSA = qplot(data=fitdSA_preds, x=age_group, y=prob, group=variant, geom=
                         breaks=c(0.01, 0.05, 0.1, 0.15, 0.20, 0.25, 0.30, 0.35),
                         labels = c("1","5","10","15","20","25", "30", "35")) +
     coord_cartesian(ylim=c(0.05,0.30), xlim=c(0.5,10.5), expand=c(0,0)) +
-    scale_color_manual("strain carried\nby index patient", values=c("red","blue","red")) +
-    scale_fill_manual("strain carried\nby index patient", values=c("red","blue")) +
+    scale_color_manual("variant carried\nby index patient", values=c("red","blue","red")) +
+    scale_fill_manual("variant carried\nby index patient", values=c("red","blue")) +
     # geom_point(data=data_SA, 
     #           aes(y=prop, colour=variant, size=total), alpha=I(0.5)) +
     scale_size_continuous("all contacts", trans="log10" 
