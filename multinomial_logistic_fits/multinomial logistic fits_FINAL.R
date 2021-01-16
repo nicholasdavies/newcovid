@@ -1515,7 +1515,7 @@ tukey_VOC_DENM
 # no sign pairwise differences in slopes across regions
 tukey_VOC_DENM[tukey_VOC_DENM$p.value<0.05,]
 
-table2csv(tukey_VOC_DENM, file=".\\multinomial_logistic_fits\\tables\\model3a_VOCvsall_fit_bGLMM_DENMARK_Tukey contrasts diff growth rates across regions.csv")
+table2csv(tukey_VOC_DENM, file=".\\multinomial_logistic_fits\\tables\\model3a_but with heter slopes_SUPPL_VOCvsall_fit_bGLMM_DENMARK_Tukey contrasts diff growth rates across regions.csv")
 
 
 
