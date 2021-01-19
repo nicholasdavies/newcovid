@@ -4,7 +4,7 @@
 # AS WELL AS DENMARK AND IMPLIED EXPECTED INCREASE IN R VALUES, 
 # ASSUMING UNALTERED GENERATION TIME
 
-# T. Wenseleers, last updated: 15 Jan. 2021
+# T. Wenseleers, last updated: 19 Jan. 2021
 
 library(lme4)
 library(emmeans)
@@ -24,6 +24,7 @@ library(ggpubr)
 # devtools::install_github("tomwenseleers/export")
 library(export) 
 library(afex)
+library(mclogit)
 
 
 
@@ -297,9 +298,10 @@ muller_raw0 = ggplot(data=data_agbyweek, aes(x=sample_date, y=count, group=varia
     # labs(title = "MAIN SARS-CoV2 VARIANT LINEAGES IN THE UK") +
     ylab("Relative abundance")
 muller_raw0
+ggsave(file=".\\multinomial_logistic_fits\\plots\\muller plot lineages_overall_raw data.png", width=7, height=5)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\muller plot lineages_overall_raw data.pdf", width=7, height=5)
 saveRDS(muller_raw0, file = ".\\multinomial_logistic_fits\\plots\\muller plot lineages_overall_raw data.rds")
 graph2ppt(file=".\\multinomial_logistic_fits\\plots\\muller plot lineages_overall_raw data.pptx", width=7, height=5)
-ggsave(file=".\\multinomial_logistic_fits\\plots\\muller plot lineages_overall_raw data.png", width=7, height=5)
 
 muller_raw = ggplot(data=data_agbyweekregion, aes(x=sample_date, y=count, group=variant)) + 
     geom_area(aes(lwd=I(1.2), colour=NULL, fill=variant), position="fill") +
@@ -314,14 +316,17 @@ muller_raw = ggplot(data=data_agbyweekregion, aes(x=sample_date, y=count, group=
     # labs(title = "MAIN SARS-CoV2 VARIANT LINEAGES IN THE UK") +
     ylab("Relative abundance")
 muller_raw
-saveRDS(muller_raw, file = ".\\multinomial_logistic_fits\\plots\\muller plot lineages by region_raw data.rds")
-graph2ppt(file=".\\multinomial_logistic_fits\\plots\\muller plot lineage by region_raw data.pptx", width=7, height=5)
-ggsave(file=".\\multinomial_logistic_fits\\plots\\muller plot lineages by region_raw data.png", width=7, height=5)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS2_muller plot lineages by region_raw data.png", width=7, height=5)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS2_muller plot lineages by region_raw data.pdf", width=7, height=5)
+saveRDS(muller_raw, file = ".\\multinomial_logistic_fits\\plots\\FigS2_muller plot lineages by region_raw data.rds")
+graph2ppt(file=".\\multinomial_logistic_fits\\plots\\FigS2_muller plot lineage by region_raw data.pptx", width=7, height=5)
 
 
 
 
 # 2. MULTINOMIAL FITS FOR UK BY REGION ####
+
+# 2.1 SEPARATE-SLOPES MULTINOMIAL SPLINE FIT ####
 
 # we take the category "minority variants" as reference category
 data$variant = relevel(data$variant, ref="minority variants") 
@@ -462,7 +467,7 @@ mfit_contrasts_B117_minor
 
 mfit_contrasts = rbind(mfit_contrasts, mfit_contrasts_B117_minor)
 mfit_contrasts
-# contrast           SE  t.ratio       p.value   delta_r delta_r.lower.CL delta_r.upper.CL       M1   M1.LCL
+#                              contrast           SE  t.ratio       p.value   delta_r delta_r.lower.CL delta_r.upper.CL       M1   M1.LCL
 # 1 (VOC 202012/01) - minority variants 0.0040190615 26.55809  0.000000e+00 0.1067386       0.09769422       0.11578296 1.798697 1.711411
 # 2           (VOC 202012/01) - B.1.177 0.0040179010 26.12332  0.000000e+00 0.1049609       0.09591914       0.11400265 1.781196 1.694784
 # 3         B.1.177 - minority variants 0.0009922894 45.21956 2.597318e-120 0.0448709       0.04291631       0.04682548 1.279910 1.266225
@@ -471,7 +476,7 @@ mfit_contrasts
 # 2 1.872014 1.459158 1.412426 1.507435
 # 3 1.293744 1.175314 1.167073 1.183613
 
-table2csv(mfit_contrasts, file=".\\multinomial_logistic_fits\\tables\\model 1_mfit4_multinomial spline fit_growthrates_UK_heter slopes.csv")
+table2csv(mfit_contrasts, file=".\\multinomial_logistic_fits\\tables\\model 1a_mfit4_multinomial spline fit_growthrates_UK_heter slopes.csv")
 
 
 
@@ -502,9 +507,11 @@ muller_mfit = ggplot(data=mfit_preds,
     # labs(title = "MAIN SARS-CoV2 VARIANT LINEAGES IN THE UK") +
     ylab("Relative abundance")
 muller_mfit
-saveRDS(muller_mfit, file = ".\\multinomial_logistic_fits\\plots\\model 1_plot multinomial spline fit_muller plot fit.rds")
-graph2ppt(file=".\\multinomial_logistic_fits\\plots\\model 1_plot multinomial spline fit_muller plot fit.pptx", width=7, height=5)
-ggsave(".\\multinomial_logistic_fits\\plots\\model 1_plot multinomial spline fit_muller plot fit.png", width=7, height=5)
+ggsave(".\\multinomial_logistic_fits\\plots\\Fig2C_model 1a_plot multinomial spline fit_muller plot fit.png", width=7, height=5)
+ggsave(".\\multinomial_logistic_fits\\plots\\Fig2C_model 1a_plot multinomial spline fit_muller plot fit.pdf", width=7, height=5)
+saveRDS(muller_mfit, file = ".\\multinomial_logistic_fits\\plots\\Fig2C_model 1a_plot multinomial spline fit_muller plot fit.rds")
+graph2ppt(file=".\\multinomial_logistic_fits\\plots\\Fig2C_model 1a_plot multinomial spline fit_muller plot fit.pptx", width=7, height=5)
+
 # plot with raw data and fit combined:
 ggarrange(muller_raw +
               coord_cartesian(xlim=c(as.Date("2020-03-01"),
@@ -582,10 +589,122 @@ plotmultinom2vars = qplot(data=fit_varpreds[fit_varpreds$variant %in% c("B.1.177
         legend.key.size=unit(0.45, "cm"))
 plotmultinom2vars
 
-saveRDS(plotmultinom2vars, file = ".\\multinomial_logistic_fits\\plots\\model 1_plot multinomial spline fit_growth VOC and B1177.rds")
-graph2ppt(file=".\\multinomial_logistic_fits\\plots\\model 1_plot multinomial spline fit_growth VOC and B1177.pptx", width=6, height=6)
-ggsave(file=".\\multinomial_logistic_fits\\plots\\model 1_plot multinomial spline fit_growth VOC and B1177.png", width=6, height=6)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS3_model 1a_plot multinomial spline fit_growth VOC and B1177.png", width=6, height=6)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS3_model 1a_plot multinomial spline fit_growth VOC and B1177.pdf", width=6, height=6)
+saveRDS(plotmultinom2vars, file = ".\\multinomial_logistic_fits\\plots\\FigS3_model 1a_plot multinomial spline fit_growth VOC and B1177.rds")
+graph2ppt(file=".\\multinomial_logistic_fits\\plots\\FigS3_model 1a_plot multinomial spline fit_growth VOC and B1177.pptx", width=6, height=6)
 
+
+
+# 2.2 COMMON-SLOPES MULTINOMIAL MIXED MODEL FIT ####
+# MULTINOMIAL MIXED MODEL FITS, INCORPORATING RANDOM EFFECT 1|lad
+
+# To take into account spatial dependencies we also fit a mixed baseline category
+# multinomial model with a random intercept for lad (LTLA) using the mclogit::mblogit
+# and we also use the inbuilt option to take into account overdispersion
+
+# mixed baseline category multinomial model fit using mclogit::mblogit : 
+data_refminor = data
+data_refminor$variant = relevel(data_refminor$variant, ref="minority variants")
+data_refB1177 = data
+data_refB1177$variant = relevel(data_refB1177$variant, ref="B.1.177")
+data_refB40 = data
+data_refB40$variant = relevel(data_refB40$variant, ref="B.40")
+
+
+# models with lad included as random intercept and using either minority variants or B.1.177 as reference group
+# so that we can later interpret the multinomial model coefficients in function of sample_date_num as the contrasts in growth rate
+# with this reference group
+# a model with common slopes across nhs regions has the best BIC
+set_treatment_contrasts()
+mblogitfit1_refminor = mblogit(variant ~ nhs_name+sample_date_num, data=data_refminor,
+                               random = ~1|lad, dispersion=TRUE)
+mblogitfit1_refB1177 = mblogit(variant ~ nhs_name+sample_date_num, data=data_refB1177, 
+                               random = ~1|lad, dispersion=TRUE)
+
+# saveRDS(mblogitfit1_refminor, file = ".\\multinomial_logistic_fits\\fits\\mblogitfit1_refminor_model1b.rds")
+# saveRDS(mblogitfit1_refB1177, file = ".\\multinomial_logistic_fits\\fits\\mblogitfit1_refB1177_model1b.rds")
+# or to directly load previously fitted models
+mblogitfit1_refminor = readRDS(file = ".\\multinomial_logistic_fits\\fits\\mblogitfit1_refminor_model1b.rds")
+mblogitfit1_refB1177 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\mblogitfit1_refB1177_model1b.rds")
+
+
+
+# plot model predictions of best fitting common slopes across regions multinomial mixed model
+extrapolate = 60 # nr of days to show extrapolations for
+# t = table(data$lad[data$nhs_name==levels_nhs_name[1]])
+# sel_lad = names(t[which.max(t)]) # PS with condition=FALSE this selection has no effect
+newdat = expand.grid(sample_date_num =
+                       seq(min(data$sample_date_num),max(data$sample_date_num)+extrapolate,1),
+                     nhs_name = levels_nhs_name, 
+                     lad = data$lad[1]) # PS this selection has no effect with conditional=FALSE in predict()
+# see https://www.elff.eu/software/mclogit/manual/predict/
+preds_mblogit1_wide = data.frame(predict(mblogitfit1_refminor, 
+                                         newdata = newdat,
+                                         type="response", se.fit=FALSE, conditional=FALSE), check.names=F)
+library(tidyr)
+preds_mblogit1_long = gather(preds_mblogit1_wide, variant, prob, levels_variants, factor_key=TRUE)
+preds_mblogit1_long$sample_date_num = newdat$sample_date_num
+preds_mblogit1_long$sample_date = as.Date(preds_mblogit1_long$sample_date_num, origin="1970-01-01")
+preds_mblogit1_long$nhs_name = factor(newdat$nhs_name, levels=levels_nhs_name)
+muller_mblogit1 = ggplot(data=preds_mblogit1_long, 
+                         aes(x=sample_date, y=prob, group=variant)) + 
+  facet_wrap(~nhs_name) +
+  geom_area(aes(lwd=I(1.2), colour=NULL, fill=variant), position="fill") +
+  annotate("rect", xmin=max(data$sample_date)+1, xmax=as.Date("2021-01-31"), ymin=0, ymax=1, alpha=0.4, fill="white") + # extrapolated part
+  scale_fill_manual("", values=lineage_cols) +
+  scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
+                     labels=substring(months(as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01"))),1,1),
+                     limits=as.Date(c("2020-03-01","2021-01-31")), expand=c(0,0)) +
+  guides(color = guide_legend(reverse=F, nrow=2, byrow=T), fill = guide_legend(reverse=F, nrow=2, byrow=T)) +
+  theme_hc() + theme(legend.position="bottom", 
+                     axis.title.x=element_blank()) + 
+  # labs(title = "MAIN SARS-CoV2 VARIANT LINEAGES IN THE UK") +
+  ylab("Relative abundance")
+muller_mblogit1
+ggsave(".\\multinomial_logistic_fits\\plots\\FigS4_model 1b_plot multinomial multinomial mixed model_muller plot fit.png", width=7, height=5)
+ggsave(".\\multinomial_logistic_fits\\plots\\FigS4_model 1b_plot multinomial multinomial mixed model_muller plot fit.pdf", width=7, height=5)
+saveRDS(muller_mblogit1, file = ".\\multinomial_logistic_fits\\plots\\FigS4_model 1b_plot multinomial mixed model_muller plot fit.rds")
+graph2ppt(file=".\\multinomial_logistic_fits\\plots\\FigS4_model 1b_plot multinomial multinomial mixed model_muller plot fit.pptx", width=7, height=5)
+
+
+# since mblogit is not supported by emmeans, we estimate the mean difference in growth rates
+# with the "minority level" reference level and the expected multiplicative effect on the R
+# value directly from the model coefficients
+mcoefs = data.frame(coef=coef(mblogitfit1_refminor),confint(mblogitfit1_refminor),check.names=F)
+mcoefs = mcoefs[grepl("VOC|B\\.1\\.177",rownames(mcoefs),fixed=F),]
+mcoefs = mcoefs[grepl("sample_date_num",rownames(mcoefs)),]
+colnames(mcoefs)[1] = "delta_r"
+mcoefs = data.frame(contrast = paste0(gsub("~sample_date_num","",rownames(mcoefs), fixed=T)," - minority variants"),
+                    mcoefs, check.names=F)
+rownames(mcoefs) = NULL
+mcoefs2 = data.frame(coef=coef(mblogitfit1_refB1177),confint(mblogitfit1_refB1177),check.names=F)
+mcoefs2 = mcoefs2[grepl("VOC",rownames(mcoefs2),fixed=F),]
+mcoefs2 = mcoefs2[grepl("sample_date_num",rownames(mcoefs2)),]
+colnames(mcoefs2)[1] = "delta_r"
+mcoefs2 = data.frame(contrast = paste0(gsub("~sample_date_num","",rownames(mcoefs2), fixed=T)," - B.1.177"),
+                     mcoefs2, check.names=F)
+rownames(mcoefs2) = NULL
+mblogitfit_contrasts = M.from.delta_r_df(rbind(mcoefs2,mcoefs))
+mblogitfit_contrasts
+#                            contrast    delta_r      2.5 %     97.5 %       M1   M1.LCL   M1.UCL       M2   M2.LCL   M2.UCL
+# 1           VOC 202012/01 - B.1.177 0.09243048 0.08896417 0.09589680 1.662575 1.631179 1.694576 1.394798 1.377501 1.412313
+# 2       B.1.177 - minority variants 0.02457438 0.02414284 0.02500591 1.144719 1.142005 1.147439 1.092499 1.090803 1.094198
+# 3 VOC 202012/01 - minority variants 0.11697158 0.11349545 0.12044771 1.902833 1.866799 1.939562 1.523633 1.504685 1.542820
+table2csv(mblogitfit_contrasts, file=".\\multinomial_logistic_fits\\tables\\model1b_mblogitfit_multinomial mixed model fit_growthrates_UK_homog slopes.csv")
+
+# # PS: this doesn't work since mblogit is not supported by the emmeans package
+# mblogitfit_emtrends = emtrends(mblogitfit1_refminor, revpairwise ~ variant, var="sample_date_num", 
+#                           mode="latent", adjust="Tukey", 
+#                           at=list(sample_date_num=as.numeric(max(data$sample_date)),
+#                                   variant=c("VOC 202012/01","B.1.177","minority variants"))) 
+# mblogitfit_contrasts = data.frame(as.data.frame(mblogitfit_emtrends$contrasts),
+#                              as.data.frame(confint(mblogitfit_emtrends$contrasts))[,c("lower.CL","upper.CL")])
+# colnames(mblogitfit_contrasts)[which(colnames(mblogitfit_contrasts) %in% c("estimate","lower.CL","upper.CL"))] = 
+#     c("delta_r","delta_r.lower.CL","delta_r.upper.CL")
+# mblogitfit_contrasts = data.frame(mblogitfit_contrasts[,c("contrast","SE","t.ratio","p.value")],
+#                              M.from.delta_r_df(mblogitfit_contrasts[,c("delta_r","delta_r.lower.CL","delta_r.upper.CL")]))
+# mblogitfit_contrasts
 
 
 
@@ -625,10 +744,10 @@ bGLMMfit2 = glmer(cbind(count, total-count) ~  (1|lad/obs) +
                      family=binomial(logit), data=data_subs)
 
 # saveRDS(bGLMMfit1, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsall_fit1_homog slopes_model 2a.rds")
-# saveRDS(bGLMMfit2, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsall_fit2_heter slopes_model S1.rds")
+# saveRDS(bGLMMfit2, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsall_fit2_heter slopes_model 2b.rds")
 # or to directly load previously fitted models
 bGLMMfit1 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsall_fit1_homog slopes_model 2a.rds")
-bGLMMfit2 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsall_fit1_heter slopes_model S1.rds")
+bGLMMfit2 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsall_fit1_heter slopes_model 2b.rds")
 
 
 # check BIC values
@@ -701,7 +820,7 @@ graph2ppt(file=".\\multinomial_logistic_fits\\plots\\model2a_plot VOCvsall_fit b
 ggsave(file=".\\multinomial_logistic_fits\\plots\\model2a_plot VOCvsall_fit bGLMM_homog slopes.png", width=8, height=6)
 
 
-# of model bGLMMfit1 (heterogeneous slopes, model S1 in table S1)
+# of model bGLMMfit2 (heterogeneous slopes, model 2b in table S1)
 extrapolate = 60 # 60 nr of days to extrapolate fit into the future
 total.SD = sqrt(sum(sapply(as.data.frame(VarCorr(bGLMMfit2))$sdcor, function (x) x^2))) # see https://cran.r-project.org/web/packages/emmeans/vignettes/transformations.html#bias-adj
 bGLMM_preds = as.data.frame(emmeans(bGLMMfit2, ~ sample_date_num, by="nhs_name", at=list(sample_date_num=
@@ -742,9 +861,9 @@ plot_bGLMMVOC_het = qplot(data=bGLMM_preds, x=sample_date, y=prob, geom="blank")
 # theme(legend.position = "none")
 plot_bGLMMVOC_het
 
-saveRDS(plot_bGLMMVOC_het, file = ".\\multinomial_logistic_fits\\plots\\modelS1_plot VOCvsall_fit bGLMM_heter slopes.rds")
-graph2ppt(file=".\\multinomial_logistic_fits\\plots\\modelS1_plot VOCvsall_fit bGLMM_heter slopes.pptx", width=8, height=6)
-ggsave(file=".\\multinomial_logistic_fits\\plots\\modelS1_plot VOCvsall_fit bGLMM_heter slopes.png", width=8, height=6)
+saveRDS(plot_bGLMMVOC_het, file = ".\\multinomial_logistic_fits\\plots\\model2b_plot VOCvsall_fit bGLMM_heter slopes.rds")
+graph2ppt(file=".\\multinomial_logistic_fits\\plots\\model2b_plot VOCvsall_fit bGLMM_heter slopes.pptx", width=8, height=6)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\model2b_plot VOCvsall_fit bGLMM_heter slopes.png", width=8, height=6)
 
 
 
@@ -770,7 +889,7 @@ bGLMM_VOC_growthrates
 # 7                 Scotland           0.10087762 0.06064220 0.1411130 1.741639 1.395890 2.173028 1.437865 1.243975 1.661975
 # 8               North West           0.13157635 0.10033321 0.1628195 2.061987 1.736432 2.448577 1.605885 1.435050 1.797057
 # 9                    Wales           0.10396307 0.07291925 0.1350069 1.771447 1.493401 2.101262 1.453925 1.300189 1.625840
-table2csv(bGLMM_VOC_growthrates, file=".\\multinomial_logistic_fits\\tables\\model S1_VOCvsall_bGLMM_VOC_growthrates_UK_by region_heter slopes.csv")
+table2csv(bGLMM_VOC_growthrates, file=".\\multinomial_logistic_fits\\tables\\model 2b_VOCvsall_bGLMM_VOC_growthrates_UK_by region_heter slopes.csv")
 
 # on average across all regions, now using the most parsimonious model bGLMMfit1_od, we get
 bGLMM_VOC_growthrates_avg = as.data.frame(emtrends(bGLMMfit1, ~ 1, var="sample_date_num"))[,-c(3,4)] 
@@ -829,7 +948,7 @@ tukey_VOC[tukey_VOC$p.value<0.05,]
 #                                      contrast diff_logistic_growth_rate        SE   z.ratio     p.value
 # 18 East of England - North East and Yorkshire               -0.05865673 0.0159438 -3.678968 0.007232701
 
-table2csv(tukey_VOC, file=".\\multinomial_logistic_fits\\tables\\model S1_VOCvsall_bGLMM_VOC_Tukey contrasts diff growth rates across regions.csv")
+table2csv(tukey_VOC, file=".\\multinomial_logistic_fits\\tables\\model 2b_VOCvsall_bGLMM_VOC_Tukey contrasts diff growth rates across regions.csv")
 
 
 # Almost no sign differences in rate of spread of VOC, only 2 small differences 
@@ -867,10 +986,10 @@ bGLMMfit2_vsB1177 = glmer(cbind(count, total-count) ~  (1|lad/obs) +
                   family=binomial(logit), data=data_subs)
 
 
-# saveRDS(bGLMMfit1_vsB1177, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsB1177_fit1_homog slopes_model 2b.rds")
+# saveRDS(bGLMMfit1_vsB1177, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsB1177_fit1_homog slopes_model 2c.rds")
 # saveRDS(bGLMMfit2_vsB1177, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsB1177_fit2_heter slopes.rds")
 # or to directly load previously fitted models
-bGLMMfit1_vsB1177 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsB1177_fit1_homog slopes_model 2b.rds")
+bGLMMfit1_vsB1177 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsB1177_fit1_homog slopes_model 2c.rds")
 bGLMMfit2_vsB1177 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsB1177_fit2_heter slopes.rds")
 
 
@@ -893,7 +1012,7 @@ bGLMM_VOC_growthrates_avg = M.from.delta_r_df(bGLMM_VOC_growthrates_avg)
 bGLMM_VOC_growthrates_avg
 # 1         logistic_growth_rate asymp.LCL asymp.UCL       M1   M1.LCL   M1.UCL      M2   M2.LCL   M2.UCL
 # 1 overall            0.1059532 0.0992668 0.1126397 1.790944 1.726278 1.858033 1.46438 1.429551 1.500057
-table2csv(bGLMM_VOC_growthrates_avg, file=".\\multinomial_logistic_fits\\tables\\model 2b_VOCvsB1177_bGLMM_VOC_growthrates_UKavg_homog slope.csv")
+table2csv(bGLMM_VOC_growthrates_avg, file=".\\multinomial_logistic_fits\\tables\\model 2c_VOCvsB1177_bGLMM_VOC_growthrates_UKavg_homog slope.csv")
 
 
 
@@ -925,10 +1044,10 @@ bGLMMfit2_vsminor = glmer(cbind(count, total-count) ~  (1|lad/obs) +
                             nhs_name*scale(sample_date_num), 
                           family=binomial(logit), data=data_subs)
 
-# saveRDS(bGLMMfit1_vsminor, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsminor_fit1_homog slopes_model 2c.rds")
+# saveRDS(bGLMMfit1_vsminor, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsminor_fit1_homog slopes_model 2d.rds")
 # saveRDS(bGLMMfit2_vsminor, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsminor_fit2_heter slopes.rds")
 # or to directly load previously fitted models
-bGLMMfit1_vsminor = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsminor_fit1_homog slopes_model 2c.rds")
+bGLMMfit1_vsminor = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsminor_fit1_homog slopes_model 2d.rds")
 bGLMMfit2_vsminor = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsminor_fit2_heter slopes.rds")
 
 
@@ -953,7 +1072,7 @@ bGLMM_VOC_growthrates_avg = M.from.delta_r_df(bGLMM_VOC_growthrates_avg)
 bGLMM_VOC_growthrates_avg
 # 1         logistic_growth_rate asymp.LCL asymp.UCL       M1   M1.LCL  M1.UCL       M2   M2.LCL   M2.UCL
 # 1 overall            0.1173328 0.1110999 0.1235656 1.906617 1.842364 1.97311 1.525616 1.491765 1.560235
-table2csv(bGLMM_VOC_growthrates_avg, file=".\\multinomial_logistic_fits\\tables\\model 2c_VOCvsminor_bGLMM_VOC_growthrates_UKavg_homog slope.csv")
+table2csv(bGLMM_VOC_growthrates_avg, file=".\\multinomial_logistic_fits\\tables\\model 2d_VOCvsminor_bGLMM_VOC_growthrates_UKavg_homog slope.csv")
 
 
 
@@ -992,11 +1111,11 @@ bGLMMfit2_B1177 = glmer(cbind(count, total-count) ~  (1|lad/obs) +
                             nhs_name*scale(sample_date_num), 
                           family=binomial(logit), data=data_subs)
 
-# saveRDS(bGLMMfit1_B1177, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_B1177vsall_fit1_homog slopes_model 2d.rds")
-# saveRDS(bGLMMfit2_B1177, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_B1177vsall_fit2_heter slopes_model S2.rds")
+# saveRDS(bGLMMfit1_B1177, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_B1177vsall_fit1_homog slopes_model 2e.rds")
+# saveRDS(bGLMMfit2_B1177, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_B1177vsall_fit2_heter slopes_model 2f.rds")
 # or to directly load previously fitted models
-bGLMMfit1_B1177 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_B1177vsall_fit1_homog slopes_model 2d.rds")
-bGLMMfit2_B1177 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_B1177vsall_fit2_heter slopes_model S2.rds")
+bGLMMfit1_B1177 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_B1177vsall_fit1_homog slopes_model 2e.rds")
+bGLMMfit2_B1177 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_B1177vsall_fit2_heter slopes_model 2f.rds")
 
 # check BIC values
 BIC(bGLMMfit1_B1177, bGLMMfit2_B1177)
@@ -1017,7 +1136,7 @@ bGLMM_B1177_growthrates_avg = M.from.delta_r_df(bGLMM_B1177_growthrates_avg)
 bGLMM_B1177_growthrates_avg
 # 1         logistic_growth_rate  asymp.LCL  asymp.UCL      M1   M1.LCL   M1.UCL       M2   M2.LCL   M2.UCL
 # 1 overall           0.04755705 0.04421853 0.05089557 1.29896 1.275326 1.323031 1.186734 1.172557 1.201083
-table2csv(bGLMM_B1177_growthrates_avg, file=".\\multinomial_logistic_fits\\tables\\model 2d_B1177vsall_bGLMM_growthrates_UKavg_homog slope.csv")
+table2csv(bGLMM_B1177_growthrates_avg, file=".\\multinomial_logistic_fits\\tables\\model 2e_B1177vsall_bGLMM_growthrates_UKavg_homog slope.csv")
 
 # growth rates per region for heterogeneous slope model bGLMMfit2_B1177
 bGLMM_B1177_growthrates_region = as.data.frame(emtrends(bGLMMfit2_B1177, ~ nhs_name, var="sample_date_num"))[,-c(3,4)] 
@@ -1035,7 +1154,7 @@ bGLMM_B1177_growthrates_region
 # 8               North West           0.07143431 0.06163817 0.08123045 1.481254 1.403557 1.563251 1.293257 1.248443 1.339678
 # 9                    Wales           0.04170383 0.03302300 0.05038465 1.257809 1.199166 1.319319 1.161990 1.126238 1.198876
 table2csv(bGLMM_B1177_growthrates_region, 
-          file=".\\multinomial_logistic_fits\\tables\\model S2_B1177vsall_bGLMM_growthrates_UK_by region.csv")
+          file=".\\multinomial_logistic_fits\\tables\\model 2f_B1177vsall_bGLMM_growthrates_UK_by region.csv")
 
 
 # PLOT MODEL FIT
@@ -1083,9 +1202,10 @@ plot_bGLMM_B1177_hom = qplot(data=bGLMM_B1177_preds_hom, x=sample_date, y=prob, 
   #         aes(x=sample_date, y=prop, colour=nhs_name, size=total), alpha=I(0.4)) +
   # theme(legend.position = "none")
 plot_bGLMM_B1177_hom
-saveRDS(plot_bGLMM_B1177_hom, file = ".\\multinomial_logistic_fits\\plots\\model 2d_plot B1177vsall_fit bGLMM_homog slopes.rds")
-graph2ppt(file=".\\multinomial_logistic_fits\\plots\\model 2d_plot B1177vsall_fit bGLMM_homog slopess.pptx", width=8, height=6)
-ggsave(file=".\\multinomial_logistic_fits\\plots\\model 2d_plot B1177vsall_fit bGLMM_homog slopes.png", width=8, height=6)
+saveRDS(plot_bGLMM_B1177_hom, file = ".\\multinomial_logistic_fits\\plots\\model 2e_plot B1177vsall_fit bGLMM_homog slopes.rds")
+graph2ppt(file=".\\multinomial_logistic_fits\\plots\\model 2e_plot B1177vsall_fit bGLMM_homog slopess.pptx", width=8, height=6)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\model 2e_plot B1177vsall_fit bGLMM_homog slopes.png", width=8, height=6)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\model 2e_plot B1177vsall_fit bGLMM_homog slopes.pdf", width=8, height=6)
 
 
 # OF HETEROGENEOUS SLOPE MODEL
@@ -1129,10 +1249,10 @@ plot_bGLMM_B1177_het = qplot(data=bGLMM_B1177_preds_het, x=sample_date, y=prob, 
 #         aes(x=sample_date, y=prop, colour=nhs_name, size=total), alpha=I(0.4)) +
 # theme(legend.position = "none")
 plot_bGLMM_B1177_het
-saveRDS(plot_bGLMM_B1177_het, file = ".\\multinomial_logistic_fits\\plots\\model S2_plot B1177vsall_fit bGLMM_heter slopes.rds")
-graph2ppt(file=".\\multinomial_logistic_fits\\plots\\model S2_plot B1177vsall_fit bGLMM_heter slopess.pptx", width=8, height=6)
-ggsave(file=".\\multinomial_logistic_fits\\plots\\model S2_plot B1177vsall_fit bGLMM_heter slopes.png", width=8, height=6)
-
+saveRDS(plot_bGLMM_B1177_het, file = ".\\multinomial_logistic_fits\\plots\\model 2f_plot B1177vsall_fit bGLMM_heter slopes.rds")
+graph2ppt(file=".\\multinomial_logistic_fits\\plots\\model 2f_plot B1177vsall_fit bGLMM_heter slopess.pptx", width=8, height=6)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\model 2f_plot B1177vsall_fit bGLMM_heter slopes.png", width=8, height=6)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\model 2f_plot B1177vsall_fit bGLMM_heter slopes.pdf", width=8, height=6)
 
 
 
@@ -1170,10 +1290,10 @@ bGLMMfit2_B1177_vsminority = glmer(cbind(count, total-count) ~  (1|lad/obs) +
                         family=binomial(logit), data=data_subs)
 
 # saveRDS(bGLMMfit1_B1177_vsminority, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_B1177vsminor_fit1_homog slopes.rds")
-# saveRDS(bGLMMfit2_B1177_vsminority, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_B1177vsminor_fit2_heter slopes_model 2e_best model.rds")
+# saveRDS(bGLMMfit2_B1177_vsminority, file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_B1177vsminor_fit2_heter slopes_model 2g_best model.rds")
 # or to directly load previously fitted models
 bGLMMfit1_B1177_vsminority = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_B1177vsminor_fit1_homog slopes.rds")
-bGLMMfit2_B1177_vsminority = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_B1177vsminor_fit2_heter slopes_model 2e_best model.rds")
+bGLMMfit2_B1177_vsminority = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_B1177vsminor_fit2_heter slopes_model 2g_best model.rds")
 
 # check BIC values
 BIC(bGLMMfit1_B1177_vsminority, bGLMMfit2_B1177_vsminority)
@@ -1194,7 +1314,7 @@ bGLMM_B1177_growthrates_avg_vsminority = M.from.delta_r_df(bGLMM_B1177_growthrat
 bGLMM_B1177_growthrates_avg_vsminority
 # 1         logistic_growth_rate  asymp.LCL  asymp.UCL      M1   M1.LCL   M1.UCL       M2   M2.LCL  M2.UCL
 # 1 overall            0.0419164 0.03838668 0.04544613 1.25928 1.235069 1.283966 1.162879 1.148196 1.17775
-table2csv(bGLMM_B1177_growthrates_avg_vsminority, file=".\\multinomial_logistic_fits\\tables\\model 2e_B1177vsminor_bGLMM_growthrates_UKavg_heter slopes.csv")
+table2csv(bGLMM_B1177_growthrates_avg_vsminority, file=".\\multinomial_logistic_fits\\tables\\model 2g_B1177vsminor_bGLMM_growthrates_UKavg_heter slopes.csv")
 
 # growth rates per region for most parsimonious heterogeneous slope model bGLMMfit2_B1177
 bGLMM_B1177_growthrates_region = as.data.frame(emtrends(bGLMMfit2_B1177_vsminority, ~ nhs_name, var="sample_date_num"))[,-c(3,4)] 
@@ -1212,7 +1332,7 @@ bGLMM_B1177_growthrates_region
 # 8               North West           0.06788180 0.057967456 0.07779615 1.452593 1.375505 1.534000 1.276822 1.232054 1.323217
 # 9                    Wales           0.03552508 0.026884860 0.04416530 1.215783 1.159358 1.274953 1.136428 1.101624 1.172332
 table2csv(bGLMM_B1177_growthrates_region, 
-          file=".\\multinomial_logistic_fits\\tables\\model 2e_B1177vsminor_bGLMM_growthrates_UK_by region_heter slopes.csv")
+          file=".\\multinomial_logistic_fits\\tables\\model 2g_B1177vsminor_bGLMM_growthrates_UK_by region_heter slopes.csv")
 
 
 
@@ -1261,20 +1381,20 @@ plot_bGLMM_B1177_preds_vsminority_het = qplot(data=bGLMM_B1177_preds_vsminority_
 # theme(legend.position = "none")
 plot_bGLMM_B1177_preds_vsminority_het
 
-saveRDS(plot_bGLMM_B1177_preds_vsminority_het, file = ".\\multinomial_logistic_fits\\plots\\model2e_plot B1177vsminor_fit bGLMM_heter slopes.rds")
-graph2ppt(file=".\\multinomial_logistic_fits\\plots\\model2e_plot B1177vsminor_fit bGLMM_heter slopes.pptx", width=8, height=6)
-ggsave(file=".\\multinomial_logistic_fits\\plots\\model2e_plot B1177vsminor_fit bGLMM_heter slopes.png", width=8, height=6)
-
+saveRDS(plot_bGLMM_B1177_preds_vsminority_het, file = ".\\multinomial_logistic_fits\\plots\\model2g_plot B1177vsminor_fit bGLMM_heter slopes.rds")
+graph2ppt(file=".\\multinomial_logistic_fits\\plots\\model2g_plot B1177vsminor_fit bGLMM_heter slopes.pptx", width=8, height=6)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\model2g_plot B1177vsminor_fit bGLMM_heter slopes.png", width=8, height=6)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\model2g_plot B1177vsminor_fit bGLMM_heter slopes.pdf", width=8, height=6)
 
 # multipanel for suppl Fig. S3
 plot_bGLMMVOC_B1177_multipanel = ggarrange(plot_bGLMMVOC_het, 
           plot_bGLMM_B1177_preds_vsminority_het,
           ncol=1, common.legend=TRUE, legend="right")
 plot_bGLMMVOC_B1177_multipanel
-saveRDS(plot_bGLMMVOC_B1177_multipanel, file = ".\\multinomial_logistic_fits\\plots\\FigS3_modelS1_2e_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.rds")
-graph2ppt(file=".\\multinomial_logistic_fits\\plots\\FigS3_modelS1_2e_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.pptx", width=6, height=8)
-ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS3_modelS1_2e_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.png", width=6, height=8)
-
+saveRDS(plot_bGLMMVOC_B1177_multipanel, file = ".\\multinomial_logistic_fits\\plots\\FigS4_models_2b_and_2g_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.rds")
+graph2ppt(file=".\\multinomial_logistic_fits\\plots\\FigS4_models_2b_and_2g_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.pptx", width=6, height=8)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS4_models_2b_and_2g_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.png", width=6, height=8)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS4_models_2b_and_2g_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.pdf", width=6, height=8)
 
 
 
@@ -1337,7 +1457,7 @@ tukey_B1177_vsminority[tukey_B1177_vsminority$p.value<0.05,]
 # 35                    Scotland - Wales               -0.01847879 0.005923991 -3.119314 4.744161e-02
 # 36                  North West - Wales                0.03235672 0.006622452  4.885912 3.620823e-05
 
-table2csv(tukey_B1177_vsminority, file=".\\multinomial_logistic_fits\\tables\\model 2e_B1177vsminority_bGLMM_Tukey contrasts diff growth rates across regions.csv")
+table2csv(tukey_B1177_vsminority, file=".\\multinomial_logistic_fits\\tables\\model 2g_B1177vsminority_bGLMM_Tukey contrasts diff growth rates across regions.csv")
 
 
 # Unlike the VOC which displaces the other variants at a consistently and very high rate in all regions,
@@ -1351,7 +1471,7 @@ table2csv(tukey_B1177_vsminority, file=".\\multinomial_logistic_fits\\tables\\mo
 # 4. COMPARISON OF RATE OF SPREAD OF VOC 202012/01 IN UK & DENMARK ####
 
 # data from Denmark aggregated by week are provided by the Statens Serum Institut, link
-# https://www.covid19genomics.dk/statistics, download on the 14th of January
+# https://www.covid19genomics.dk/statistics, downloaded on the 14th of January
 
 data_denmark = read.csv(".\\multinomial_logistic_fits\\data\\data_denmark_14jan2021.csv")
 # since this data is aggregated by week, we will compare this data also with 
@@ -1378,7 +1498,7 @@ head(data_denmark_uk)
 data_denmark = data_denmark_uk[data_denmark_uk$COUNTRY=="DENMARK",] 
 levels_region_denmark = rev(c("Hovedstaden","Sjælland","Midtjylland","Nordjylland","Syddanmark"))
 data_denmark$REGION = factor(data_denmark$REGION, levels=levels_region_denmark)
-range(data_denmark_uk$sample_date[data_denmark_uk$COUNTRY=="DENMARK"]) # "2020-09-23" "2021-01-01"
+range(data_denmark_uk$sample_date[data_denmark_uk$COUNTRY=="DENMARK"]) # "2020-09-23" "2021-01-08"
 range(data_denmark_uk$sample_date[data_denmark_uk$COUNTRY=="UK"])      # "2020-08-05" "2021-12-16"
 
 
@@ -1399,7 +1519,7 @@ bGLMMfit_denm2 = glmer(cbind(B117, TOTAL-B117) ~ (1|obs) +
 bGLMMfit_denm1 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_DK_VOCvsall_fit1_homog slopes_model 3a.rds")
 bGLMMfit_denm2 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_DK_VOCvsall_fit2_heter slopes.rds")
 
-BIC(bGLMMfit_denm1, bGLMMfit_denm2) # model bGLMMfit_denm1 with homogeneous slopes across regions has best BIC
+BIC(bGLMMfit_denm1, bGLMMfit_denm2) # model bGLMMfit_denm1 with heterogeneous slopes across regions has best BIC
 #                 df      BIC
 # bGLMMfit_denm1  7 217.5952
 # bGLMMfit_denm2 11 217.7621
@@ -1458,9 +1578,10 @@ plot_bGLMM_fitdenmark = qplot(data=fitdenm_preds, x=sample_date, y=prob, geom="b
   # theme(legend.position = "none")
 plot_bGLMM_fitdenmark
 
-saveRDS(plot_bGLMM_fitdenmark, file = ".\\multinomial_logistic_fits\\plots\\model3a_plot VOCvsall_fit bGLMM_DENMARK.rds")
-graph2ppt(file=".\\multinomial_logistic_fits\\plots\\model3a_plot VOCvsall_fit bGLMM_DENMARK.pptx", width=8, height=6)
-ggsave(file=".\\multinomial_logistic_fits\\plots\\model3a_plot VOCvsall_fit bGLMM_DENMARK.png", width=8, height=6)
+saveRDS(plot_bGLMM_fitdenmark, file = ".\\multinomial_logistic_fits\\plots\\FigS6_model3a_plot VOCvsall_fit bGLMM_DENMARK.rds")
+graph2ppt(file=".\\multinomial_logistic_fits\\plots\\FigS6_model3a_plot VOCvsall_fit bGLMM_DENMARK.pptx", width=8, height=6)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS6_model3a_plot VOCvsall_fit bGLMM_DENMARK.png", width=8, height=6)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS6_model3a_plot VOCvsall_fit bGLMM_DENMARK.pdf", width=8, height=6)
 
 
 
@@ -1622,9 +1743,10 @@ plot_bGLMM_denmUK = qplot(data=fitdenmUK_preds, x=sample_date, y=prob, geom="bla
   theme(legend.direction = "vertical", legend.box = "vertical", legend.position="right", 
         legend.key.size=unit(0.45, "cm"))
 plot_bGLMM_denmUK
-saveRDS(plot_bGLMM_denmUK, file = ".\\multinomial_logistic_fits\\plots\\model3b_plot VOCvsall_fit bGLMM_DENMARKplusUK.rds")
-graph2ppt(file=".\\multinomial_logistic_fits\\plots\\model3b_plot VOCvsall_fit bGLMM_DENMARKplusUK.pptx", width=6, height=6)
-ggsave(file=".\\multinomial_logistic_fits\\plots\\model3b_plot VOCvsall_fit bGLMM_DENMARKplusUK.png", width=6, height=6)
+saveRDS(plot_bGLMM_denmUK, file = ".\\multinomial_logistic_fits\\plots\\FigS7_model3b_plot VOCvsall_fit bGLMM_DENMARKplusUK.rds")
+graph2ppt(file=".\\multinomial_logistic_fits\\plots\\FigS7_model3b_plot VOCvsall_fit bGLMM_DENMARKplusUK.pptx", width=6, height=6)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS7_model3b_plot VOCvsall_fit bGLMM_DENMARKplusUK.png", width=6, height=6)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS7_model3b_plot VOCvsall_fit bGLMM_DENMARKplusUK.pdf", width=6, height=6)
 
 
 fitdenmUK_preds_country = as.data.frame(emmeans(bGLMMfit_denmUK0, ~ sample_date_num, by=c("COUNTRY"),

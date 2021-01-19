@@ -3,7 +3,7 @@
 # "Investigation of novel SARS-CoV-2 variant Variant of Concern 202012/01, Technical briefing 3", Tables 6 & 7 in
 # https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/950823/Variant_of_Concern_VOC_202012_01_Technical_Briefing_3_-_England.pdf
 
-# T. Wenseleers, last updated: 15 January 2021
+# T. Wenseleers, last updated: 19 January 2021
 
 library(export)
 library(lme4)
@@ -195,6 +195,7 @@ plot_fitdSA = qplot(data=fitdSA_preds, x=age_group, y=prob, group=variant, geom=
 # theme(legend.position = "right") # theme(legend.position = "none")
 plot_fitdSA
 ggsave(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_VOC nonVOC_byage.png", width=7, height=5)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_VOC nonVOC_byage.pdf", width=7, height=5)
 saveRDS(plot_fitdSA, file = ".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_VOC nonVOC_byage.rds")
 graph2ppt(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_VOC nonVOC_byage.pptx", width=6, height=6)
 
@@ -284,6 +285,7 @@ plot_fitSA_oddsratios = qplot(data=fitSA_contrasts, x=age_group, y=odds.ratio, g
     #        plot.tag = element_text(vjust = 1, hjust = 1, size=8))
 plot_fitSA_oddsratios
 ggsave(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_odds ratios VOC_byage.png", width=7, height=5)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_odds ratios VOC_byage.pdf", width=7, height=5)
 saveRDS(plot_fitdSA, file = ".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_odds ratios VOC_byage.rds")
 graph2ppt(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_odds ratios VOC_byage.pptx", width=6, height=6)
 
@@ -373,6 +375,7 @@ plot_fitSA_oddsratios_RR = qplot(data=fitSA_contrasts, x=age_group, y=RR, group=
  #       plot.tag = element_text(vjust = 1, hjust = 1, size=8))
 plot_fitSA_oddsratios_RR
 ggsave(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_risk ratios VOC_byage.png", width=7, height=5)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_risk ratios VOC_byage.pdf", width=7, height=5)
 saveRDS(plot_fitdSA, file = ".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_risk ratios VOC_byage.rds")
 graph2ppt(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_risk ratios VOC_byage.pptx", width=6, height=6)
 
@@ -389,9 +392,10 @@ plot_fitSA_multipanel = ggarrange(plot_fitdSA+theme(
         legend.key.size = unit(0.3, "cm")), plot_fitSA_oddsratios+ggtitle(""), 
    nrow=2, common.legend=FALSE) 
 plot_fitSA_multipanel
-saveRDS(plot_fitSA_multipanel, file = ".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_multipanel.rds")
-ggsave(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_multipanel.png", width=6, height=7)
-graph2ppt(file=".\\multinomial_logistic_fits\\plots\\bGLM_plot secondary_attack_rates_multipanel.pptx", width=6, height=7)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS8_bGLM_plot secondary_attack_rates_multipanel.png", width=6, height=7)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS8_bGLM_plot secondary_attack_rates_multipanel.pdf", width=6, height=7)
+saveRDS(plot_fitSA_multipanel, file = ".\\multinomial_logistic_fits\\plots\\FigS8_bGLM_plot secondary_attack_rates_multipanel.rds")
+graph2ppt(file=".\\multinomial_logistic_fits\\plots\\FigS8_bGLM_plot secondary_attack_rates_multipanel.pptx", width=6, height=7)
 
 
 
