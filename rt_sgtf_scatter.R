@@ -6,7 +6,7 @@ library(lemon)
 library(dplyr)
 library(cowplot)
 library(lubridate)
-# devtools::install_github("epiforecasts/covidregionaldata)
+# devtools::install_github("epiforecasts/covidregionaldata")
 library(covidregionaldata)
 # Get data ----------------------------------------------------------------
 utla_rt <- readRDS(url("https://raw.github.com/epiforecasts/covid19.sgene.utla.rt/main/data/utla_rt_with_covariates.rds"))
@@ -29,7 +29,7 @@ target_rt <- utla_rt %>%
   filter(as.character(week_infection) %in% c("2020-10-26", "2020-11-09",
                                              "2020-11-23", "2020-12-07",
                                              "2020-12-21"))
-plot <- ggplot(target_rt, aes(x = prop_sgtf, y = rt_mean,
+p_rt_sgtf <- ggplot(target_rt, aes(x = prop_sgtf, y = rt_mean,
                               fill = nhser_name, size = cases)) +
   geom_jitter(pch = 21) +
   facet_rep_wrap(. ~ week_infection, ncol = 2, repeat.tick.labels = "all") +

@@ -38,4 +38,5 @@ gm_melt = function(gm) {
     return (g)
 }
 ggg = gm_melt(gm)
-qsave(ggg, "./data/gm_for_analysis.qs")
+qsave(ggg, "./data/gm_for_analysis-2020-01-18.qs")
+fwrite(ggg, "./data/gm_for_analysis-2020-01-18.csv")

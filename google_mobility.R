@@ -401,15 +401,23 @@ plot_y = function(y)
 theme_set(theme_cowplot(font_size = 10) + theme(strip.background = element_blank()))
 
 
+py1 = plot_y(y1) + labs(x = "Date", y = "Mobility index", colour = "NHS region", title = "Moderate stringency (October 2020)")
+py2 = plot_y(y2) + labs(x = "Date", y = "Mobility index", colour = "NHS region", title = "High stringency (November 2020) with schools open")
+py3 = plot_y(y3) + labs(x = "Date", y = "Mobility index", colour = "NHS region", title = "High stringency (November 2020) with schools closed")
+py4 = plot_y(y5) + labs(x = "Date", y = "Mobility index", colour = "NHS region", title = "Very high stringency (March 2020)")
+cowplot::plot_grid(py1, py2, py3, py4, nrow = 2, labels = LETTERS, label_size = 10)
+ggsave("./output/scenarios.pdf", width = 35, height = 25, units = "cm", useDingbats = TRUE)
+ggsave("./output/scenarios.png", width = 35, height = 25, units = "cm")
+
 plot_y(y1) + labs(x = "Date", y = "Mobility index", title = "Scenario 1")
 ggsave("./output/scenario1.pdf", width = 15, height = 10, units = "cm", useDingbats = TRUE)
 plot_y(y2) + labs(x = "Date", y = "Mobility index", title = "Scenario 2")
 ggsave("./output/scenario2.pdf", width = 15, height = 10, units = "cm", useDingbats = TRUE)
 plot_y(y3) + labs(x = "Date", y = "Mobility index", title = "Scenario 3")
 ggsave("./output/scenario3.pdf", width = 15, height = 10, units = "cm", useDingbats = TRUE)
-plot_y(y4) + labs(x = "Date", y = "Mobility index", title = "Scenario 3")
+plot_y(y4) + labs(x = "Date", y = "Mobility index", title = "Scenario 4")
 ggsave("./output/scenario4.pdf", width = 15, height = 10, units = "cm", useDingbats = TRUE)
-plot_y(y5) + labs(x = "Date", y = "Mobility index", title = "Scenario 3")
+plot_y(y5) + labs(x = "Date", y = "Mobility index", title = "Scenario 5")
 ggsave("./output/scenario5.pdf", width = 15, height = 10, units = "cm", useDingbats = TRUE)
 
 

@@ -11,7 +11,7 @@ library(lubridate)
 # Source user written scripts ---------------------------------------------
 source('get_react_data.R')
 
-theme_set(cowplot::theme_cowplot(font_size = 8) + theme(strip.background = element_blank()))
+theme_set(cowplot::theme_cowplot(font_size = 10) + theme(strip.background = element_blank()))
 
 cols_2 = c("#d575f0", "#6deda5")
 cols_3 = c("#d575f0", "#6deda5", "#000000")
@@ -181,7 +181,7 @@ gmob_tier[, variable := map_mobility[variable]]
 gmob_tier[, t4  := fifelse(Tier == 4, "Tier 4", "Not Tier 4")]
 gmob_tier[, t4  := factor(t4, levels = c("Tier 4", "Not Tier 4"), label = c("Enters Tier 4", "Outside of Tier 4"))]
 
-gmob_tier[RGN19NM %in% c("South East", "East of England", "London") | t4 == TRUE, area := "South East\nEast of England,\nand London\nTier 4 areas*"]
+gmob_tier[RGN19NM %in% c("South East", "East of England", "London") | t4 == TRUE, area := "Tier 4 areas"]
 gmob_tier[!RGN19NM %in% c("South East", "East of England", "London") | t4 == FALSE, area := "Rest of England"]
 
 gmob_tier[, variable := factor(variable, levels = c(
@@ -192,27 +192,26 @@ gmob_tier[, variable := factor(variable, levels = c(
                                "Transit stations",
                                "Parks"))]
 
-gmob_tier[, setattr(area, "levels", c("South East\nEast of England,\nand London\nTier 4 areas*", "Rest of England"))]
+gmob_tier[, setattr(area, "levels", c("Tier 4 areas", "Rest of England"))]
 
 p_gmob <- gmob_tier[date > as.Date("2020-09-01")] %>% 
   ggplot(aes(x = date)) +
   geom_smooth(aes(y = value, col = area, fill = area)) +
   annotate(geom = "rect", xmin = as.Date("2020-11-04"), xmax = as.Date("2020-12-02"), ymin=-Inf, ymax=Inf, col = "lightgrey", alpha = 0.2) +
   facet_wrap(variable ~. , scales = "free_y", ncol = 1) +
-  scale_x_date(breaks = "2 week", date_labels = "%d-%b", expand = expansion(0)) +
+  scale_x_date(breaks = "2 week", date_labels = "%e %b", expand = expansion(0)) +
   scale_color_manual(values = cols_3, name = "", labels = c("East of England,\nLondon and South\nEast regions",
                                                             "Rest of England")) +
   scale_fill_manual(values = cols_3, name = "", labels = c("East of England,\nLondon and South\nEast regions",
                                                            "Rest of England")) +
   expand_limits(y = 0) +
-  labs(title = "C", y = "Relative change in mobility (%)", x = "") +
+  labs(y = "Relative change in mobility (%)", x = "") +
   geom_hline(aes(yintercept = 0), linetype = 2) +
   theme(
     legend.position = "none",
     axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
     legend.key = element_rect(size = 6, fill = "white", colour = NA), legend.key.size = unit(1, "cm")
-  ) + 
-  labs(title = "B")
+  )
   
 
 p_gmob
@@ -223,29 +222,32 @@ avg_contacts <- qs::qread("data/cmix_avg_cnts.qs")
 
 avg_contacts[, area := factor(area,  levels = c("Tier 4", "Not Tier 4"), label = c("Entry to Tier 4", "Outside of Tier 4"))]
 
+avg_contacts[, setting2 := as.character(setting)]
+avg_contacts[setting2 == "Work/Educ", setting2 := "Work / Education"]
+avg_contacts[, table(setting2)]
+avg_contacts[, setting2 := factor(setting2, levels = c("All", "Home", "Work / Education", "Other"))]
+avg_contacts[, table(setting2)]
+
 p_cmix <- avg_contacts[!age %in% c("All", "Adult")] %>%
   ggplot(aes(x = start_date)) +
   annotate(geom = "rect", xmin = as.Date("2020-11-04"), xmax = as.Date("2020-12-02"), ymin=-Inf, ymax=Inf, col = "lightgrey", alpha = 0.2) +
   expand_limits(y = 0) +
   geom_ribbon(aes(ymin = lci, ymax = uci, fill =area), alpha = 0.3) +
   geom_line( aes(y = med, col = area)) +
-  #geom_smooth( aes(y = med), method = "gam") +
-  #geom_point( aes(y = avg)) +
-  labs(title = "B", y = "Mean contacts", x = "") +
-  facet_grid(setting ~ age , scales = "free_y") +
+  labs(y = "Mean contacts", x = "") +
+  facet_grid(setting2 ~ age , scales = "free_y") +
   scale_y_continuous(expand = expansion(0)) +
-  scale_color_manual(values = cols_3, name = "", labels = c("East of England,\nLondon and South\nEast\nTier 4 areas*",
+  scale_color_manual(values = cols_3, name = "", labels = c("Tier 4 areas",
                                                             "Rest of England")) +
-  scale_fill_manual(values = cols_3, name = "", labels = c("East of England,\nLondon and South\nEast\nTier 4 areas*",
+  scale_fill_manual(values = cols_3, name = "", labels = c("Tier 4 areas",
                                                            "Rest of England")) +
-  theme(text = element_text(size = 8)) +
-  scale_x_date(breaks = "2 week", date_labels = "%d-%b") +
+  scale_x_date(breaks = "2 week", date_labels = "%e %b") +
   expand_limits(x = as.Date("2020-10-01")) + 
   theme(
     axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-    panel.spacing.y =  unit(1, "lines")) + 
-  labs(title = "C")
+    panel.spacing.y =  unit(1, "lines"))
 
+p_cmix
 
 # Input data ----------------------------------------------------------------
 
@@ -262,7 +264,7 @@ p_r0 <- ggplot(cmix_eng) +
     geom_point(aes(x = start_date, y = R_50), fill = "red", col = "grey", pch =21) +
     scale_fill_manual(values = c("#3b70bf", "#7dba5d"), labels = c("Single round", "Two rounds")) +
     scale_y_continuous(expand = expansion(0), limits = c(0,3)) +
-    labs(fill = "REACT R estimate", y = "R", x = "", title = "D")  +
+    labs(fill = "REACT R estimate", y = "R", x = "")  +
     scale_x_date(breaks = "month", date_labels = "%b") +
     theme(
         legend.position = c(.05, .85),
@@ -289,7 +291,7 @@ p_corr_plot <- ggplot(cmix_react, aes(R_50, `0.5`, col = estimate)) +
   scale_colour_manual(values = c("#3b70bf", "#7dba5d"), labels = c("Single round", "Two rounds")) +
   scale_x_continuous(expand = expansion(0), limits = c(0,2)) +
   scale_y_continuous(expand = expansion(0), limits = c(0,2)) +
-  labs(colour = "REACT R estimate", y = "R", x = "", title = "E")  +
+  labs(colour = "REACT R estimate", y = "R", x = "")  +
   geom_abline(aes(slope = 1, intercept = 0)) +
   ylab("REACT") +
   xlab("CoMix")
@@ -301,24 +303,26 @@ cmix_react[estimate == "per_round", cor.test(R_50, `0.5`)]
 
 # Load UTLA raster plot
 library(qs)
-p_raster = qread("./output/fig_raster.qs") + labs(title = "A") + theme(plot.title = element_text(size = 9))
+p_raster = qread("./output/fig_raster.qs")
 
+# Load demographics plots
+p_demo1 = qread("./output/plot_demographics_london_1.qs")
+p_demo2 = qread("./output/plot_demographics_london_2.qs")
+p_demo3 = qread("./output/plot_demographics_london_3.qs")
+
+periods = stringr::str_trim(format(as.Date(as.character(p_demo3$data$time)), "%e %b %Y"));
+p_demo3$data$time = factor(periods, levels = rev(unique(periods)))
 
 # Combine plots -----------------------------------------------------------
 
-layout <- "
-    AAAAAABBBBCCCC
-    AAAAAABBBBCCCC
-    AAAAAABBBBCCCC
-    AAAAAABBBBCCCC
-    AAAAAABBBBCCCC
-    AAAAAADDDDDEEE
-    AAAAAADDDDDEEE
-    AAAAAADDDDDEEE
-    "
-
-#plot_final <- p_var + p_corr + p_gmob + p_cmix + p_r0 + p_corr_plot + plot_layout(design = layout)
-plot_final <- p_raster + p_gmob + p_cmix + p_r0 + p_corr_plot + plot_layout(design = layout)
+plot_final = plot_grid(p_raster,
+    plot_grid(
+        plot_grid(p_demo1, p_demo2, p_demo3, nrow = 1, labels = c("B", "", ""), label_size = 10, rel_widths = c(10, 10, 6)),
+        plot_grid(p_gmob, p_cmix, nrow = 1, labels = c("C", "D"), label_size = 10, rel_widths = c(6, 10)),
+        plot_grid(p_r0, p_corr_plot, nrow = 1, labels = c("E", "F"), label_size = 10, rel_widths = c(5, 3)),
+    nrow = 3, rel_heights = c(2, 4, 2)), 
+    nrow = 1, labels = c("A", ""), label_size = 10, rel_widths = c(6, 8)
+)
 
 ggsave(filename = "./output/new_figure_1.png", 
        plot_final,

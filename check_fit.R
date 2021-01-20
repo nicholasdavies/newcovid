@@ -77,20 +77,20 @@ gen_fit = function(test, parametersI, ld, sitreps, virus, sero, populations)
     adj_data(data, "sero_prev", 0.01)
     adj_data(data, "type28_death_inc_line", 1)
     
-    output[ValueType == "hospital_inc", ValueType := "Hospital admissions"]
-    output[ValueType == "hospital_prev", ValueType := "Hospital beds occupied"]
-    output[ValueType == "icu_prev", ValueType := "ICU beds occupied"]
-    output[ValueType == "infections_inc", ValueType := "Infection incidence"]
-    output[ValueType == "prevalence_mtp", ValueType := "PCR prevalence (%)"]
-    output[ValueType == "sero_prev", ValueType := "Seroprevalence (%)"]
+    output[ValueType == "hospital_inc", ValueType := "Hospital\nadmissions"]
+    output[ValueType == "hospital_prev", ValueType := "Hospital beds\noccupied"]
+    output[ValueType == "icu_prev", ValueType := "ICU beds\noccupied"]
+    output[ValueType == "infections_inc", ValueType := "Infection\nincidence"]
+    output[ValueType == "prevalence_mtp", ValueType := "PCR\nprevalence (%)"]
+    output[ValueType == "sero_prev", ValueType := "Seroprevalence\n(%)"]
     output[ValueType == "type28_death_inc_line", ValueType := "Deaths"]
 
-    data[ValueType == "hospital_inc", ValueType := "Hospital admissions"]
-    data[ValueType == "hospital_prev", ValueType := "Hospital beds occupied"]
-    data[ValueType == "icu_prev", ValueType := "ICU beds occupied"]
-    data[ValueType == "infections_inc", ValueType := "Infection incidence"]
-    data[ValueType == "prevalence_mtp", ValueType := "PCR prevalence (%)"]
-    data[ValueType == "sero_prev", ValueType := "Seroprevalence (%)"]
+    data[ValueType == "hospital_inc", ValueType := "Hospital\nadmissions"]
+    data[ValueType == "hospital_prev", ValueType := "Hospital beds\noccupied"]
+    data[ValueType == "icu_prev", ValueType := "ICU beds\noccupied"]
+    data[ValueType == "infections_inc", ValueType := "Infection\nincidence"]
+    data[ValueType == "prevalence_mtp", ValueType := "PCR\nprevalence (%)"]
+    data[ValueType == "sero_prev", ValueType := "Seroprevalence\n(%)"]
     data[ValueType == "type28_death_inc_line", ValueType := "Deaths"]
     
     return (list(data, output))
@@ -115,7 +115,7 @@ check_fit = function(test, parametersI, ld, sitreps, virus, sero, populations, d
     # Make plot
     theme_set(cowplot::theme_cowplot(font_size = 10) + theme(strip.background = element_blank()))
     
-    linetypes = c("Deaths", "Hospital admissions", "Hospital beds occupied", "ICU beds occupied")
+    linetypes = c("Deaths", "Hospital\nadmissions", "Hospital beds\noccupied", "ICU beds\noccupied")
     
     plot = ggplot(output[d > "2020-03-01" & AgeBand == "All"]) +
         geom_ribbon(aes(x = d, ymin = `Quantile 0.05`, ymax = `Quantile 0.95`, fill = ValueType), alpha = 0.5) +
@@ -151,7 +151,7 @@ compare_fit = function(test, test0, ld, sitreps, virus, sero, populations, popul
     # Make plot
     theme_set(cowplot::theme_cowplot(font_size = 10) + theme(strip.background = element_blank()))
     
-    linetypes = c("Deaths", "Hospital admissions", "Hospital beds occupied", "ICU beds occupied")
+    linetypes = c("Deaths", "Hospital\nadmissions", "Hospital beds\noccupied", "ICU beds\noccupied")
     
     plot = ggplot(output[d > "2020-03-01" & AgeBand == "All"]) +
         geom_ribbon(aes(x = d, ymin = `Quantile 0.05`, ymax = `Quantile 0.95`, fill = ValueType, group = kind), alpha = 0.5) +

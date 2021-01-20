@@ -1,10 +1,13 @@
-ll = fread("~/Documents/uk_covid_data_sensitive/phe/20210115/Anonymised Combined Line List 20210115.csv")
-sgtf = fread("~/Documents/uk_covid_data_sensitive/phe/20210115/SGTF_linelist_20210115.csv")
+library(colourpal)
+
+ll = fread("~/Documents/uk_covid_data_sensitive/phe/20210118/Anonymised Combined Line List 20210118.csv")
+sgtf = fread("~/Documents/uk_covid_data_sensitive/phe/20210118/SGTF_linelist_20210118.csv")
 ll[, specimen_date := dmy(specimen_date)]
 sgtf[, specimen_date := ymd(specimen_date)]
 d = merge(ll, sgtf, by = c("FINALID", "specimen_date"), all = TRUE)
 
-d[, agegroup := cut(age, c(seq(0, 80, by = 10), 120))]
+d[!is.na(age), agegroup := paste0(pmin((age %/% 10) * 10, 80), "-", pmin((age %/% 10) * 10, 80) + 9)]
+d[agegroup == "80-89", agegroup := "80+"]
 
 plotby = function(d, what)
 {
@@ -19,12 +22,57 @@ plotby = function(d, what)
         scale_y_continuous(trans = scales::logit_trans(), limits = c(0.01, 0.99))
 }
 
+library(pals)
+
+plotby2 = function(d, what, nhs_name = NULL, ylim = c(0.01, 0.85))
+{
+    d2 = copy(d)
+    d2[, what := get(..what)]
+    if (!is.null(nhs)) {
+        d2 = d2[NHSER_name == nhs_name]
+    }
+    d2 = d2[!is.na(sgtf) & !is.na(what) & what != "" & what != "Unknown" & specimen_date >= "2020-10-26", 
+        .(sg = sum(sgtf), oth = sum(1 - sgtf)), 
+        keyby = .(time = (as.numeric(specimen_date - ymd("2020-10-26")) %/% 14) * 14 + ymd("2020-10-26") , what)]
+    
+    breaks = c(0.01, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 0.9, 0.95, 0.99)
+    breaks = breaks[breaks >= ylim[1] & breaks <= ylim[2]]
+    
+    d2[, time := factor(as.character(time), levels = rev(as.character(unique(time))))]
+    
+    ggplot(d2) +
+        geom_line(aes(x = what, y = sg / (sg + oth), colour = time, group = time)) +
+        scale_y_continuous(trans = scales::logit_trans(), limits = ylim, breaks = breaks)
+}
+
 plotby(d, "imd_decile")
 plotby(d, "agegroup")
 plotby(d, "NHSER_name")
 plotby(d, "ethnicity_final")
 plotby(d, "sex")
 plotby(d, "UTLA_name") + theme(legend.position = "none")
+
+en = rev(names(sort(d[, table(ethnicity_final)])))
+d[, eth_let := LETTERS[match(ethnicity_final, en)]]
+
+lev = rev(d[!is.na(NHSER_name) & NHSER_name != "", .(sgtf = sum(sgtf == 1, na.rm = T), oth = sum(sgtf == 0, na.rm = T)), by = NHSER_name][, .(f = sgtf / (sgtf + oth)), by = NHSER_name][order(f), NHSER_name])
+d[, nhs := factor(NHSER_name, levels = lev)]
+
+pl1 = plotby2(d, "agegroup", "London", c(0.01, 0.96)) + labs(x = "Age", y = "SGTF frequency", colour = "Time") + theme(legend.position = "none")
+pl2 = plotby2(d, "imd_decile", "London", c(0.01, 0.96)) + scale_x_continuous(breaks = 1:10) + 
+    labs(x = "Index of multiple deprivation decile", y = NULL, colour = "Time") + theme(legend.position = "none")
+pl3 = plotby2(d, "sex", "London", c(0.01, 0.96)) + labs(x = "Sex", y = NULL, colour = "Period starting")
+
+qsave(pl1, "./output/plot_demographics_london_1.qs")
+qsave(pl2, "./output/plot_demographics_london_2.qs")
+qsave(pl3, "./output/plot_demographics_london_3.qs")
+
+p1 = plotby2(d, "imd_decile") + scale_x_continuous(breaks = 1:10) + 
+    labs(x = "Index of multiple deprivation decile", y = "SGTF frequency", colour = "Time") + theme(legend.position = "none")
+p2 = plotby2(d, "agegroup") + labs(x = "Age", y = NULL, colour = "Time") + theme(legend.position = "none")
+p3 = plotby2(d, "sex") + labs(x = "Sex", y = NULL, colour = "Week starting")
+plot_demographics = cowplot::plot_grid(p1, p2, p3, nrow = 1, rel_widths = c(10, 10, 6), align = "v", axis = "bottom")
+qsave(plot_demographics, "./output/plot_demographics.qs")
 
 # IMD
 ggplot(d[specimen_date > "2020-10-01" & !is.na(imd_decile), 

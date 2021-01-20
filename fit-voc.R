@@ -25,12 +25,12 @@ ITER_FINAL = 500
 which_pops = c(1, 3, 4, 5, 6, 9, 10)
 set_id = ""
 
-# data_file = "processed-data-2021-01-08.qs"
-# mobility_file = "schedule3-2021-01-07.rds"
-# date_fitting = "2020-12-24"
-data_file = "processed-data-2021-01-15.qs"
-mobility_file = "schedule3-2021-01-14.rds"
-date_fitting = "2021-01-15"
+data_file = "processed-data-2021-01-08.qs"
+mobility_file = "schedule3-2021-01-07.rds"
+date_fitting = "2020-12-24"
+# data_file = "processed-data-2021-01-15.qs"
+# mobility_file = "schedule3-2021-01-14.rds"
+# date_fitting = "2021-01-15"
 
 
 # Command line
@@ -71,6 +71,16 @@ if (FIT_TYPE == "relu") {
     opt_immesc = TRUE;
 } else if (FIT_TYPE == "ch_u") {
     extra_priors = list(v2_ch_u = "L 0.0 0.4 T 0.04 24");
+    opt_ch_u = TRUE;
+} else if (FIT_TYPE == "combined") {
+    extra_priors = list(
+        v2_relu = "L 0.0 0.4 T 0.25 4", 
+        v2_serial = "L 0.0 0.4 T 0.01 8", 
+        v2_immesc = "B 3 1", 
+        v2_ch_u = "L 0.0 0.4 T 0.04 24");
+    opt_relu = TRUE;
+    opt_serial = TRUE;
+    opt_immesc = TRUE;
     opt_ch_u = TRUE;
 } else if (FIT_TYPE == "everything") {
     extra_priors = list(

@@ -41,7 +41,7 @@ source("./project-helper.R");
 source("./cpp_funcs.R")
 source("./processes.R")
 
-project = function(FIT_TYPE, FIT_FILE, SCH_FILE, VAX_TYPE)
+project = function(FIT_TYPE, FIT_FILE, SCH_FILE, VAX_TYPE, forced_seasonality = 0)
 {
     data_file = "processed-data-2021-01-08.qs"
     mobility_file = SCH_FILE
@@ -300,7 +300,8 @@ project = function(FIT_TYPE, FIT_FILE, SCH_FILE, VAX_TYPE)
                     cpp_loglikelihood = "",
                     cpp_observer = c(
                         cpp_obsI_voc(concentration = opt_conc, v2 = TRUE, P.death, P.critical, priorsI),
-                        if (!is.null(VS)) cpp_obsI_vax(paramsI2, VS[[p]]) else NULL
+                        if (!is.null(VS)) cpp_obsI_vax(paramsI2, VS[[p]]) else NULL,
+                        if (forced_seasonality > 0) cpp_obsI_seasonality(forced_seasonality, 366) else NULL
                     )
                 )
             )
@@ -368,7 +369,7 @@ plot_england = plot_projection(list(p1, p2, p3, p5),
     hosp_line = max_beds_w1_england / 1000, deaths_line = max_deaths_w1_england, colour_label = "Stringency of NPIs")
 
 plot_regions = plot_projection(list(p1, p2, p3, p5), 
-    c("No restrictions", "November lockdown, schools open", "November lockdown, schools closed", "March lockdown"), 
+    c("Moderate (October 2020)", "High (November 2020) with schools open", "High with schools closed", "Very high (March 2020)"), 
     "2020-12-01", england = FALSE, reduced = FALSE, pal = "Dark2")
 
 tb_1 = summarize_projection(p1, "2020-12-15", popsize)
@@ -377,7 +378,7 @@ tb_3 = summarize_projection(p3, "2020-12-15", popsize)
 tb_5 = summarize_projection(p5, "2020-12-15", popsize)
 
 tbEngland = england_only(list(tb_1, tb_2, tb_3, tb_5), 
-    c("No restrictions", "November lockdown, schools open", "November lockdown, schools closed", "March lockdown"))
+    c("Moderate (October 2020)", "High (November 2020) with schools open", "High with schools closed", "Very high (March 2020)"))
 
 plot_england$plot_env$proj_list = NULL
 plot_regions$plot_env$proj_list = NULL
@@ -419,10 +420,92 @@ pr_0 = qread("./output/plot_regions_0.qs")
 pr_v200k = qread("./output/plot_regions_v200k.qs")
 pr_v2M = qread("./output/plot_regions_v2M.qs")
 
-ggsave("./output/projections_regions_0.pdf", pr_0, width = 30, height = 12, units = "cm", useDingbats = FALSE)
-ggsave("./output/projections_regions_0.png", pr_0, width = 30, height = 12, units = "cm")
-ggsave("./output/projections_regions_v200k.pdf", pr_v200k, width = 30, height = 12, units = "cm", useDingbats = FALSE)
-ggsave("./output/projections_regions_v200k.png", pr_v200k, width = 30, height = 12, units = "cm")
-ggsave("./output/projections_regions_v2M.pdf", pr_v2M, width = 30, height = 12, units = "cm", useDingbats = FALSE)
-ggsave("./output/projections_regions_v2M.png", pr_v2M, width = 30, height = 12, units = "cm")
+ggsave("./output/projections_regions_0.pdf", pr_0, width = 38, height = 22, units = "cm", useDingbats = FALSE)
+ggsave("./output/projections_regions_0.png", pr_0, width = 38, height = 22, units = "cm")
+ggsave("./output/projections_regions_v200k.pdf", pr_v200k, width = 38, height = 22, units = "cm", useDingbats = FALSE)
+ggsave("./output/projections_regions_v200k.png", pr_v200k, width = 38, height = 22, units = "cm")
+ggsave("./output/projections_regions_v2M.pdf", pr_v2M, width = 38, height = 22, units = "cm", useDingbats = FALSE)
+ggsave("./output/projections_regions_v2M.png", pr_v2M, width = 38, height = 22, units = "cm")
+
+
+
+
+###############
+# Seasonality #
+###############
+
+
+VAX = "0";
+VAX = "v200k";
+VAX = "v2M";
+
+p1 = project("relu", "./fits/relu12.qs", "scenario1.rds", VAX, 0.1)
+p2 = project("relu", "./fits/relu12.qs", "scenario2.rds", VAX, 0.1)
+p3 = project("relu", "./fits/relu12.qs", "scenario3.rds", VAX, 0.1)
+p5 = project("relu", "./fits/relu12.qs", "scenario5.rds", VAX, 0.1)
+
+plot_england = plot_projection(list(p1, p2, p3, p5), 
+    c("Moderate (October 2020)", "High (November 2020) with schools open", "High with schools closed", "Very high (March 2020)"), 
+    "2020-12-01", england = TRUE, reduced = TRUE, pal = "Dark2", 
+    hosp_line = max_beds_w1_england / 1000, deaths_line = max_deaths_w1_england, colour_label = "Stringency of NPIs")
+
+plot_regions = plot_projection(list(p1, p2, p3, p5), 
+    c("Moderate (October 2020)", "High (November 2020) with schools open", "High with schools closed", "Very high (March 2020)"), 
+    "2020-12-01", england = TRUE, reduced = TRUE, pal = "Dark2")
+
+tb_1 = summarize_projection(p1, "2020-12-15", popsize)
+tb_2 = summarize_projection(p2, "2020-12-15", popsize)
+tb_3 = summarize_projection(p3, "2020-12-15", popsize)
+tb_5 = summarize_projection(p5, "2020-12-15", popsize)
+
+tbEngland = england_only(list(tb_1, tb_2, tb_3, tb_5), 
+    c("Moderate (October 2020)", "High (November 2020) with schools open", "High with schools closed", "Very high (March 2020)"))
+
+plot_england$plot_env$proj_list = NULL
+plot_regions$plot_env$proj_list = NULL
+
+qsave(plot_england, paste0("./output/seas_plot_england_", VAX, ".qs"))
+qsave(plot_regions, paste0("./output/seas_plot_regions_", VAX, ".qs"))
+fwrite(tb_1, paste0("./output/seas_table_1_", VAX, ".csv"));
+fwrite(tb_2, paste0("./output/seas_table_2_", VAX, ".csv"));
+fwrite(tb_3, paste0("./output/seas_table_3_", VAX, ".csv"));
+fwrite(tb_5, paste0("./output/seas_table_5_", VAX, ".csv"));
+fwrite(tbEngland, paste0("./output/seas_table_england_", VAX, ".csv"));
+
+
+
+# Assemble plots
+pe_0 = qread("./output/seas_plot_england_0.qs")
+pe_v200k = qread("./output/seas_plot_england_v200k.qs")
+pe_v2M = qread("./output/seas_plot_england_v2M.qs")
+
+data_blank = data.table(variable = 
+        factor(c("Hospital beds\noccupied (thousands)", "Deaths"), 
+            levels = c("Rt", "Hospital beds\noccupied (thousands)", "Deaths")), x = ymd("2021-01-01"), y = c(145, 4000))
+
+plot_e = cowplot::plot_grid(
+    pe_0 + geom_blank(data = data_blank, aes(x, y)) + 
+        theme(legend.position = "none", strip.text.x = element_blank(), plot.title = element_text(size = 10)) + 
+        labs(title = "No vaccination"),
+    pe_v200k + geom_blank(data = data_blank, aes(x, y)) + 
+        theme(legend.spacing.x = unit(0.5, "cm"), strip.text.x = element_blank(), plot.title = element_text(size = 10)) + 
+        labs(title = "200,000 vaccinations per week"),
+    pe_v2M + geom_blank(data = data_blank, aes(x, y)) + 
+        theme(legend.position = "none", strip.text.x = element_blank(), plot.title = element_text(size = 10)) + 
+        labs(title = "2 million vaccinations per week"),
+    nrow = 1, labels = LETTERS, label_size = 10, align = "hv", axis = "bottom")
+
+ggsave("./output/seas_projections_england.pdf", plot_e, width = 30, height = 14, units = "cm", useDingbats = FALSE)
+ggsave("./output/seas_projections_england.png", plot_e, width = 30, height = 14, units = "cm")
+
+pr_0 = qread("./output/seas_plot_regions_0.qs")
+pr_v200k = qread("./output/seas_plot_regions_v200k.qs")
+pr_v2M = qread("./output/seas_plot_regions_v2M.qs")
+
+ggsave("./output/seas_projections_regions_0.pdf", pr_0, width = 30, height = 12, units = "cm", useDingbats = FALSE)
+ggsave("./output/seas_projections_regions_0.png", pr_0, width = 30, height = 12, units = "cm")
+ggsave("./output/seas_projections_regions_v200k.pdf", pr_v200k, width = 30, height = 12, units = "cm", useDingbats = FALSE)
+ggsave("./output/seas_projections_regions_v200k.png", pr_v200k, width = 30, height = 12, units = "cm")
+ggsave("./output/seas_projections_regions_v2M.pdf", pr_v2M, width = 30, height = 12, units = "cm", useDingbats = FALSE)
+ggsave("./output/seas_projections_regions_v2M.png", pr_v2M, width = 30, height = 12, units = "cm")
 

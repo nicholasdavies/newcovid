@@ -65,6 +65,8 @@ cpp_chgI_voc = function(priors, seasonality, v2, v2_relu, v2_latdur, v2_serial, 
         
         if (seasonality) {
         '    P.pop[0].season_A[0] = x_seasonality;'
+        '    P.pop[0].season_T[0] = 365.25;'
+        '    P.pop[0].season_phi[0] = 0;'
         } else '',
 
         'for (unsigned int g = 0; g < P.processes[0].prob.size(); ++g) {',
@@ -365,3 +367,21 @@ cpp_obsI_vax = function(params, vacc)
         '}',
         .sep = "\n", .open = "${", .close = "}")
 }
+
+
+# Observer for forced seasonality
+cpp_obsI_seasonality = function(forced_seasonality, seas_start_t)
+{
+    glue::glue(
+        'if (t == ${seas_start_t}) {',
+        '    for (unsigned int a = 0; a < P.pop[0].u.size(); ++a) {',
+        '        P.pop[0].u[a]  /= ${1 + forced_seasonality};',
+        '        P.pop[0].u2[a] /= ${1 + forced_seasonality};',
+        '    }',
+        '    P.pop[0].season_A[0] = ${forced_seasonality};',
+        '    P.pop[0].season_T[0] = 365.25;',
+        '    P.pop[0].season_phi[0] = 0;',
+        '}',
+        .sep = "\n", .open = "${", .close = "}")
+}
+
