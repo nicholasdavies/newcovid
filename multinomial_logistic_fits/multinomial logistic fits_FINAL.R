@@ -4,7 +4,7 @@
 # AS WELL AS DENMARK AND IMPLIED EXPECTED INCREASE IN R VALUES, 
 # ASSUMING UNALTERED GENERATION TIME
 
-# T. Wenseleers, last updated: 19 Jan. 2021
+# T. Wenseleers, last updated: 21 Jan. 2021
 
 library(lme4)
 library(emmeans)
@@ -749,7 +749,6 @@ bGLMMfit2 = glmer(cbind(count, total-count) ~  (1|lad/obs) +
 bGLMMfit1 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsall_fit1_homog slopes_model 2a.rds")
 bGLMMfit2 = readRDS(file = ".\\multinomial_logistic_fits\\fits\\bGLMMfit_VOCvsall_fit1_heter slopes_model 2b.rds")
 
-
 # check BIC values
 BIC(bGLMMfit1, bGLMMfit2)
 #              df      BIC
@@ -1391,10 +1390,10 @@ plot_bGLMMVOC_B1177_multipanel = ggarrange(plot_bGLMMVOC_het,
           plot_bGLMM_B1177_preds_vsminority_het,
           ncol=1, common.legend=TRUE, legend="right")
 plot_bGLMMVOC_B1177_multipanel
-saveRDS(plot_bGLMMVOC_B1177_multipanel, file = ".\\multinomial_logistic_fits\\plots\\FigS4_models_2b_and_2g_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.rds")
-graph2ppt(file=".\\multinomial_logistic_fits\\plots\\FigS4_models_2b_and_2g_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.pptx", width=6, height=8)
-ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS4_models_2b_and_2g_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.png", width=6, height=8)
-ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS4_models_2b_and_2g_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.pdf", width=6, height=8)
+saveRDS(plot_bGLMMVOC_B1177_multipanel, file = ".\\multinomial_logistic_fits\\plots\\FigS5_models_2b_and_2g_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.rds")
+graph2ppt(file=".\\multinomial_logistic_fits\\plots\\FigS5_models_2b_and_2g_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.pptx", width=6, height=8)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS5_models_2b_and_2g_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.png", width=6, height=8)
+ggsave(file=".\\multinomial_logistic_fits\\plots\\FigS5_models_2b_and_2g_VOCvsall_B1177vsminor_fit bGLMM_heter slopes.pdf", width=6, height=8)
 
 
 
