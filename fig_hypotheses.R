@@ -349,8 +349,9 @@ overall = function(fit, varname, log_transform, pops)
         o_mean = samples[, mean(y)];
         o_025 = samples[, quantile(y, 0.025)];
         o_975 = samples[, quantile(y, 0.975)];
+        o_above = samples[, mean(y > ifelse(log_transform, 1, 0))];
 
-        cat(o_mean, " (", o_025, " - ", o_975, ")\n");
+        cat(o_mean, " (", o_025, " - ", o_975, ") [P(y increased) = ", o_above, "]\n");
         return (c(o_mean, o_025, o_975))
     }
     
@@ -446,6 +447,19 @@ u_c = overall(hu, "v2_cfr_rlo", FALSE, c(1, 3, 9))
 exp(u_h)
 exp(u_i)
 exp(u_c)
+
+which_pops = c(1, 3, 9)
+hu3 = qread("./fits/relu_ELSE15.qs")
+post = rbindlist(hu3[[1]], idcol = "population", fill = TRUE)
+post[, pop := nhs_regions[population]]
+post = post[population %in% which_pops]
+post_melted = melt(post, id.vars = c(1:5, ncol(post)))
+hu3 = list(post = post_melted)
+overall(hu3, "v2_relu", TRUE, c(1, 3, 9))
+overall(hu3, "v2_hosp_rlo", FALSE, c(1, 3, 9))
+overall(hu3, "v2_icu_rlo", FALSE, c(1, 3, 9))
+overall(hu3, "v2_cfr_rlo", FALSE, c(1, 3, 9))
+
 
 which_pops = england_pops
 hu7 = qread("./fits/relu12.qs")

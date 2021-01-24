@@ -1,4 +1,5 @@
 library(colourpal)
+library(zoo)
 
 ll = fread("~/Documents/uk_covid_data_sensitive/phe/20210118/Anonymised Combined Line List 20210118.csv")
 sgtf = fread("~/Documents/uk_covid_data_sensitive/phe/20210118/SGTF_linelist_20210118.csv")
@@ -11,10 +12,10 @@ d[agegroup == "80-89", agegroup := "80+"]
 
 plotby = function(d, what)
 {
-    d2 = d[, .SD, .SDcols = c("specimen_date", "sgtf", what)]
+    d2 = d[, .SD, .SDcols = c("specimen_date", "sgtf_under30CT", what)]
     setnames(d2, what, "what")
     d2 = d2[specimen_date >= "2020-11-01" & !is.na(what) & what != "",
-        .(voc = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
+        .(voc = sum(sgtf_under30CT == 1, na.rm = T), other = sum(sgtf_under30CT == 0, na.rm = T)), 
         keyby = .(date = specimen_date, what)];
     d2[, f_voc := rollmean(voc / (voc + other), 7, fill = NA), by = what]
     ggplot(d2) +
@@ -28,11 +29,11 @@ plotby2 = function(d, what, nhs_name = NULL, ylim = c(0.01, 0.85))
 {
     d2 = copy(d)
     d2[, what := get(..what)]
-    if (!is.null(nhs)) {
+    if (!is.null(nhs_name)) {
         d2 = d2[NHSER_name == nhs_name]
     }
-    d2 = d2[!is.na(sgtf) & !is.na(what) & what != "" & what != "Unknown" & specimen_date >= "2020-10-26", 
-        .(sg = sum(sgtf), oth = sum(1 - sgtf)), 
+    d2 = d2[!is.na(sgtf_under30CT) & !is.na(what) & what != "" & what != "Unknown" & specimen_date >= "2020-10-26", 
+        .(sg = sum(sgtf_under30CT), oth = sum(1 - sgtf_under30CT)), 
         keyby = .(time = (as.numeric(specimen_date - ymd("2020-10-26")) %/% 14) * 14 + ymd("2020-10-26") , what)]
     
     breaks = c(0.01, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 0.9, 0.95, 0.99)
@@ -55,13 +56,13 @@ plotby(d, "UTLA_name") + theme(legend.position = "none")
 en = rev(names(sort(d[, table(ethnicity_final)])))
 d[, eth_let := LETTERS[match(ethnicity_final, en)]]
 
-lev = rev(d[!is.na(NHSER_name) & NHSER_name != "", .(sgtf = sum(sgtf == 1, na.rm = T), oth = sum(sgtf == 0, na.rm = T)), by = NHSER_name][, .(f = sgtf / (sgtf + oth)), by = NHSER_name][order(f), NHSER_name])
+lev = rev(d[!is.na(NHSER_name) & NHSER_name != "", .(sgtf = sum(sgtf_under30CT == 1, na.rm = T), oth = sum(sgtf_under30CT == 0, na.rm = T)), by = NHSER_name][, .(f = sgtf / (sgtf + oth)), by = NHSER_name][order(f), NHSER_name])
 d[, nhs := factor(NHSER_name, levels = lev)]
 
-pl1 = plotby2(d, "agegroup", "London", c(0.01, 0.96)) + labs(x = "Age", y = "SGTF frequency", colour = "Time") + theme(legend.position = "none")
-pl2 = plotby2(d, "imd_decile", "London", c(0.01, 0.96)) + scale_x_continuous(breaks = 1:10) + 
+pl1 = plotby2(d, "agegroup", "London", c(0.01, 0.98)) + labs(x = "Age", y = "SGTF frequency", colour = "Time") + theme(legend.position = "none")
+pl2 = plotby2(d, "imd_decile", "London", c(0.01, 0.98)) + scale_x_continuous(breaks = 1:10) + 
     labs(x = "Index of multiple deprivation decile", y = NULL, colour = "Time") + theme(legend.position = "none")
-pl3 = plotby2(d, "sex", "London", c(0.01, 0.96)) + labs(x = "Sex", y = NULL, colour = "Period starting")
+pl3 = plotby2(d, "sex", "London", c(0.01, 0.98)) + labs(x = "Sex", y = NULL, colour = "Period starting")
 
 qsave(pl1, "./output/plot_demographics_london_1.qs")
 qsave(pl2, "./output/plot_demographics_london_2.qs")
@@ -76,32 +77,32 @@ qsave(plot_demographics, "./output/plot_demographics.qs")
 
 # IMD
 ggplot(d[specimen_date > "2020-10-01" & !is.na(imd_decile), 
-    .(voc = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
+    .(voc = sum(sgtf_under30CT == 1, na.rm = T), other = sum(sgtf_under30CT == 0, na.rm = T)), 
     keyby = .(date = specimen_date, imd_decile)]) + 
     geom_line(aes(x = date, y = voc / (voc + other), colour = imd_decile, group = imd_decile))
 
 # Ethnicity
 ggplot(d[specimen_date > "2020-10-01" & !is.na(ethnicity_final), 
-    .(voc = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
+    .(voc = sum(sgtf_under30CT == 1, na.rm = T), other = sum(sgtf_under30CT == 0, na.rm = T)), 
     keyby = .(date = specimen_date, ethnicity_final)]) + 
     geom_line(aes(x = date, y = voc / (voc + other), colour = ethnicity_final, group = ethnicity_final))
 
 # Sex
 ggplot(d[specimen_date > "2020-10-01" & !is.na(sex), 
-    .(voc = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
+    .(voc = sum(sgtf_under30CT == 1, na.rm = T), other = sum(sgtf_under30CT == 0, na.rm = T)), 
     keyby = .(date = specimen_date, sex)]) + 
     geom_line(aes(x = date, y = voc / (voc + other), colour = sex, group = sex))
 
 # Age
 ggplot(d[specimen_date > "2020-10-01" & !is.na(age), 
-    .(voc = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
+    .(voc = sum(sgtf_under30CT == 1, na.rm = T), other = sum(sgtf_under30CT == 0, na.rm = T)), 
     keyby = .(date = specimen_date, agegroup = cut(age, seq(0, 100, by = 10)))]) + 
     geom_line(aes(x = date, y = voc / (voc + other), colour = agegroup, group = agegroup)) +
     scale_y_continuous(trans = scales::logit_trans())
 
 # MAKE OUTPUT
 dd = d[!is.na(specimen_date) & !is.na(NHSER_name) & NHSER_name != "", 
-    .(sgtf = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
+    .(sgtf = sum(sgtf_under30CT == 1, na.rm = T), other = sum(sgtf_under30CT == 0, na.rm = T)), 
     keyby = .(date = specimen_date, pillar, nhs_name = NHSER_name)]
 
 ggplot(dd[date > "2020-10-01"]) +
@@ -109,19 +110,19 @@ ggplot(dd[date > "2020-10-01"]) +
     geom_line(aes(x = date, y = sgtf / (other + sgtf), colour = pillar)) + 
     facet_wrap(~nhs_name)
 
-fwrite(dd[pillar == "Pillar 2" & date >= "2020-10-01", .(date, nhs_name, sgtf, other)], "./fitting_data/sgtf-2021-01-15.csv")
+fwrite(dd[pillar == "Pillar 2" & date >= "2020-10-01", .(date, nhs_name, sgtf, other)], "./fitting_data/sgtf-2021-01-18.csv")
 
 output = d[!is.na(specimen_date) & !is.na(NHSER_name) & NHSER_name != "" & pillar == "Pillar 2" & specimen_date >= "2020-09-01", 
-    .(sgtf = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
+    .(sgtf = sum(sgtf_under30CT == 1, na.rm = T), other = sum(sgtf_under30CT == 0, na.rm = T)), 
     keyby = .(date = specimen_date, nhser_name = NHSER_name, utla_name = UTLA_name, ltla_name = LTLA_name, nhser_code = NHSER_code, utla_code = UTLA_code, ltla_code = LTLA_code)]
 
 saveRDS(output, "~/Desktop/sgtf.rds")
 
 # Relative overrepresentation in under-20s
 d[, age_group := ifelse(age < 20, "under_20", "20_plus")]
-dage = d[pillar == "Pillar 2" & !is.na(sgtf) & !is.na(age_group) & !is.na(specimen_date) & NHSER_name != "", 
-    .(under_20_sgtf = sum(age_group == "under_20" & sgtf == 1), over_20_sgtf = sum(age_group == "20_plus" & sgtf == 1),
-      under_20_other = sum(age_group == "under_20" & sgtf == 0), over_20_other = sum(age_group == "20_plus" & sgtf == 0)), 
+dage = d[pillar == "Pillar 2" & !is.na(sgtf_under30CT) & !is.na(age_group) & !is.na(specimen_date) & NHSER_name != "", 
+    .(under_20_sgtf = sum(age_group == "under_20" & sgtf_under30CT == 1), over_20_sgtf = sum(age_group == "20_plus" & sgtf_under30CT == 1),
+      under_20_other = sum(age_group == "under_20" & sgtf_under30CT == 0), over_20_other = sum(age_group == "20_plus" & sgtf_under30CT == 0)), 
     keyby = .(specimen_date, NHSER_name)]
 
 ggplot(dage) +
@@ -130,9 +131,9 @@ ggplot(dage) +
 
 # Relative overrepresentation in over-70s
 d[, age_group := ifelse(age < 70, "under_70", "70_plus")]
-dage = d[pillar == "Pillar 2" & !is.na(sgtf) & !is.na(age_group) & !is.na(specimen_date) & NHSER_name != "", 
-    .(under_70_sgtf = sum(age_group == "under_70" & sgtf == 1), over_70_sgtf = sum(age_group == "70_plus" & sgtf == 1),
-      under_70_other = sum(age_group == "under_70" & sgtf == 0), over_70_other = sum(age_group == "70_plus" & sgtf == 0)), 
+dage = d[pillar == "Pillar 2" & !is.na(sgtf_under30CT) & !is.na(age_group) & !is.na(specimen_date) & NHSER_name != "", 
+    .(under_70_sgtf = sum(age_group == "under_70" & sgtf_under30CT == 1), over_70_sgtf = sum(age_group == "70_plus" & sgtf_under30CT == 1),
+      under_70_other = sum(age_group == "under_70" & sgtf_under30CT == 0), over_70_other = sum(age_group == "70_plus" & sgtf_under30CT == 0)), 
     keyby = .(specimen_date = floor_date(specimen_date, "week"), london = NHSER_name == "London")]
 
 ggplot(dage) +
@@ -141,7 +142,7 @@ ggplot(dage) +
 
 # by UTLA (LTLA also avail), pillar 2 only
 dd = d[!is.na(specimen_date) & !is.na(NHSER_name) & UTLA_name != "" & pillar == "Pillar 2", 
-    .(sgtf = sum(sgtf == 1, na.rm = T), other = sum(sgtf == 0, na.rm = T)), 
+    .(sgtf = sum(sgtf_under30CT == 1, na.rm = T), other = sum(sgtf_under30CT == 0, na.rm = T)), 
     keyby = .(date = specimen_date, utla_name = UTLA_name, utla_code = UTLA_code)]
 
 # Replace old Buckinghamshire county with new Buckinghamshire local authority
@@ -173,7 +174,7 @@ ggplot(dd[date >= "2020-10-01"]) +
 
 library(colourpal)
 
-plotRaster = ggplot(dd[date >= "2020-10-01" & date <= "2021-01-11" & !is.na(sgtf) & sgtf + other > 0]) +
+plotRaster = ggplot(dd[date >= "2020-10-01" & date <= "2021-01-15" & !is.na(sgtf) & sgtf + other > 0]) +
     geom_tile(aes(x = date, y = utla_name, fill = sgtf/(sgtf+other))) +
     theme_cowplot(font_size = 10) +
     theme(axis.text.y = element_text(size = unit(6, "pt")), panel.background = element_rect(fill = "#888888"), 
@@ -182,6 +183,7 @@ plotRaster = ggplot(dd[date >= "2020-10-01" & date <= "2021-01-11" & !is.na(sgtf
     scale_x_date(expand = expansion(0)) +
     ggpal("ocean.thermal")
 
+plotRaster
 ggsave("./output/utla_raster.pdf", plotRaster, width = 24, height = 30, units = "cm", useDingbats = FALSE)
 ggsave("./output/utla_raster.png", plotRaster, width = 24, height = 30, units = "cm")
 qsave(plotRaster, "./output/fig_raster.qs")
@@ -190,6 +192,8 @@ ggplot(dd[date >= "2020-10-01"]) +
     geom_smooth(aes(x = date, y = sgtf/(sgtf+other), colour = lat, group = lat), se = FALSE, method = "glm", method.args = list(family = "binomial")) +
     theme(legend.position = "none")
 
+library(ogwrangler)
+CreateCache()
 dd2 = dd[date >= "2020-11-02" & date < "2020-12-28"][order(date)]
 dd2[, pop2019 := ogwhat(utla_code, "pop2019")]
 dd2[, week := isoweek(date)]
@@ -206,29 +210,15 @@ plotXy = ggplot(dd3) +
 ggsave("./output/utla_xy.pdf", plotXy, width = 16, height = 12, units = "cm", useDingbats = FALSE)
 ggsave("./output/utla_xy.png", plotXy, width = 16, height = 12, units = "cm")
 
-raw
-library(aod)
-model = betabin(cbind(sgtf, other) ~ date + NHSER_name, ~ 1, data = dd[date >= "2020-10-01" & pillar == "Pillar 2"])
-
-for (nhs in dd[, unique(nhs_name)]) {
-    model = betabin(cbind(sgtf, other) ~ date, ~ 1, data = dd[date >= "2020-10-01" & pillar == "Pillar 2" & nhs_name == nhs])
-    print(nhs)
-    print(model@fixed.param[["date"]])
-}
-
-model
-predicted2 = predict(model, newdata = raw[!nhs_name %in% c("Wales", "Northern Ireland", "Scotland")])
-raw[!nhs_name %in% c("Wales", "Northern Ireland", "Scotland"), predicted2 := ..predicted2]
-
-ggplot(d[!is.na(sgtf) & !is.na(imd_decile), .N, keyby = .(imd_decile, specimen_date, sgtf)]) +
+ggplot(d[!is.na(sgtf_under30CT) & !is.na(imd_decile), .N, keyby = .(imd_decile, specimen_date, sgtf_under30CT)]) +
     geom_line(aes(x = specimen_date, y = N, colour = as.factor(imd_decile), group = as.factor(imd_decile))) +
-    facet_wrap(~as.factor(sgtf)) +
+    facet_wrap(~as.factor(sgtf_under30CT)) +
     scale_y_log10() +
     labs(colour = "IMD decile")
 
-ggplot(d[!is.na(sgtf) & NHSER_name != "", .N, keyby = .(NHSER_name, specimen_date, sgtf)]) +
+ggplot(d[!is.na(sgtf_under30CT) & NHSER_name != "", .N, keyby = .(NHSER_name, specimen_date, sgtf_under30CT)]) +
     geom_line(aes(x = specimen_date, y = N, colour = NHSER_name)) +
-    facet_wrap(~as.factor(sgtf)) +
+    facet_wrap(~as.factor(sgtf_under30CT)) +
     scale_y_log10() +
     labs(colour = "NHS region")
 
@@ -240,13 +230,3 @@ ggplot(d[specimen_date > "2020-10-01" & NHSER_name != "" & pillar == "Pillar 2",
     scale_x_date(date_breaks = "1 week", date_label = "%b %d") +
     theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1))
 
-
-d2 = copy(d[!is.na(sgtf)])
-d2[, table(cat)]
-d2[, age := (age %/% 5) * 5]
-d2[, ethnicity_final := NULL]
-d2
-
-# delay to testing..?
-delay = d[Onsetdate != "", .(delay = as.numeric(specimen_date - dmy(Onsetdate))), by = .(pillar, sgtf, asymptomatic_indicator)]
-ggplot(delay[pillar == "Pillar 2"]) + geom_histogram(aes(x = delay, fill = asymptomatic_indicator))

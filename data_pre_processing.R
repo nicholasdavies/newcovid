@@ -120,7 +120,7 @@ sitreps = rbind(sitreps,
 # variant[, sample_date := as.Date(sample_date)]
 
 # SGTF data, add England
-sgtf = fread(datapath("sgtf-2021-01-15.csv"))
+sgtf = fread(datapath("sgtf-2021-01-18.csv"))
 sgtf = rbind(sgtf, 
     sgtf[!nhs_name %in% c("Northern Ireland", "Scotland", "Wales"),
         .(sgtf = sum(sgtf, na.rm = T), other = sum(other, na.rm = T), nhs_name = "England"),
@@ -130,4 +130,4 @@ sgtf[, pid := match(nhs_name, nhs_regions) - 1]
 sgtf[, date := as.Date(date)]
 
 
-qsave(list(ld, sitreps, virus, sero, sgtf), datapath("processed-data-2021-01-15.qs"))
+qsave(list(ld, sitreps, virus, sero, sgtf), datapath("processed-data-2021-01-18.qs"))
