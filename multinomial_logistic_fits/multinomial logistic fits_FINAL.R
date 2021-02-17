@@ -88,7 +88,7 @@ M.from.delta_r_df = function (df, g1=5.5, g2=3.6,
 
 
 
-# 1. LOAD & PREPROCESS COG-UK SEQUENCING DATA ####
+# 1. DATA UK : LOAD & PREPROCESS COG-UK SEQUENCING DATA ####
 # desired order of factor levels
 levels_nhs_name = c("South East","London","East of England",
                     "South West","Midlands","North East and Yorkshire",
@@ -341,7 +341,7 @@ graph2ppt(file=".\\multinomial_logistic_fits\\plots\\FigS2_muller plot lineage b
 
 
 
-# 2. MULTINOMIAL FITS ON COG-UK SEQUENCING DATA BY REGION ####
+# 2. DATA UK : MULTINOMIAL FITS ON COG-UK SEQUENCING DATA BY REGION ####
 
 # 2.1 SEPARATE-SLOPES MULTINOMIAL SPLINE FIT ####
 
@@ -397,8 +397,8 @@ mfit_emtrends = emtrends(mfit4, ~ variant, var="sample_date_num",
                          at=list(sample_date_num=as.numeric(seq(as.Date("2020-11-01"),
                                                                 max(data$sample_date), by=1)),
                                  variant=c("VOC 202012/01","B.1.177","minority variants")))
-mfit_contrasts = data.frame(as.data.frame(contrast(mfit_emtrends, method="trt.vs.ctrl", ref=3, reverse=TRUE, adjust="Tukey")),
-                            as.data.frame(confint(contrast(mfit_emtrends, method="trt.vs.ctrl", ref=3, reverse=TRUE, adjust="Tukey")))[,c("lower.CL","upper.CL")])
+mfit_contrasts = data.frame(as.data.frame(contrast(mfit_emtrends, method="trt.vs.ctrl", ref=3, reverse=TRUE, adjust="sidak")),
+                            as.data.frame(confint(contrast(mfit_emtrends, method="trt.vs.ctrl", ref=3, reverse=TRUE, adjust="sidak")))[,c("lower.CL","upper.CL")])
 colnames(mfit_contrasts)[which(colnames(mfit_contrasts) %in% c("estimate","lower.CL","upper.CL"))] = 
   c("delta_r","delta_r.lower.CL","delta_r.upper.CL")
 mfit_contrasts = data.frame(mfit_contrasts[,c("contrast","SE","t.ratio","p.value")],
@@ -431,9 +431,6 @@ mfit_contrasts
 table2csv(mfit_contrasts, file=".\\multinomial_logistic_fits\\tables\\model 1a_mfit4_multinomial spline fit_growthrates_UK_heter slopes.csv")
 
 
-
-
-
 # plot model predictions of best fitting multinomial spline model
 extrapolate = 60 # nr of days to show extrapolations for
 newdat = expand.grid(sample_date_num =
@@ -441,8 +438,18 @@ newdat = expand.grid(sample_date_num =
                      nhs_name = levels_nhs_name)
 mfit_preds = data.frame(newdat, predict(mfit4, type="prob", newdata=newdat), check.names=F)
 mfit_preds = gather(mfit_preds, variant, prob, levels_variants)
+# write.csv(mfit_preds, file=".\\multinomial_logistic_fits\\tables\\model 1a_model predictions Fig2C.csv", row.names=F)
+mfit_preds = read.csv(file=".\\multinomial_logistic_fits\\tables\\model 1a_model predictions Fig2C.csv")
+extrapolate = 60 # nr of days to show extrapolations for
 mfit_preds$sample_date = as.Date(mfit_preds$sample_date_num, origin="1970-01-01")
+levels_variants = c("B","B.1.98","B.40","B.1","B.1.1",
+                    "B.1.1.1", "B.1.1.315", "B.1.177",
+                    "VOC 202012/01",  
+                    "minority variants")
 mfit_preds$variant = factor(mfit_preds$variant, levels=levels_variants)
+levels_nhs_name = c("South East","London","East of England",
+                    "South West","Midlands","North East and Yorkshire",
+                    "Scotland","North West","Wales")
 mfit_preds$nhs_name = factor(mfit_preds$nhs_name, levels=levels_nhs_name)
 muller_mfit = ggplot(data=mfit_preds, 
                      aes(x=sample_date, y=prob, group=variant)) + 
@@ -663,7 +670,7 @@ table2csv(mblogitfit_contrasts, file=".\\multinomial_logistic_fits\\tables\\mode
 
 
 
-# 3. BINOMIAL GLMM FITS ON COG-UK SEQUENCING DATA TO COMPARE GROWTH RATE ADVANTAGE OF STRAINS VOC 202012/01 AND B.1.177 ACROSS DIFFERENT REGIONS ####
+# 3. DATA UK : BINOMIAL GLMM FITS ON COG-UK SEQUENCING DATA TO COMPARE GROWTH RATE ADVANTAGE OF STRAINS VOC 202012/01 AND B.1.177 ACROSS DIFFERENT REGIONS ####
 
 # 3.1 BINOMIAL MIXED MODEL FIT FOR VARIANT VOC 202012/01 ####
 
@@ -769,12 +776,12 @@ ggsave(file=".\\multinomial_logistic_fits\\plots\\model2a_plot VOCvsall_fit bGLM
 # growth rate of variant = slope of logistic regression and corresponding expected multiplicative increase in R value
 # using best fitting model bGLMMfit2 (heterogeneous slopes) 
 
-bGLMM_VOC_growthrates = as.data.frame(emtrends(bGLMMfit2, ~ nhs_name, var="sample_date_num"))[,-c(3,4)] 
+bGLMM_VOC_growthrates_region_model2a = as.data.frame(emtrends(bGLMMfit2, ~ nhs_name, var="sample_date_num"))[,-c(3,4)] 
 # sample_date_num.trend = 
 # logistic growth rate of VOC 202012/01 = Malthusian growth rate VOC - Malthusian growth rate all other variants
-colnames(bGLMM_VOC_growthrates)[2] = "logistic_growth_rate"
-bGLMM_VOC_growthrates = M.from.delta_r_df(bGLMM_VOC_growthrates)
-bGLMM_VOC_growthrates
+colnames(bGLMM_VOC_growthrates_region_model2a)[2] = "logistic_growth_rate"
+bGLMM_VOC_growthrates_region_model2a = M.from.delta_r_df(bGLMM_VOC_growthrates_region_model2a)
+bGLMM_VOC_growthrates_region_model2a
 # nhs_name logistic_growth_rate  asymp.LCL  asymp.UCL       M1   M1.LCL   M1.UCL       M2   M2.LCL   M2.UCL
 # 1               South East           0.09807042 0.09253065 0.10361018 1.714956 1.663491 1.768012 1.423407 1.395301 1.452079
 # 2                   London           0.10466452 0.09718873 0.11214032 1.778295 1.706660 1.852937 1.457602 1.418896 1.497362
@@ -785,16 +792,16 @@ bGLMM_VOC_growthrates
 # 7                 Scotland           0.14332825 0.11875351 0.16790300 2.199666 1.921573 2.518004 1.675282 1.533439 1.830247
 # 8               North West           0.14496214 0.13031575 0.15960852 2.219522 2.047740 2.405714 1.685165 1.598614 1.776403
 # 9                    Wales           0.11395643 0.10224428 0.12566857 1.871538 1.754780 1.996064 1.507184 1.444957 1.572091
-table2csv(bGLMM_VOC_growthrates, file=".\\multinomial_logistic_fits\\tables\\model 2a_VOCvsall_bGLMM_VOC_growthrates_UK_by region_heter slopes.csv")
+table2csv(bGLMM_VOC_growthrates_region_model2a, file=".\\multinomial_logistic_fits\\tables\\model 2a_VOCvsall_bGLMM_VOC_growthrates_UK_by region_heter slopes.csv")
 
 # marginal slopes across all regions
-bGLMM_VOC_growthrates_avg = as.data.frame(emtrends(bGLMMfit2, ~ 1, var="sample_date_num"))[,-c(3,4)] 
-colnames(bGLMM_VOC_growthrates_avg)[2] = "logistic_growth_rate"
-bGLMM_VOC_growthrates_avg = M.from.delta_r_df(bGLMM_VOC_growthrates_avg)
-bGLMM_VOC_growthrates_avg
+bGLMM_VOC_growthrates_avg_model2a = as.data.frame(emtrends(bGLMMfit2, ~ 1, var="sample_date_num"))[,-c(3,4)] 
+colnames(bGLMM_VOC_growthrates_avg_model2a)[2] = "logistic_growth_rate"
+bGLMM_VOC_growthrates_avg_model2a = M.from.delta_r_df(bGLMM_VOC_growthrates_avg_model2a)
+bGLMM_VOC_growthrates_avg_model2a
 # 1         logistic_growth_rate asymp.LCL asymp.UCL       M1   M1.LCL   M1.UCL       M2   M2.LCL   M2.UCL
 # 1 overall             0.116653 0.1122397 0.1210663 1.899501 1.85395 1.946172 1.521887 1.497898 1.546259
-table2csv(bGLMM_VOC_growthrates_avg, file=".\\multinomial_logistic_fits\\tables\\model 2a_VOCvsall_bGLMM_VOC_avggrowthrate_UK_heter slopes.csv")
+table2csv(bGLMM_VOC_growthrates_avg_model2a, file=".\\multinomial_logistic_fits\\tables\\model 2a_VOCvsall_bGLMM_VOC_avggrowthrate_UK_heter slopes.csv")
 
 
 # TUKEY POSTHOC TESTS TO TEST FOR DIFFERENCES IN GROWTH RATE OF THE VOC ACROSS DIFFERENT NHS REGIONS
@@ -913,13 +920,30 @@ BIC(bGLMMfit1_vsB1177, bGLMMfit2_vsB1177)
 #  GROWTH RATE & TRANSMISSION ADVANTAGE OF VOC RELATIVE TO B.1.177
 
 # on average across all regions, using the most parsimonious model bGLMMfit2_vsB1177, we get
-bGLMM_VOC_growthrates_avg = as.data.frame(emtrends(bGLMMfit2_vsB1177, ~ 1, var="sample_date_num"))[,-c(3,4)] 
-colnames(bGLMM_VOC_growthrates_avg)[2] = "logistic_growth_rate"
-bGLMM_VOC_growthrates_avg = M.from.delta_r_df(bGLMM_VOC_growthrates_avg)
-bGLMM_VOC_growthrates_avg
+bGLMM_VOC_growthrates_avg_model2b = as.data.frame(emtrends(bGLMMfit2_vsB1177, ~ 1, var="sample_date_num"))[,-c(3,4)] 
+colnames(bGLMM_VOC_growthrates_avg_model2b)[2] = "logistic_growth_rate"
+bGLMM_VOC_growthrates_avg_model2b = M.from.delta_r_df(bGLMM_VOC_growthrates_avg_model2b)
+bGLMM_VOC_growthrates_avg_model2b
 # 1         logistic_growth_rate asymp.LCL asymp.UCL       M1   M1.LCL   M1.UCL      M2   M2.LCL   M2.UCL
 # 1 overall            0.1147566 0.1102424 0.1192707 1.879792 1.833696 1.927047 1.511532 1.487167 1.536296
-table2csv(bGLMM_VOC_growthrates_avg, file=".\\multinomial_logistic_fits\\tables\\model 2b_VOCvsB1177_bGLMM_VOC_growthrates_UKavg_heterog slope.csv")
+table2csv(bGLMM_VOC_growthrates_avg_model2b, file=".\\multinomial_logistic_fits\\tables\\model 2b_VOCvsB1177_bGLMM_VOC_growthrates_UKavg_heterog slope.csv")
+
+# per regions, using the most parsimonious model bGLMMfit2_vsB1177, we get
+bGLMM_VOC_growthrates_region_model2b = as.data.frame(emtrends(bGLMMfit2_vsB1177, ~ nhs_name, var="sample_date_num"))[,-c(3,4)] 
+colnames(bGLMM_VOC_growthrates_region_model2b)[2] = "logistic_growth_rate"
+bGLMM_VOC_growthrates_region_model2b = M.from.delta_r_df(bGLMM_VOC_growthrates_region_model2b)
+bGLMM_VOC_growthrates_region_model2b
+#                 nhs_name logistic_growth_rate  asymp.LCL  asymp.UCL       M1   M1.LCL   M1.UCL       M2   M2.LCL   M2.UCL
+# 1               South East           0.09876456 0.09282756 0.10470156 1.721516 1.666210 1.778657 1.426969 1.396793 1.457796
+# 2                   London           0.10141922 0.09364139 0.10919705 1.746835 1.673685 1.823183 1.440671 1.400892 1.481580
+# 3          East of England           0.08763410 0.08171409 0.09355412 1.619290 1.567415 1.672882 1.370921 1.342013 1.400452
+# 4               South West           0.10046012 0.08515498 0.11576526 1.737645 1.597360 1.890250 1.435706 1.358740 1.517031
+# 5                 Midlands           0.12413160 0.11380227 0.13446094 1.979262 1.869951 2.094961 1.563417 1.506348 1.622648
+# 6 North East and Yorkshire           0.12149437 0.11052186 0.13246688 1.950760 1.836516 2.072111 1.548644 1.488663 1.611041
+# 7                 Scotland           0.14325604 0.11817564 0.16833645 2.198792 1.915476 2.524014 1.674847 1.530252 1.833105
+# 8               North West           0.14396442 0.12908911 0.15883973 2.207376 2.033971 2.395564 1.679123 1.591570 1.771494
+# 9                    Wales           0.11168457 0.09972830 0.12364083 1.848298 1.730665 1.973926 1.494908 1.431928 1.560657
+table2csv(bGLMM_VOC_growthrates_region_model2b, file=".\\multinomial_logistic_fits\\tables\\model 2b_VOCvsB1177_bGLMM_VOC_growthrates_UKregion_heterog slope.csv")
 
 
 
@@ -975,14 +999,30 @@ BIC(bGLMMfit1_vsminor, bGLMMfit2_vsminor)
 #  GROWTH RATE & TRANSMISSION ADVANTAGE OF VOC RELATIVE TO minority variants
 
 # on average across all regions, using the most parsimonious model bGLMMfit2_vsminor, we get
-bGLMM_VOC_growthrates_avg = as.data.frame(emtrends(bGLMMfit2_vsminor, ~ 1, var="sample_date_num"))[,-c(3,4)] 
-colnames(bGLMM_VOC_growthrates_avg)[2] = "logistic_growth_rate"
-bGLMM_VOC_growthrates_avg = M.from.delta_r_df(bGLMM_VOC_growthrates_avg)
-bGLMM_VOC_growthrates_avg
+bGLMM_VOC_growthrates_avg_model2c = as.data.frame(emtrends(bGLMMfit2_vsminor, ~ 1, var="sample_date_num"))[,-c(3,4)] 
+colnames(bGLMM_VOC_growthrates_avg_model2c)[2] = "logistic_growth_rate"
+bGLMM_VOC_growthrates_avg_model2c = M.from.delta_r_df(bGLMM_VOC_growthrates_avg_model2c)
+bGLMM_VOC_growthrates_avg_model2c
 # 1         logistic_growth_rate asymp.LCL asymp.UCL       M1   M1.LCL  M1.UCL       M2   M2.LCL   M2.UCL
 # 1 overall            0.1330159 0.1271237 0.1389081 2.078377 2.012102 2.146835 1.614229 1.580348 1.648835
-table2csv(bGLMM_VOC_growthrates_avg, file=".\\multinomial_logistic_fits\\tables\\model 2c_VOCvsminor_bGLMM_VOC_growthrates_UKavg_homog slope.csv")
+table2csv(bGLMM_VOC_growthrates_avg_model2c, file=".\\multinomial_logistic_fits\\tables\\model 2c_VOCvsminor_bGLMM_VOC_growthrates_UKavg_heter slope.csv")
 
+# per region, using the most parsimonious model bGLMMfit2_vsminor, we get
+bGLMM_VOC_growthrates_region_model2c = as.data.frame(emtrends(bGLMMfit2_vsminor, ~ nhs_name, var="sample_date_num"))[,-c(3,4)] 
+colnames(bGLMM_VOC_growthrates_region_model2c)[2] = "logistic_growth_rate"
+bGLMM_VOC_growthrates_region_model2c = M.from.delta_r_df(bGLMM_VOC_growthrates_region_model2c)
+bGLMM_VOC_growthrates_region_model2c
+#                   nhs_name logistic_growth_rate  asymp.LCL asymp.UCL       M1   M1.LCL   M1.UCL       M2   M2.LCL   M2.UCL
+# 1               South East            0.1072014 0.09951175 0.1148911 1.803281 1.728605 1.881183 1.470974 1.430812 1.512264
+# 2                   London            0.1165203 0.10688104 0.1261595 1.898115 1.800106 2.001461 1.521160 1.469279 1.574872
+# 3          East of England            0.1066050 0.09924579 0.1139641 1.797375 1.726078 1.871617 1.467819 1.429443 1.507226
+# 4               South West            0.1216550 0.10189731 0.1414126 1.952484 1.751435 2.176612 1.549540 1.443153 1.663769
+# 5                 Midlands            0.1382969 0.12548288 0.1511109 2.139630 1.994026 2.295865 1.645211 1.571041 1.722883
+# 6 North East and Yorkshire            0.1570152 0.14077675 0.1732536 2.371644 2.169013 2.593206 1.759896 1.659965 1.865843
+# 7                 Scotland            0.1486132 0.11992555 0.1773009 2.264543 1.934000 2.651579 1.707461 1.539922 1.893228
+# 8               North West            0.1513706 0.13298907 0.1697522 2.299148 2.078071 2.543745 1.724495 1.614073 1.842472
+# 9                    Wales            0.1498654 0.13352769 0.1662031 2.280192 2.084236 2.494572 1.715176 1.617206 1.819081
+table2csv(bGLMM_VOC_growthrates_region_model2c, file=".\\multinomial_logistic_fits\\tables\\model 2c_VOCvsminor_bGLMM_VOC_growthrates_UKregion_heter slope.csv")
 
 
 
@@ -1041,19 +1081,19 @@ BIC(bGLMMfit1_B1177, bGLMMfit2_B1177)
 #  GROWTH RATE & TRANSMISSION ADVANTAGE
 
 # on average across all regions, using the most parsimonious model bGLMMfit1_B1177, we get
-bGLMM_B1177_growthrates_avg = as.data.frame(emtrends(bGLMMfit1_B1177, ~ 1, var="sample_date_num"))[,-c(3,4)] 
-colnames(bGLMM_B1177_growthrates_avg)[2] = "logistic_growth_rate"
-bGLMM_B1177_growthrates_avg = M.from.delta_r_df(bGLMM_B1177_growthrates_avg)
-bGLMM_B1177_growthrates_avg
+bGLMM_B1177_growthrates_avg_model2d = as.data.frame(emtrends(bGLMMfit1_B1177, ~ 1, var="sample_date_num"))[,-c(3,4)] 
+colnames(bGLMM_B1177_growthrates_avg_model2d)[2] = "logistic_growth_rate"
+bGLMM_B1177_growthrates_avg_model2d = M.from.delta_r_df(bGLMM_B1177_growthrates_avg_model2d)
+bGLMM_B1177_growthrates_avg_model2d
 # 1         logistic_growth_rate  asymp.LCL  asymp.UCL      M1   M1.LCL   M1.UCL       M2   M2.LCL   M2.UCL
 # 1 overall           0.06115157 0.05760982 0.06469332 1.399806 1.372802 1.427341 1.246258 1.230469 1.26225
-table2csv(bGLMM_B1177_growthrates_avg, file=".\\multinomial_logistic_fits\\tables\\model 2d_B1177vsall_bGLMM_growthrates_UKavg_homog slope.csv")
+table2csv(bGLMM_B1177_growthrates_avg_model2d, file=".\\multinomial_logistic_fits\\tables\\model 2d_B1177vsall_bGLMM_growthrates_UKavg_homog slope.csv")
 
 # growth rates per region for heterogeneous slope model bGLMMfit2_B1177
-bGLMM_B1177_growthrates_region = as.data.frame(emtrends(bGLMMfit2_B1177, ~ nhs_name, var="sample_date_num"))[,-c(3,4)] 
-colnames(bGLMM_B1177_growthrates_region)[2] = "logistic_growth_rate"
-bGLMM_B1177_growthrates_region = M.from.delta_r_df(bGLMM_B1177_growthrates_region)
-bGLMM_B1177_growthrates_region
+bGLMM_B1177_growthrates_region_model2e = as.data.frame(emtrends(bGLMMfit2_B1177, ~ nhs_name, var="sample_date_num"))[,-c(3,4)] 
+colnames(bGLMM_B1177_growthrates_region_model2e)[2] = "logistic_growth_rate"
+bGLMM_B1177_growthrates_region_model2e = M.from.delta_r_df(bGLMM_B1177_growthrates_region_model2e)
+bGLMM_B1177_growthrates_region_model2e
 #                 nhs_name logistic_growth_rate  asymp.LCL  asymp.UCL       M1   M1.LCL   M1.UCL       M2   M2.LCL   M2.UCL
 # 1               South East           0.05748963 0.04675292 0.06822633 1.371895 1.293228 1.455348 1.229937 1.183304 1.278407
 # 2                   London           0.03491949 0.02548835 0.04435063 1.211740 1.150488 1.276253 1.133953 1.096100 1.173115
@@ -1064,7 +1104,7 @@ bGLMM_B1177_growthrates_region
 # 7                 Scotland           0.06150159 0.05397367 0.06902952 1.402503 1.345620 1.461791 1.247830 1.214467 1.282109
 # 8               North West           0.08090281 0.07083684 0.09096877 1.560436 1.476394 1.649263 1.338099 1.290478 1.387478
 # 9                    Wales           0.07088988 0.06077399 0.08100577 1.476825 1.396902 1.561320 1.290724 1.244565 1.338595
-table2csv(bGLMM_B1177_growthrates_region, 
+table2csv(bGLMM_B1177_growthrates_region_model2e, 
           file=".\\multinomial_logistic_fits\\tables\\model 2e_B1177vsall_bGLMM_growthrates_UK_by region.csv")
 
 
@@ -1221,19 +1261,19 @@ BIC(bGLMMfit1_B1177_vsminority, bGLMMfit2_B1177_vsminority)
 #  GROWTH RATE & TRANSMISSION ADVANTAGE
 
 # on average across all regions, using the most parsimonious homog slope model bGLMMfit1_B1177_vsminority, we get
-bGLMM_B1177_growthrates_avg_vsminority = as.data.frame(emtrends(bGLMMfit1_B1177_vsminority, ~ 1, var="sample_date_num"))[,-c(3,4)] 
-colnames(bGLMM_B1177_growthrates_avg_vsminority)[2] = "logistic_growth_rate"
-bGLMM_B1177_growthrates_avg_vsminority = M.from.delta_r_df(bGLMM_B1177_growthrates_avg_vsminority)
-bGLMM_B1177_growthrates_avg_vsminority
+bGLMM_B1177_growthrates_avg_vsminority_model2f = as.data.frame(emtrends(bGLMMfit1_B1177_vsminority, ~ 1, var="sample_date_num"))[,-c(3,4)] 
+colnames(bGLMM_B1177_growthrates_avg_vsminority_model2f)[2] = "logistic_growth_rate"
+bGLMM_B1177_growthrates_avg_vsminority_model2f = M.from.delta_r_df(bGLMM_B1177_growthrates_avg_vsminority_model2f)
+bGLMM_B1177_growthrates_avg_vsminority_model2f
 # 1            logistic_growth_rate  asymp.LCL  asymp.UCL      M1   M1.LCL   M1.UCL       M2   M2.LCL  M2.UCL
 # 1 overall            0.05722866 0.05365433 0.06080299 1.369927 1.343259 1.397125 1.228782 1.213072 1.244695
-table2csv(bGLMM_B1177_growthrates_avg_vsminority, file=".\\multinomial_logistic_fits\\tables\\model 2f_B1177vsminor_bGLMM_growthrates_UKavg_homog slopes.csv")
+table2csv(bGLMM_B1177_growthrates_avg_vsminority_model2f, file=".\\multinomial_logistic_fits\\tables\\model 2f_B1177vsminor_bGLMM_growthrates_UKavg_homog slopes.csv")
 
 # growth rates per region for heterogeneous slope model bGLMMfit2_B1177
-bGLMM_B1177_growthrates_region = as.data.frame(emtrends(bGLMMfit2_B1177_vsminority, ~ nhs_name, var="sample_date_num"))[,-c(3,4)] 
-colnames(bGLMM_B1177_growthrates_region)[2] = "logistic_growth_rate"
-bGLMM_B1177_growthrates_region = M.from.delta_r_df(bGLMM_B1177_growthrates_region)
-bGLMM_B1177_growthrates_region
+bGLMM_B1177_growthrates_region_model2g = as.data.frame(emtrends(bGLMMfit2_B1177_vsminority, ~ nhs_name, var="sample_date_num"))[,-c(3,4)] 
+colnames(bGLMM_B1177_growthrates_region_model2g)[2] = "logistic_growth_rate"
+bGLMM_B1177_growthrates_region_model2g = M.from.delta_r_df(bGLMM_B1177_growthrates_region_model2g)
+bGLMM_B1177_growthrates_region_model2g
 #                   nhs_name logistic_growth_rate  asymp.LCL  asymp.UCL       M1   M1.LCL   M1.UCL       M2   M2.LCL   M2.UCL
 # 1               South East           0.05580314 0.04521897 0.06638731 1.359228 1.282363 1.440702 1.222492 1.176788 1.269971
 # 2                   London           0.03128840 0.02241861 0.04015820 1.187780 1.131226 1.247161 1.119227 1.084053 1.155542
@@ -1244,7 +1284,7 @@ bGLMM_B1177_growthrates_region
 # 7                 Scotland           0.05816930 0.04963971 0.06669889 1.377033 1.313924 1.443173 1.232950 1.195666 1.271397
 # 8               North West           0.07574652 0.06592206 0.08557098 1.516805 1.437020 1.601019 1.313490 1.267846 1.360777
 # 9                    Wales           0.06234078 0.05264878 0.07203278 1.408992 1.335851 1.486137 1.251605 1.208688 1.296046
-table2csv(bGLMM_B1177_growthrates_region, 
+table2csv(bGLMM_B1177_growthrates_region_model2g, 
           file=".\\multinomial_logistic_fits\\tables\\model 2g_B1177vsminor_bGLMM_growthrates_UK_by region_heter slopes.csv")
 
 
@@ -1375,7 +1415,7 @@ table2csv(tukey_B1177_vsminority, file=".\\multinomial_logistic_fits\\tables\\mo
 
 
 
-# 4. ANALYSIS OF PILLAR 2 S-GENE TARGET FAILURE DATA UK ####
+# 4. DATA UK : ANALYSIS OF PILLAR 2 S-GENE TARGET FAILURE DATA ####
 
 levels_UKregions = c("South East","London","East of England",
                      "South West","Midlands","North East and Yorkshire",
@@ -1708,7 +1748,7 @@ plot_denmark_response
 
 
 
-# 5.2. DATA SWITZERLAND ####
+# 5.2. DATA SWITZERLAND : SEQUENCING & RT-PCR RE-SCREENING DATA ####
 
 # Data source: https://ispmbern.github.io/covid-19/variants (contact: Christian Althaus) 
 # & https://github.com/covid-19-Re/variantPlot/raw/master/data/data.csv (https://ibz-shiny.ethz.ch/covidDashboard/variant-plot/index.html, contact: Tanja Stadler)
@@ -1894,7 +1934,7 @@ plot_switzerland_response
 
 
 
-# 5.3. S-GENE TARGET FAILURE DATA USA ####
+# 5.3. DATA USA : S-GENE TARGET FAILURE DATA ####
 
 # Data source: Helix® COVID-19 Surveillance, https://github.com/myhelix/helix-covid19db
 # see preprint https://www.medrxiv.org/content/10.1101/2021.02.06.21251159v1 & https://github.com/andersen-lab/paper_2021_early-b117-usa/tree/master/b117_frequency/data
@@ -2308,3 +2348,85 @@ saveRDS(plot_us2, file = ".\\multinomial_logistic_fits\\plots\\FigS7_model3c_plo
 graph2ppt(file = ".\\multinomial_logistic_fits\\plots\\FigS7_model3c_plot B1177vsall_fit bGLMM_US.pptx", width=8, height=6)
 ggsave(file = ".\\multinomial_logistic_fits\\plots\\FigS7_model3c_plot B1177vsall_fit bGLMM_US.png", width=8, height=6)
 ggsave(file = ".\\multinomial_logistic_fits\\plots\\FigS7_model3c_plot B1177vsall_fit bGLMM_US.pdf", width=8, height=6)
+
+
+
+# 6. EXPORT TABLE WITH ESTIMATED GROWTH & TRANSMISSION ADVANTAGES ####
+
+colnames(mblogitfit_contrasts)[c(3,4)] = c("delta_r.lower.CL","delta_r.upper.CL")
+sel_cols = c("contrast","delta_r","delta_r.lower.CL","delta_r.upper.CL","M2","M2.LCL","M2.UCL","M1","M1.LCL","M1.UCL")
+multinomial_models = rbind(data.frame(model=rep("1a",3), data=rep("UK",3), type_of_data=rep("sequence",3), 
+                                      type_of_model=rep("separate-slopes multinomial spline model",3), 
+                                      model_RHS=rep("REGION * ns(DATE, df=2)",3), 
+                                      country_or_region=rep("UK",3), 
+                                      variants_being_compared=c("VOC vs. B.1.1.7", "VOC vs. minority variants", "B.1.177 vs. minority variants"), 
+                                      spatial_resolution=rep("Region",3), 
+                                      mfit_contrasts[mfit_contrasts$contrast %in% c("(VOC 202012/01) - B.1.177","(VOC 202012/01) - minority variants","B.1.177 - minority variants"), sel_cols] )[c(2,1,3),],
+                           
+                           data.frame(model="1b", mblogitfit_contrasts[,sel_cols]))
+
+data.frame(model=rep("1b",3), data=rep("UK",3), type_of_data=rep("sequence",3), 
+           type_of_model=rep("common-slope multinomial mixed model",3), 
+           model_RHS=rep("(1|LTLA) + REGION + DATE",3), 
+           country_or_region=rep("UK",3), 
+           variants_being_compared=c("VOC vs. B.1.1.7", "VOC vs. minority variants", "B.1.177 vs. minority variants"), 
+           spatial_resolution=rep("LTLA",3), 
+           mblogitfit_contrasts[mblogitfit_contrasts$contrast %in% c("(VOC 202012/01) - B.1.177","(VOC 202012/01) - minority variants","B.1.177 - minority variants"), sel_cols] )[c(1,3,2),]
+
+
+multinomial_models = data.frame(multinomial_models[,1], data="UK", type_of_data="sequence",
+                                )
+colnames(multinomial_models)[]
+
+model 1a : mfit4 = multinom(variant~ns(sample_date_num, df=2)*nhs_name, data = data, maxit=10000) 
+model 1b : mblogitfit1_refminor = mblogit(variant ~ nhs_name+sample_date_num, data=data_refminor,
+                                          random = ~1|lad, dispersion=TRUE)
+
+model 2a : bGLMMfit2 : bGLMMfit2 = glmer(cbind(count, total-count) ~  (1|lad/obs) + 
+                                           nhs_name*scale(sample_date_num), 
+                                         family=binomial(logit), data=data_subs, control=glmersettings2)
+bGLMM_VOC_growthrates_region_model2a
+bGLMM_VOC_growthrates_avg_model2a
+
+model 2b : bGLMMfit2_vsB1177 : glmer(cbind(count, total-count) ~  (1|lad/obs) + 
+                                       nhs_name*scale(sample_date_num), 
+                                     family=binomial(logit), data=data_subs, control=glmersettings2)
+bGLMM_VOC_growthrates_avg_model2b
+bGLMM_VOC_growthrates_region_model2b
+
+
+model 2c : bGLMMfit2_vsminor : glmer(cbind(count, total-count) ~  (1|lad/obs) + 
+                                       nhs_name*scale(sample_date_num), 
+                                     family=binomial(logit), data=data_subs, control=glmersettings2)
+bGLMM_VOC_growthrates_avg_model2c
+bGLMM_VOC_growthrates_region_model2c
+
+model 2d : bGLMMfit1_B1177 : glmer(cbind(count, total-count) ~  (1|lad/obs) + 
+                                     nhs_name+scale(sample_date_num), 
+                                   family=binomial(logit), data=data_subs, control=glmersettings2)
+bGLMM_B1177_growthrates_avg_model2d
+
+model 2e : bGLMMfit2_B1177 : glmer(cbind(count, total-count) ~  (1|lad/obs) + 
+                                     nhs_name*scale(sample_date_num), 
+                                   family=binomial(logit), data=data_subs, control=glmersettings2)
+bGLMM_B1177_growthrates_region_model2e
+
+model 2f : bGLMMfit1_B1177_vsminority : glmer(cbind(count, total-count) ~  (1|lad/obs) + 
+                                                nhs_name+scale(sample_date_num), 
+                                              family=binomial(logit), data=data_subs, control=glmersettings2)
+bGLMM_B1177_growthrates_avg_vsminority_model2f
+
+model 2g : bGLMMfit2_B1177_vsminority : glmer(cbind(count, total-count) ~  (1|lad/obs) + 
+                                                nhs_name*scale(sample_date_num), 
+                                              family=binomial(logit), data=data_subs, control=glmersettings2)
+bGLMM_B1177_growthrates_region_model2g
+
+model 3a : fit_denmark3 = glmer(cbind(n_B117,total-n_B117) ~ (1|Region/obs) + scale(date_num), family=binomial(logit), data=data_denmark)
+dk_growthrates_avg_B117vsallother
+
+model 3b : fit_switerland1 = glmer(cbind(n_B117,total-n_B117) ~ (1|obs) + lab + scale(date_num), family=binomial(logit), data=data_switzerland)
+ch_growthrates_avg_B117vsallother
+
+model 3c : fit_us1 = glmer(cbind(est_n_B117, positive-est_n_B117) ~ (1|state/obs)+scale(collection_date_num), 
+                           family=binomial(logit), data=us_data) 
+us_growthrates_avg_B117vsallother
