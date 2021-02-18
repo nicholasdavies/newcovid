@@ -343,6 +343,8 @@ graph2ppt(file=".\\multinomial_logistic_fits\\plots\\FigS2_muller plot lineage b
 
 # 2. DATA UK : MULTINOMIAL FITS ON COG-UK SEQUENCING DATA BY REGION ####
 
+range(data$sample_date) # "2020-02-05" "2021-01-06"
+
 # 2.1 SEPARATE-SLOPES MULTINOMIAL SPLINE FIT ####
 
 # we take the category "minority variants" as reference category
@@ -1820,6 +1822,7 @@ data_switzerland$lab = factor(data_switzerland$lab, levels=c("Geneva","Zürich",
 data_switzerland$date_num = as.numeric(data_switzerland$date)
 data_switzerland$obs = factor(1:nrow(data_switzerland))
 data_switzerland$propB117 = data_switzerland$n_B117 / data_switzerland$total
+range(data_switzerland$date) # "2020-11-02" "2021-02-11"
 
 fit_switerland1 = glmer(cbind(n_B117,total-n_B117) ~ (1|obs) + lab + scale(date_num), family=binomial(logit), data=data_switzerland)
 fit_switerland2 = glmer(cbind(n_B117,total-n_B117) ~ (1|obs) + lab * scale(date_num), family=binomial(logit), data=data_switzerland)
@@ -1996,6 +1999,7 @@ us_data$obs = factor(1:nrow(us_data))
 # us_data = us_data[us_data$state %in% sel_states,]
 us_data$state = factor(us_data$state)
 
+range(us_data$collection_date) # "2020-09-06" "2021-02-11"
 
 fit_us_propB117amongSGTF = glmer(cbind(B117, sequenced_SGTF-B117) ~ (1|state)+scale(collection_date_num), 
                                                                     family=binomial(logit), data=us_data)
@@ -2087,32 +2091,32 @@ plot_us = qplot(data=fit_us_preds2, x=collection_date, y=prob, geom="blank") +
   ), 
   # colour=I("steelblue"), 
   alpha=I(0.8)) +
-  ylab("Relative abundance of B.1.1.7 (%)") +
+  ylab("Relative abundance (%)") +
   theme_hc() + xlab("") + 
-  # scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
-  #                   labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
+  scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
+                     labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
   scale_y_continuous( trans="logit", breaks=c(10^seq(-5,0),0.5,0.9,0.99,0.999),
                       labels = c("0.001","0.01","0.1","1","10","100","50","90","99","99.9")) +
   coord_cartesian(xlim=c(min(fit_us_preds$collection_date), as.Date("2021-04-01")), 
                   # xlim=c(as.Date("2020-07-01"),as.Date("2021-01-31")), 
                   ylim=c(0.001,0.9990001), expand=c(0,0)) +
-  scale_color_discrete("state", h=c(0, 240), c=120, l=50) +
-  scale_fill_discrete("state", h=c(0, 240), c=120, l=50) +
+  scale_color_discrete("state", h=c(0, 240), c=180, l=55) +
+  scale_fill_discrete("state", h=c(0, 240), c=180, l=55) +
   geom_point(data=us_data[us_data$state %in% sel_states,],  
              aes(x=collection_date, y=propB117, size=positive,
                  colour=state
              ), pch=I(16),
              # colour=I("steelblue"), 
-             alpha=I(0.3)) +
+             alpha=I(0.5)) +
   scale_size_continuous("number of\npositive tests", trans="sqrt", 
-                        range=c(1, 4), limits=c(1,max(us_data$positive)), breaks=c(10,100,1000)) +
+                        range=c(1, 2), limits=c(1,max(us_data$positive)), breaks=c(10,100,1000)) +
   # guides(fill=FALSE) + 
   # guides(colour=FALSE) + 
   theme(legend.position = "right") +
-  xlab("Collection date") +
-  theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
-  ggtitle("US") +
-  theme(plot.title = element_text(hjust = 0.5))
+  xlab("") # +
+  # theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
+  # ggtitle("US") +
+  # theme(plot.title = element_text(hjust = 0.5))
 plot_us
 
 
@@ -2131,30 +2135,30 @@ plot_us_response = qplot(data=fit_us_preds2, x=collection_date, y=prob*100, geom
   alpha=I(0.8)) +
   ylab("Relative abundance of B.1.1.7 (%)") +
   theme_hc() + xlab("") + 
-  # scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
-  #                   labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
+  scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
+                     labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
   # scale_y_continuous( trans="logit", breaks=c(10^seq(-5,0),0.5,0.9,0.99,0.999),
   #                    labels = c("0.001","0.01","0.1","1","10","100","50","90","99","99.9")) +
   coord_cartesian(xlim=c(min(fit_us_preds2$collection_date), as.Date("2021-04-01")), 
                   # xlim=c(as.Date("2020-07-01"),as.Date("2021-01-31")), 
                   ylim=c(0,100), expand=c(0,0)) +
-  scale_color_discrete("state", h=c(0, 240), c=120, l=50) +
-  scale_fill_discrete("state", h=c(0, 240), c=120, l=50) +
+  scale_color_discrete("state", h=c(0, 240), c=180, l=55) +
+  scale_fill_discrete("state", h=c(0, 240), c=180, l=55) +
   geom_point(data=us_data[us_data$state %in% sel_states,],  
              aes(x=collection_date, y=propB117*100, size=positive,
                  colour=state
              ), pch=I(16),
              # colour=I("steelblue"), 
-             alpha=I(0.3)) +
+             alpha=I(0.5)) +
   scale_size_continuous("number of\npositive tests", trans="log10", 
-                        range=c(1, 4), limits=c(1,max(us_data$positive)), breaks=c(10,100,1000)) +
+                        range=c(1, 2), limits=c(1,max(us_data$positive)), breaks=c(10,100,1000)) +
   # guides(fill=FALSE) + 
   # guides(colour=FALSE) + 
   theme(legend.position = "right") +
-  xlab("Collection date") +
-  theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
-  ggtitle("US") +
-  theme(plot.title = element_text(hjust = 0.5))
+  xlab("") # +
+  # theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
+  # ggtitle("US") +
+  # theme(plot.title = element_text(hjust = 0.5))
 
 plot_us_response
 
@@ -2240,7 +2244,7 @@ data_international$REGION = factor(data_international$REGION, levels=levels(fits
 
 # PLOT MODEL FITS (response scale)
 plot_international = qplot(data=fits_international, x=date, y=prob, geom="blank") +
-  facet_wrap(~country, ncol=1, scales="fixed") +
+  facet_wrap(~country, ncol=2, scales="fixed") +
   geom_ribbon(aes(y=prob, ymin=asymp.LCL, ymax=asymp.UCL, colour=NULL, 
                   fill=REGION
   ), 
@@ -2251,19 +2255,19 @@ plot_international = qplot(data=fits_international, x=date, y=prob, geom="blank"
   ), 
   # colour=I("steelblue"), 
   alpha=I(0.8)) +
-  ylab("Relative abundance of B.1.1.7 (%)") +
+  ylab("Relative abundance (%)") +
   theme_hc() + 
   xlab("") + 
-  # scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
-  #                   labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
+  scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
+                     labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
   scale_y_continuous( trans="logit", breaks=c(10^seq(-5,0),0.5,0.9,0.99,0.999),
                       labels = c("0.001","0.01","0.1","1","10","100","50","90","99","99.9") # ,
                       # limits = c(ymin,ymax+1E-7)
                       ) +
   # scale_color_manual("", values=reg_cols) +
   # scale_fill_manual("", values=reg_cols) +
-  scale_color_discrete("region", h=c(0, 280), c=155, l=50) +
-  scale_fill_discrete("region", h=c(0, 280), c=155, l=50) +
+  scale_color_discrete("region", h=c(0, 280), c=180, l=55) +
+  scale_fill_discrete("region", h=c(0, 280), c=180, l=55) +
   # scale_color_discrete("", h=c(0, 280), c=200) +
   # scale_fill_discrete("", h=c(0, 280), c=200) +
   geom_point(data=data_international, 
@@ -2278,7 +2282,7 @@ plot_international = qplot(data=fits_international, x=date, y=prob, geom="blank"
   # guides(fill=FALSE) + 
   # guides(colour=FALSE) + 
   theme(legend.position = "right") +
-  xlab("Collection date") +
+  xlab("") +
   guides(
     shape = guide_legend(order = 1),
     color = guide_legend(order = 2),
@@ -2286,17 +2290,17 @@ plot_international = qplot(data=fits_international, x=date, y=prob, geom="blank"
     size = guide_legend(order = 3)
   ) + 
   coord_cartesian( 
-    xlim=c(as.Date("2020-09-01"),as.Date("2021-03-01")),
+    xlim=c(as.Date("2020-09-01"),as.Date("2021-02-28")),
     ylim=c(ymin,ymax+1E-7), 
-    expand=FALSE)
+    expand=FALSE) 
 # ggtitle("INTERNATIONAL SPREAD OF SARS-CoV2 VARIANT B.1.1.7") +
 # theme(plot.title = element_text(hjust = 0.5))
 plot_international
 
 saveRDS(plot_international, file = ".\\multinomial_logistic_fits\\plots\\FigS6_binomGLMM_B117vsall_fits_UK_DK_CH_USA.rds")
-graph2ppt(file = ".\\multinomial_logistic_fits\\plots\\FigS6_binomGLMM_B117vsall_fits_UK_DK_CH_USA.pptx", width=7, height=8)
-ggsave(file = ".\\multinomial_logistic_fits\\plots\\FigS6_binomGLMM_B117vsall_fits_UK_DK_CH_USA.png", width=7, height=8)
-ggsave(file = ".\\multinomial_logistic_fits\\plots\\FigS6_binomGLMM_B117vsall_fits_UK_DK_CH_USA.pdf", width=7, height=8)
+graph2ppt(file = ".\\multinomial_logistic_fits\\plots\\FigS6_binomGLMM_B117vsall_fits_UK_DK_CH_USA.pptx", width=9, height=7)
+ggsave(file = ".\\multinomial_logistic_fits\\plots\\FigS6_binomGLMM_B117vsall_fits_UK_DK_CH_USA.png", width=9, height=7)
+ggsave(file = ".\\multinomial_logistic_fits\\plots\\FigS6_binomGLMM_B117vsall_fits_UK_DK_CH_USA.pdf", width=9, height=7)
 
 
 
@@ -2317,12 +2321,12 @@ plot_international_response = qplot(data=fits_international, x=date, y=prob*100,
   ylab("Relative abundance of B.1.1.7 (%)") +
   theme_hc() + 
   xlab("") + 
-  # scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
-  #                   labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
+  scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
+                     labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
   # scale_y_continuous( trans="logit", breaks=c(10^seq(-5,0),0.5,0.9,0.99,0.999),
   #                    labels = c("0.001","0.01","0.1","1","10","100","50","90","99","99.9")) +
-  scale_color_discrete("region", h=c(0, 280), c=155, l=50) +
-  scale_fill_discrete("region", h=c(0, 280), c=155, l=50) +
+  scale_color_discrete("region", h=c(0, 280), c=180, l=55) +
+  scale_fill_discrete("region", h=c(0, 280), c=180, l=55) +
   #   scale_color_manual("", values=reg_cols) +
   #  scale_fill_manual("", values=reg_cols) +
   # scale_color_discrete("", h=c(0, 280), c=200) +
@@ -2479,37 +2483,37 @@ logistic_models = rbind( data.frame(model=rep("2a",1), data=rep("UK avg.",1), ty
                                     fit_ukSGTF_4_growthrates_region_model2i[, sel_cols] ) )
 
 sel_cols = c("logistic_growth_rate","asymp.LCL","asymp.UCL","M2","M2.LCL","M2.UCL","M1","M1.LCL","M1.UCL")
-logistic_models_intl = rbind( data.frame(model=rep("3a",1), data=rep("UK",1), type_of_data=rep("sequence",1), 
+logistic_models_intl = rbind( data.frame(model=rep("3a",1), data=rep("DK",1), type_of_data=rep("sequence",1), 
                                     type_of_model=rep("random-intercept binomial GLMM",1), 
                                     model_RHS=rep("(1|REGION/OBS) + DATE",1), 
                                     country_or_region=rep("DK",1), 
                                     variants_being_compared=c("VOC vs. all other variants"), 
                                     spatial_resolution=rep("Region",1), 
                                     dk_growthrates_avg_B117vsallother[, sel_cols]),
-                         data.frame(model=rep("3b",1), data=rep("UK",1), type_of_data=rep("sequence+RT-PCR rescreening",1), 
+                         data.frame(model=rep("3b",1), data=rep("CH",1), type_of_data=rep("sequence+RT-PCR rescreening",1), 
                                     type_of_model=rep("common-slope binomial GLMM",1), 
                                     model_RHS=rep("(1|OBS) + REGION + DATE",1), 
                                     country_or_region=rep("CH",1), 
                                     variants_being_compared=c("VOC vs. all other variants"), 
                                     spatial_resolution=rep("Region",1), 
                                     ch_growthrates_avg_B117vsallother[, sel_cols]),
-                         data.frame(model=rep("3c",1), data=rep("UK",1), type_of_data=rep("SGTF",1), 
+                         data.frame(model=rep("3c",1), data=rep("USA",1), type_of_data=rep("SGTF",1), 
                                     type_of_model=rep("random-intercept binomial GLMM",1), 
                                     model_RHS=rep("(1|STATE/OBS) + DATE",1), 
                                     country_or_region=rep("USA",1), 
                                     variants_being_compared=c("VOC vs. all other variants"), 
                                     spatial_resolution=rep("State",1), 
-                                    ch_growthrates_avg_B117vsallother[, sel_cols]) )
+                                    us_growthrates_avg_B117vsallother[, sel_cols]) )
                          
 colnames(logistic_models)[c(9,10,11)] = colnames(multinomial_models)[c(9,10,11)]
 colnames(logistic_models_intl)[c(9,10,11)] = colnames(multinomial_models)[c(9,10,11)]
 
 table_S1 = rbind(multinomial_models,logistic_models,logistic_models_intl)
-table_S1$delta_r = paste0( format(round(table_S1$delta_r, 2), nsmall = 2),
+table_S1$delta_r = paste0( format(round(table_S1$delta_r, 3), nsmall = 3),
                            " (",
-                           format(round(table_S1$delta_r.lower.CL, 2), nsmall = 2),
+                           format(round(table_S1$delta_r.lower.CL, 3), nsmall = 3),
                            "-",
-                           format(round(table_S1$delta_r.upper.CL, 2), nsmall = 2),
+                           format(round(table_S1$delta_r.upper.CL, 3), nsmall = 3),
                            ")" )
 table_S1$delta_r.lower.CL = NULL
 table_S1$delta_r.upper.CL = NULL
