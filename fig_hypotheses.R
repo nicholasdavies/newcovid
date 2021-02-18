@@ -482,7 +482,7 @@ sgtf2[, c("mean", "lo", "hi") := binom.confint(sgtf, sgtf + other, methods = "ba
 
 # Determine population sizes
 nhs_regions = c("East of England", "England", "London", "Midlands", "North East and Yorkshire", "North West", "Northern Ireland", "Scotland", "South East", "South West", "United Kingdom", "Wales")
-parametersI = qread("./fits/relu12.qs")[[2]]
+parametersI = qread("./fits/relu_ALL18.qs")[[2]]
 popsize = NULL
 for (i in seq_along(parametersI)) {
     if (!is.null(parametersI[[i]])) {
@@ -615,21 +615,5 @@ testC = south_east("./fits/ch_u_ELSE11.qs")
 testU = south_east("./fits/infdur_ELSE11.qs")
 
 
-# Test
-wu = south_east("./fits/relu_ELSE15.qs", TRUE, "2020-12-31")
-wm = south_east("./fits/immesc_ELSE11.qs", TRUE, "2020-12-31")
-wc = south_east("./fits/ch_u_ELSE11.qs", TRUE, "2020-12-31")
-wi = south_east("./fits/infdur_ELSE11.qs", TRUE, "2020-12-31")
-ws = south_east("./fits/serial_ELSE9.qs", TRUE, "2020-12-31")
-wp = south_east("./fits/infec_profile_ELSE4.qs", TRUE, "2020-12-31")
-wa = south_east("./fits/combined_ELSE5.qs", TRUE, "2020-12-31")
-
-ggplot(wm[run == 1, .(Rt = obs0[1], R0 = obs0[4], Rt1 = obs0[11], Rt2 = obs0[12]), by = t], aes(x = t)) + 
-    geom_line(aes(y = R0, colour = "R0")) + 
-    geom_line(aes(y = Rt, colour = "Rt")) + 
-    geom_line(aes(y = Rt1, colour = "Rt1")) +
-    geom_line(aes(y = Rt2, colour = "Rt2"))
-
-ggplot(wm[, .(Rt = obs0[1], R0 = obs0[4], Rt1 = obs0[11], Rt2 = obs0[12]), by = .(run, t)], aes(x = t)) + 
-    geom_line(aes(y = Rt2/Rt1, colour = "Rt2/Rt1", group = run))
+a_u = overall(ha, "v2_relu", TRUE, c(1, 3, 9))
 
