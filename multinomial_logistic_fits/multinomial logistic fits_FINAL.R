@@ -1803,7 +1803,7 @@ colnames(data_viollier_risch)[colnames(data_viollier_risch) %in% c("n","b117")] 
 data_viollier_risch = data_viollier_risch[,c("date","total","n_B117","lab")]
 
 data_switzerland = rbind(data_geneva, data_zurich, data_bern, data_viollier_risch)[,c("date","lab","n_B117","total")]
-# write_csv(data_switzerland, file=".//multinomial_logistic_fits//data//ch//data_switzerland.csv")
+# write_csv(data_switzerland, file=".//multinomial_logistic_fits//data//ch//data_switzerland_20210216.csv")
 
 # Details data:
 # Viollier data = sequencing of a random subset of all positive cases by ETH/Tanja Stadler (covers large parts of Switzerland, though with a bias towards German speaking Switzerland) - as it is sequencing data is 1-2 weeks later than N501Y screening
@@ -1814,7 +1814,7 @@ data_switzerland = rbind(data_geneva, data_zurich, data_bern, data_viollier_risc
 # Bern: Samples from SARS-CoV-2-positive cases that were re-screened for 501Y using RT-PCR at the Institute for Infectious Diseases, University of Bern.
 # Zurich: Samples from SARS-CoV-2-positive cases from the University Hospital Zurich and test centers at Limmattal Hospital in Schlieren (ZH) and Spital Männedorf that were re-screened for 501Y using RT-PCR at the Institute of Medical Virology, University of Zurich. In addition, we use SARS-CoV-2-positive samples from Kantonsspital Winterthur and its walk-in test center that were re-screened for 501Y using RT-PCR.
 
-data_switzerland = read_csv(file=".//multinomial_logistic_fits//data//ch//data_switzerland.csv", col_names=TRUE) # colClasses=c("Date","character","numeric","numeric")
+data_switzerland = read_csv(file=".//multinomial_logistic_fits//data//ch//data_switzerland_20210216.csv", col_names=TRUE) 
 data_switzerland = data.frame(data_switzerland)
 data_switzerland$date = as.Date(data_switzerland$date)
 data_switzerland$lab = factor(data_switzerland$lab, levels=c("Geneva","Zürich","Bern","Viollier","Risch"),
@@ -1965,9 +1965,9 @@ plot_switzerland_response
 # Data were downloaded on the 17th of February 2021 
 
 us_data = read.csv("https://github.com/myhelix/helix-covid19db/raw/master/counts_by_state.csv")
-# write.csv(us_data, file=".//multinomial_logistic_fits//data//us//data_us.csv", row.names=F)
+# write.csv(us_data, file=".//multinomial_logistic_fits//data//us//data_us_20210216.csv", row.names=F)
 
-us_data = read.csv(file=".//multinomial_logistic_fits//data//us//data_us.csv")
+us_data = read.csv(file=".//multinomial_logistic_fits//data//us//data_us_20210216.csv")
 
 # helix_b117 = read_tsv("https://github.com/andersen-lab/paper_2021_early-b117-usa/raw/master/b117_frequency/data/covid_baseline_for_b117_paper.20210127_update.txt") %>%
 #   dplyr::select(state, collection_date, n_b117, n_sgtf_seq) # n_b117/n_sgtf_seq = prop of S dropout samples that are B117
