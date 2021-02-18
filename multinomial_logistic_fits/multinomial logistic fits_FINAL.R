@@ -102,6 +102,8 @@ data$sample_date = as.Date(data$sample_date)
 data$sample_date_num = as.numeric(data$sample_date)
 # we do not consider data from Northern Ireland due to low nr of sequences there & absence of new VOC
 data = data[data$nhs_name!="Northern Ireland",] 
+range(data[data$nhs_name!="Northern Ireland","sample_date"]) 
+
 data$nhs_name = factor(data$nhs_name, levels=levels_nhs_name) # NHS region
 data$lad = as.factor(data$lad) # local authority district
 unique(data[data$n501y == "Y","lineage"]) # lineages where at least some samples have n501y mutation
@@ -343,6 +345,8 @@ graph2ppt(file=".\\multinomial_logistic_fits\\plots\\FigS2_muller plot lineage b
 
 # 2. DATA UK : MULTINOMIAL FITS ON COG-UK SEQUENCING DATA BY REGION ####
 
+range(data$sample_date) # "2020-02-05" "2021-01-06"
+
 # 2.1 SEPARATE-SLOPES MULTINOMIAL SPLINE FIT ####
 
 # we take the category "minority variants" as reference category
@@ -439,23 +443,26 @@ newdat = expand.grid(sample_date_num =
 mfit_preds = data.frame(newdat, predict(mfit4, type="prob", newdata=newdat), check.names=F)
 mfit_preds = gather(mfit_preds, variant, prob, levels_variants)
 # write.csv(mfit_preds, file=".\\multinomial_logistic_fits\\tables\\model 1a_model predictions Fig2C.csv", row.names=F)
-mfit_preds = read.csv(file=".\\multinomial_logistic_fits\\tables\\model 1a_model predictions Fig2C.csv")
-extrapolate = 60 # nr of days to show extrapolations for
+# mfit_preds = read.csv(file=".\\multinomial_logistic_fits\\tables\\model 1a_model predictions Fig2C.csv")
+# extrapolate = 60 # nr of days to show extrapolations for
+# levels_variants = c("B","B.1.98","B.40","B.1","B.1.1",
+#                     "B.1.1.1", "B.1.1.315", "B.1.177",
+#                     "VOC 202012/01",  
+#                     "minority variants")
+# levels_nhs_name = c("South East","London","East of England",
+#                     "South West","Midlands","North East and Yorkshire",
+#                     "Scotland","North West","Wales")
+# m=18633
+# lineage_cols=c("#FF3A00","#F78500","#A6AA00","#00C400", "#00D756","#00DEE7","#00CAFF" "#806CFF","#FF00FF","grey75")
 mfit_preds$sample_date = as.Date(mfit_preds$sample_date_num, origin="1970-01-01")
-levels_variants = c("B","B.1.98","B.40","B.1","B.1.1",
-                    "B.1.1.1", "B.1.1.315", "B.1.177",
-                    "VOC 202012/01",  
-                    "minority variants")
 mfit_preds$variant = factor(mfit_preds$variant, levels=levels_variants)
-levels_nhs_name = c("South East","London","East of England",
-                    "South West","Midlands","North East and Yorkshire",
-                    "Scotland","North West","Wales")
+m = max(data$sample_date_num)
 mfit_preds$nhs_name = factor(mfit_preds$nhs_name, levels=levels_nhs_name)
 muller_mfit = ggplot(data=mfit_preds, 
                      aes(x=sample_date, y=prob, group=variant)) + 
     facet_wrap(~nhs_name) +
     geom_area(aes(lwd=I(1.2), colour=NULL, fill=variant), position="stack") +
-    annotate("rect", xmin=max(data$sample_date)+1, xmax=max(data$sample_date_num)+extrapolate, ymin=0, ymax=1, alpha=0.4, fill="white") + # extrapolated part
+    annotate("rect", xmin=m+1, xmax=m+extrapolate, ymin=0, ymax=1, alpha=0.4, fill="white") + # extrapolated part
     scale_fill_manual("", values=lineage_cols) +
     scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
                        labels=substring(months(as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01"))),1,1),
@@ -1467,19 +1474,36 @@ BIC(fit_ukSGTF_1, fit_ukSGTF_2, fit_ukSGTF_3, fit_ukSGTF_4)
 
 summary(fit_ukSGTF_4)
 
-# avg growth rate advantage for UK (difference in growth rate between B.1.1.7 and old strains):
-fit_ukSGTF_4_emtrends = as.data.frame(emtrends(fit_ukSGTF_4, revpairwise ~ 1, 
-                                               var="collection_date_num",
-                                               mode="link", adjust="Tukey")$emtrends)
-fit_ukSGTF_4_emtrends[,c(2,5,6)]
-#   collection_date_num.trend asymp.LCL asymp.UCL
-# 1                 0.1093804 0.1074621 0.1112988
+# GROWTH RATE AND TRANSMISSION ADVANTAGE
 
-# with a generation time of 4.7 days this would translate in an increased 
-# infectiousness (multiplicative effect on Rt) of
-exp(fit_ukSGTF_4_emtrends[,c(2,5,6)]*4.7) 
-#    collection_date_num.trend asymp.LCL asymp.UCL
-# 1                  1.672113  1.657104  1.687257
+# on average across all regions, using the most parsimonious model fit_ukSGTF_4, we get
+fit_ukSGTF_4_growthrates_avg_model2h = as.data.frame(emtrends(fit_ukSGTF_4, ~ 1, var="collection_date_num",
+                                                at=list(sample_date_num=as.numeric(seq(as.Date("2020-11-01"),
+                                                        max(sgtfdata_uk$collection_date), by=1)))))[,-c(3,4)] 
+colnames(fit_ukSGTF_4_growthrates_avg_model2h)[2] = "logistic_growth_rate"
+fit_ukSGTF_4_growthrates_avg_model2h = M.from.delta_r_df(fit_ukSGTF_4_growthrates_avg_model2h)
+fit_ukSGTF_4_growthrates_avg_model2h
+# 1        logistic_growth_rate  asymp.LCL  asymp.UCL      M1   M1.LCL   M1.UCL       M2   M2.LCL  M2.UCL
+# 1 overall            0.1093806 0.1074622 0.1112989 1.825024 1.805869 1.844382 1.48256 1.472356 1.492834
+table2csv(fit_ukSGTF_4_growthrates_avg_model2h, file=".\\multinomial_logistic_fits\\tables\\model 2h_B1177vsall_bGLMM_growthrates_UK_SGTF.csv")
+
+# growth rates per region for model fit_ukSGTF_4
+fit_ukSGTF_4_growthrates_region_model2h = as.data.frame(emtrends(fit_ukSGTF_4, ~ REGION, var="collection_date_num",
+                                                                         at=list(sample_date_num=as.numeric(seq(as.Date("2020-11-01"),
+                                                                                                                max(sgtfdata_uk$collection_date), by=1)))))[,-c(3,4)] 
+colnames(fit_ukSGTF_4_growthrates_region_model2h)[2] = "logistic_growth_rate"
+fit_ukSGTF_4_growthrates_region_model2h = M.from.delta_r_df(fit_ukSGTF_4_growthrates_region_model2h)
+fit_ukSGTF_4_growthrates_region_model2h
+#                   REGION logistic_growth_rate  asymp.LCL asymp.UCL       M1   M1.LCL   M1.UCL       M2   M2.LCL   M2.UCL
+# 1               South East           0.09898882 0.09592903 0.1020486 1.723640 1.694876 1.752893 1.428121 1.412476 1.443939
+# 2                   London           0.11321262 0.11007795 0.1163473 1.863897 1.832037 1.896310 1.503154 1.486286 1.520213
+# 3          East of England           0.11927269 0.11526413 0.1232812 1.927068 1.885047 1.970026 1.536307 1.514296 1.558638
+# 4               South West           0.11793843 0.10916327 0.1267136 1.912978 1.822844 2.007570 1.528946 1.481400 1.578017
+# 5                 Midlands           0.09964180 0.09541716 0.1038664 1.729842 1.690111 1.770506 1.431482 1.409876 1.453420
+# 6 North East and Yorkshire           0.10880087 0.10423159 0.1133702 1.819214 1.774065 1.865513 1.479469 1.455332 1.504007
+# 7               North West           0.10780866 0.10264068 0.1129766 1.809314 1.758610 1.861479 1.474194 1.447020 1.501877
+table2csv(fit_ukSGTF_4_growthrates_region_model2h, 
+          file=".\\multinomial_logistic_fits\\tables\\model 2i_B1177vsall_bGLMM_growthrates_UK_SGTF.csv")
 
 
 # PLOT MODEL FIT
@@ -1781,7 +1805,7 @@ colnames(data_viollier_risch)[colnames(data_viollier_risch) %in% c("n","b117")] 
 data_viollier_risch = data_viollier_risch[,c("date","total","n_B117","lab")]
 
 data_switzerland = rbind(data_geneva, data_zurich, data_bern, data_viollier_risch)[,c("date","lab","n_B117","total")]
-# write_csv(data_switzerland, file=".//multinomial_logistic_fits//data//ch//data_switzerland.csv")
+# write_csv(data_switzerland, file=".//multinomial_logistic_fits//data//ch//data_switzerland_20210216.csv")
 
 # Details data:
 # Viollier data = sequencing of a random subset of all positive cases by ETH/Tanja Stadler (covers large parts of Switzerland, though with a bias towards German speaking Switzerland) - as it is sequencing data is 1-2 weeks later than N501Y screening
@@ -1792,7 +1816,7 @@ data_switzerland = rbind(data_geneva, data_zurich, data_bern, data_viollier_risc
 # Bern: Samples from SARS-CoV-2-positive cases that were re-screened for 501Y using RT-PCR at the Institute for Infectious Diseases, University of Bern.
 # Zurich: Samples from SARS-CoV-2-positive cases from the University Hospital Zurich and test centers at Limmattal Hospital in Schlieren (ZH) and Spital Männedorf that were re-screened for 501Y using RT-PCR at the Institute of Medical Virology, University of Zurich. In addition, we use SARS-CoV-2-positive samples from Kantonsspital Winterthur and its walk-in test center that were re-screened for 501Y using RT-PCR.
 
-data_switzerland = read_csv(file=".//multinomial_logistic_fits//data//ch//data_switzerland.csv", col_names=TRUE) # colClasses=c("Date","character","numeric","numeric")
+data_switzerland = read_csv(file=".//multinomial_logistic_fits//data//ch//data_switzerland_20210216.csv", col_names=TRUE) 
 data_switzerland = data.frame(data_switzerland)
 data_switzerland$date = as.Date(data_switzerland$date)
 data_switzerland$lab = factor(data_switzerland$lab, levels=c("Geneva","Zürich","Bern","Viollier","Risch"),
@@ -1800,6 +1824,7 @@ data_switzerland$lab = factor(data_switzerland$lab, levels=c("Geneva","Zürich",
 data_switzerland$date_num = as.numeric(data_switzerland$date)
 data_switzerland$obs = factor(1:nrow(data_switzerland))
 data_switzerland$propB117 = data_switzerland$n_B117 / data_switzerland$total
+range(data_switzerland$date) # "2020-11-02" "2021-02-11"
 
 fit_switerland1 = glmer(cbind(n_B117,total-n_B117) ~ (1|obs) + lab + scale(date_num), family=binomial(logit), data=data_switzerland)
 fit_switerland2 = glmer(cbind(n_B117,total-n_B117) ~ (1|obs) + lab * scale(date_num), family=binomial(logit), data=data_switzerland)
@@ -1942,9 +1967,9 @@ plot_switzerland_response
 # Data were downloaded on the 17th of February 2021 
 
 us_data = read.csv("https://github.com/myhelix/helix-covid19db/raw/master/counts_by_state.csv")
-# write.csv(us_data, file=".//multinomial_logistic_fits//data//us//data_us.csv", row.names=F)
+# write.csv(us_data, file=".//multinomial_logistic_fits//data//us//data_us_20210216.csv", row.names=F)
 
-us_data = read.csv(file=".//multinomial_logistic_fits//data//us//data_us.csv")
+us_data = read.csv(file=".//multinomial_logistic_fits//data//us//data_us_20210216.csv")
 
 # helix_b117 = read_tsv("https://github.com/andersen-lab/paper_2021_early-b117-usa/raw/master/b117_frequency/data/covid_baseline_for_b117_paper.20210127_update.txt") %>%
 #   dplyr::select(state, collection_date, n_b117, n_sgtf_seq) # n_b117/n_sgtf_seq = prop of S dropout samples that are B117
@@ -1976,6 +2001,7 @@ us_data$obs = factor(1:nrow(us_data))
 # us_data = us_data[us_data$state %in% sel_states,]
 us_data$state = factor(us_data$state)
 
+range(us_data$collection_date) # "2020-09-06" "2021-02-11"
 
 fit_us_propB117amongSGTF = glmer(cbind(B117, sequenced_SGTF-B117) ~ (1|state)+scale(collection_date_num), 
                                                                     family=binomial(logit), data=us_data)
@@ -2067,32 +2093,32 @@ plot_us = qplot(data=fit_us_preds2, x=collection_date, y=prob, geom="blank") +
   ), 
   # colour=I("steelblue"), 
   alpha=I(0.8)) +
-  ylab("Relative abundance of B.1.1.7 (%)") +
+  ylab("Relative abundance (%)") +
   theme_hc() + xlab("") + 
-  # scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
-  #                   labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
+  scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
+                     labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
   scale_y_continuous( trans="logit", breaks=c(10^seq(-5,0),0.5,0.9,0.99,0.999),
                       labels = c("0.001","0.01","0.1","1","10","100","50","90","99","99.9")) +
   coord_cartesian(xlim=c(min(fit_us_preds$collection_date), as.Date("2021-04-01")), 
                   # xlim=c(as.Date("2020-07-01"),as.Date("2021-01-31")), 
                   ylim=c(0.001,0.9990001), expand=c(0,0)) +
-  scale_color_discrete("state", h=c(0, 240), c=120, l=50) +
-  scale_fill_discrete("state", h=c(0, 240), c=120, l=50) +
+  scale_color_discrete("state", h=c(0, 240), c=180, l=55) +
+  scale_fill_discrete("state", h=c(0, 240), c=180, l=55) +
   geom_point(data=us_data[us_data$state %in% sel_states,],  
              aes(x=collection_date, y=propB117, size=positive,
                  colour=state
              ), pch=I(16),
              # colour=I("steelblue"), 
-             alpha=I(0.3)) +
+             alpha=I(0.5)) +
   scale_size_continuous("number of\npositive tests", trans="sqrt", 
-                        range=c(1, 4), limits=c(1,max(us_data$positive)), breaks=c(10,100,1000)) +
+                        range=c(1, 2), limits=c(1,max(us_data$positive)), breaks=c(10,100,1000)) +
   # guides(fill=FALSE) + 
   # guides(colour=FALSE) + 
   theme(legend.position = "right") +
-  xlab("Collection date") +
-  theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
-  ggtitle("US") +
-  theme(plot.title = element_text(hjust = 0.5))
+  xlab("") # +
+  # theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
+  # ggtitle("US") +
+  # theme(plot.title = element_text(hjust = 0.5))
 plot_us
 
 
@@ -2111,30 +2137,30 @@ plot_us_response = qplot(data=fit_us_preds2, x=collection_date, y=prob*100, geom
   alpha=I(0.8)) +
   ylab("Relative abundance of B.1.1.7 (%)") +
   theme_hc() + xlab("") + 
-  # scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
-  #                   labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
+  scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
+                     labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
   # scale_y_continuous( trans="logit", breaks=c(10^seq(-5,0),0.5,0.9,0.99,0.999),
   #                    labels = c("0.001","0.01","0.1","1","10","100","50","90","99","99.9")) +
   coord_cartesian(xlim=c(min(fit_us_preds2$collection_date), as.Date("2021-04-01")), 
                   # xlim=c(as.Date("2020-07-01"),as.Date("2021-01-31")), 
                   ylim=c(0,100), expand=c(0,0)) +
-  scale_color_discrete("state", h=c(0, 240), c=120, l=50) +
-  scale_fill_discrete("state", h=c(0, 240), c=120, l=50) +
+  scale_color_discrete("state", h=c(0, 240), c=180, l=55) +
+  scale_fill_discrete("state", h=c(0, 240), c=180, l=55) +
   geom_point(data=us_data[us_data$state %in% sel_states,],  
              aes(x=collection_date, y=propB117*100, size=positive,
                  colour=state
              ), pch=I(16),
              # colour=I("steelblue"), 
-             alpha=I(0.3)) +
+             alpha=I(0.5)) +
   scale_size_continuous("number of\npositive tests", trans="log10", 
-                        range=c(1, 4), limits=c(1,max(us_data$positive)), breaks=c(10,100,1000)) +
+                        range=c(1, 2), limits=c(1,max(us_data$positive)), breaks=c(10,100,1000)) +
   # guides(fill=FALSE) + 
   # guides(colour=FALSE) + 
   theme(legend.position = "right") +
-  xlab("Collection date") +
-  theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
-  ggtitle("US") +
-  theme(plot.title = element_text(hjust = 0.5))
+  xlab("") # +
+  # theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
+  # ggtitle("US") +
+  # theme(plot.title = element_text(hjust = 0.5))
 
 plot_us_response
 
@@ -2220,7 +2246,7 @@ data_international$REGION = factor(data_international$REGION, levels=levels(fits
 
 # PLOT MODEL FITS (response scale)
 plot_international = qplot(data=fits_international, x=date, y=prob, geom="blank") +
-  facet_wrap(~country, ncol=1, scales="fixed") +
+  facet_wrap(~country, ncol=2, scales="fixed") +
   geom_ribbon(aes(y=prob, ymin=asymp.LCL, ymax=asymp.UCL, colour=NULL, 
                   fill=REGION
   ), 
@@ -2231,19 +2257,19 @@ plot_international = qplot(data=fits_international, x=date, y=prob, geom="blank"
   ), 
   # colour=I("steelblue"), 
   alpha=I(0.8)) +
-  ylab("Relative abundance of B.1.1.7 (%)") +
+  ylab("Relative abundance (%)") +
   theme_hc() + 
   xlab("") + 
-  # scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
-  #                   labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
+  scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
+                     labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
   scale_y_continuous( trans="logit", breaks=c(10^seq(-5,0),0.5,0.9,0.99,0.999),
                       labels = c("0.001","0.01","0.1","1","10","100","50","90","99","99.9") # ,
                       # limits = c(ymin,ymax+1E-7)
                       ) +
   # scale_color_manual("", values=reg_cols) +
   # scale_fill_manual("", values=reg_cols) +
-  scale_color_discrete("region", h=c(0, 280), c=155, l=50) +
-  scale_fill_discrete("region", h=c(0, 280), c=155, l=50) +
+  scale_color_discrete("region", h=c(0, 280), c=180, l=55) +
+  scale_fill_discrete("region", h=c(0, 280), c=180, l=55) +
   # scale_color_discrete("", h=c(0, 280), c=200) +
   # scale_fill_discrete("", h=c(0, 280), c=200) +
   geom_point(data=data_international, 
@@ -2258,7 +2284,7 @@ plot_international = qplot(data=fits_international, x=date, y=prob, geom="blank"
   # guides(fill=FALSE) + 
   # guides(colour=FALSE) + 
   theme(legend.position = "right") +
-  xlab("Collection date") +
+  xlab("") +
   guides(
     shape = guide_legend(order = 1),
     color = guide_legend(order = 2),
@@ -2266,17 +2292,17 @@ plot_international = qplot(data=fits_international, x=date, y=prob, geom="blank"
     size = guide_legend(order = 3)
   ) + 
   coord_cartesian( 
-    xlim=c(as.Date("2020-09-01"),as.Date("2021-03-01")),
+    xlim=c(as.Date("2020-09-01"),as.Date("2021-02-28")),
     ylim=c(ymin,ymax+1E-7), 
-    expand=FALSE)
+    expand=FALSE) 
 # ggtitle("INTERNATIONAL SPREAD OF SARS-CoV2 VARIANT B.1.1.7") +
 # theme(plot.title = element_text(hjust = 0.5))
 plot_international
 
 saveRDS(plot_international, file = ".\\multinomial_logistic_fits\\plots\\FigS6_binomGLMM_B117vsall_fits_UK_DK_CH_USA.rds")
-graph2ppt(file = ".\\multinomial_logistic_fits\\plots\\FigS6_binomGLMM_B117vsall_fits_UK_DK_CH_USA.pptx", width=7, height=8)
-ggsave(file = ".\\multinomial_logistic_fits\\plots\\FigS6_binomGLMM_B117vsall_fits_UK_DK_CH_USA.png", width=7, height=8)
-ggsave(file = ".\\multinomial_logistic_fits\\plots\\FigS6_binomGLMM_B117vsall_fits_UK_DK_CH_USA.pdf", width=7, height=8)
+graph2ppt(file = ".\\multinomial_logistic_fits\\plots\\FigS6_binomGLMM_B117vsall_fits_UK_DK_CH_USA.pptx", width=9, height=7)
+ggsave(file = ".\\multinomial_logistic_fits\\plots\\FigS6_binomGLMM_B117vsall_fits_UK_DK_CH_USA.png", width=9, height=7)
+ggsave(file = ".\\multinomial_logistic_fits\\plots\\FigS6_binomGLMM_B117vsall_fits_UK_DK_CH_USA.pdf", width=9, height=7)
 
 
 
@@ -2297,12 +2323,12 @@ plot_international_response = qplot(data=fits_international, x=date, y=prob*100,
   ylab("Relative abundance of B.1.1.7 (%)") +
   theme_hc() + 
   xlab("") + 
-  # scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
-  #                   labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
+  scale_x_continuous(breaks=as.Date(c("2020-03-01","2020-04-01","2020-05-01","2020-06-01","2020-07-01","2020-08-01","2020-09-01","2020-10-01","2020-11-01","2020-12-01","2021-01-01","2021-02-01","2021-03-01")),
+                     labels=c("M","A","M","J","J","A","S","O","N","D","J","F","M")) +
   # scale_y_continuous( trans="logit", breaks=c(10^seq(-5,0),0.5,0.9,0.99,0.999),
   #                    labels = c("0.001","0.01","0.1","1","10","100","50","90","99","99.9")) +
-  scale_color_discrete("region", h=c(0, 280), c=155, l=50) +
-  scale_fill_discrete("region", h=c(0, 280), c=155, l=50) +
+  scale_color_discrete("region", h=c(0, 280), c=180, l=55) +
+  scale_fill_discrete("region", h=c(0, 280), c=180, l=55) +
   #   scale_color_manual("", values=reg_cols) +
   #  scale_fill_manual("", values=reg_cols) +
   # scale_color_discrete("", h=c(0, 280), c=200) +
@@ -2354,79 +2380,161 @@ ggsave(file = ".\\multinomial_logistic_fits\\plots\\FigS7_model3c_plot B1177vsal
 # 6. EXPORT TABLE WITH ESTIMATED GROWTH & TRANSMISSION ADVANTAGES ####
 
 colnames(mblogitfit_contrasts)[c(3,4)] = c("delta_r.lower.CL","delta_r.upper.CL")
-sel_cols = c("contrast","delta_r","delta_r.lower.CL","delta_r.upper.CL","M2","M2.LCL","M2.UCL","M1","M1.LCL","M1.UCL")
+sel_cols = c("delta_r","delta_r.lower.CL","delta_r.upper.CL","M2","M2.LCL","M2.UCL","M1","M1.LCL","M1.UCL")
+mfit_contrasts$contrast = gsub("\\(|\\)","",mfit_contrasts$contrast)
 multinomial_models = rbind(data.frame(model=rep("1a",3), data=rep("UK",3), type_of_data=rep("sequence",3), 
                                       type_of_model=rep("separate-slopes multinomial spline model",3), 
                                       model_RHS=rep("REGION * ns(DATE, df=2)",3), 
                                       country_or_region=rep("UK",3), 
                                       variants_being_compared=c("VOC vs. B.1.1.7", "VOC vs. minority variants", "B.1.177 vs. minority variants"), 
                                       spatial_resolution=rep("Region",3), 
-                                      mfit_contrasts[mfit_contrasts$contrast %in% c("(VOC 202012/01) - B.1.177","(VOC 202012/01) - minority variants","B.1.177 - minority variants"), sel_cols] )[c(2,1,3),],
-                           
-                           data.frame(model="1b", mblogitfit_contrasts[,sel_cols]))
+                                      mfit_contrasts[mfit_contrasts$contrast %in% c("VOC 202012/01 - B.1.177","VOC 202012/01 - minority variants","B.1.177 - minority variants"), sel_cols][c(2,1,3),] ),
+                           data.frame(model=rep("1b",3), data=rep("UK",3), type_of_data=rep("sequence",3), 
+                                      type_of_model=rep("common-slope multinomial mixed model",3), 
+                                      model_RHS=rep("(1|LTLA) + REGION + DATE",3), 
+                                      country_or_region=rep("UK",3), 
+                                      variants_being_compared=c("VOC vs. B.1.1.7", "VOC vs. minority variants", "B.1.177 vs. minority variants"), 
+                                      spatial_resolution=rep("LTLA",3), 
+                                      mblogitfit_contrasts[mblogitfit_contrasts$contrast %in% c("VOC 202012/01 - B.1.177","VOC 202012/01 - minority variants","B.1.177 - minority variants"), sel_cols][c(1,3,2),] )
+                           )
 
-data.frame(model=rep("1b",3), data=rep("UK",3), type_of_data=rep("sequence",3), 
-           type_of_model=rep("common-slope multinomial mixed model",3), 
-           model_RHS=rep("(1|LTLA) + REGION + DATE",3), 
-           country_or_region=rep("UK",3), 
-           variants_being_compared=c("VOC vs. B.1.1.7", "VOC vs. minority variants", "B.1.177 vs. minority variants"), 
-           spatial_resolution=rep("LTLA",3), 
-           mblogitfit_contrasts[mblogitfit_contrasts$contrast %in% c("(VOC 202012/01) - B.1.177","(VOC 202012/01) - minority variants","B.1.177 - minority variants"), sel_cols] )[c(1,3,2),]
+sel_cols = c("logistic_growth_rate","asymp.LCL","asymp.UCL","M2","M2.LCL","M2.UCL","M1","M1.LCL","M1.UCL")
+logistic_models = rbind( data.frame(model=rep("2a",1), data=rep("UK avg.",1), type_of_data=rep("sequence",1), 
+                                    type_of_model=rep("separate-slopes binomial GLMM",1), 
+                                    model_RHS=rep("(1|LTLA/OBS) + REGION * DATE",1), 
+                                    country_or_region=rep("UK",1), 
+                                    variants_being_compared=c("VOC vs. all other variants"), 
+                                    spatial_resolution=rep("LTLA",1), 
+                                    bGLMM_VOC_growthrates_avg_model2a[, sel_cols]),
+                         data.frame(model=rep("2a",9), data=rep("UK",9), type_of_data=rep("sequence",9), 
+                                    type_of_model=rep("separate-slopes binomial GLMM",9), 
+                                    model_RHS=rep("(1|LTLA/OBS) + REGION * DATE",9), 
+                                    country_or_region=bGLMM_VOC_growthrates_region_model2a$nhs_name, 
+                                    variants_being_compared=c("VOC vs. all other variants"), 
+                                    spatial_resolution=rep("LTLA",9), 
+                                    bGLMM_VOC_growthrates_region_model2a[, sel_cols]),
+                         data.frame(model=rep("2b",1), data=rep("UK avg.",1), type_of_data=rep("sequence",1), 
+                                    type_of_model=rep("separate-slopes binomial GLMM",1), 
+                                    model_RHS=rep("(1|LTLA/OBS) + REGION * DATE",1), 
+                                    country_or_region=rep("UK",1), 
+                                    variants_being_compared=c("VOC vs. B.1.177"), 
+                                    spatial_resolution=rep("LTLA",1), 
+                                    bGLMM_VOC_growthrates_avg_model2b[, sel_cols]),
+                         data.frame(model=rep("2b",9), data=rep("UK",9), type_of_data=rep("sequence",9), 
+                                    type_of_model=rep("separate-slopes binomial GLMM",9), 
+                                    model_RHS=rep("(1|LTLA/OBS) + REGION * DATE",9), 
+                                    country_or_region=bGLMM_VOC_growthrates_region_model2b$nhs_name, 
+                                    variants_being_compared=c("VOC vs. B.1.177"), 
+                                    spatial_resolution=rep("LTLA",9), 
+                                    bGLMM_VOC_growthrates_region_model2b[, sel_cols]),
+                         data.frame(model=rep("2c",1), data=rep("UK avg.",1), type_of_data=rep("sequence",1), 
+                                    type_of_model=rep("separate-slopes binomial GLMM",1), 
+                                    model_RHS=rep("(1|LTLA/OBS) + REGION * DATE",1), 
+                                    country_or_region=rep("UK",1), 
+                                    variants_being_compared=c("VOC vs. minority variants"), 
+                                    spatial_resolution=rep("LTLA",1), 
+                                    bGLMM_VOC_growthrates_avg_model2c[, sel_cols]),
+                         data.frame(model=rep("2c",9), data=rep("UK",9), type_of_data=rep("sequence",9), 
+                                    type_of_model=rep("separate-slopes binomial GLMM",9), 
+                                    model_RHS=rep("(1|LTLA/OBS) + REGION * DATE",9), 
+                                    country_or_region=bGLMM_VOC_growthrates_region_model2c$nhs_name, 
+                                    variants_being_compared=c("VOC vs. minority variants"), 
+                                    spatial_resolution=rep("LTLA",9), 
+                                    bGLMM_VOC_growthrates_region_model2c[, sel_cols]),
+                         data.frame(model=rep("2d",1), data=rep("UK",1), type_of_data=rep("sequence",1), 
+                                    type_of_model=rep("common-slope binomial GLMM",1), 
+                                    model_RHS=rep("(1|LTLA/OBS) + REGION + DATE",1), 
+                                    country_or_region=rep("UK",1), 
+                                    variants_being_compared=c("B.1.177 vs. all other variants"), 
+                                    spatial_resolution=rep("LTLA",1), 
+                                    bGLMM_B1177_growthrates_avg_model2d[, sel_cols]),
+                         data.frame(model=rep("2e",9), data=rep("UK",9), type_of_data=rep("sequence",9), 
+                                    type_of_model=rep("separate-slopes binomial GLMM",9), 
+                                    model_RHS=rep("(1|LTLA/OBS) + REGION * DATE",9), 
+                                    country_or_region=bGLMM_B1177_growthrates_region_model2e$nhs_name, 
+                                    variants_being_compared=c("B.1.177 vs. all other variants"), 
+                                    spatial_resolution=rep("LTLA",9), 
+                                    bGLMM_B1177_growthrates_region_model2e[, sel_cols]),
+                         data.frame(model=rep("2f",1), data=rep("UK",1), type_of_data=rep("sequence",1), 
+                                    type_of_model=rep("common-slope binomial GLMM",1), 
+                                    model_RHS=rep("(1|LTLA/OBS) + REGION + DATE",1), 
+                                    country_or_region=rep("UK",1), 
+                                    variants_being_compared=c("B.1.177 vs. minority variants"), 
+                                    spatial_resolution=rep("LTLA",1), 
+                                    bGLMM_B1177_growthrates_avg_vsminority_model2f[, sel_cols]),
+                         data.frame(model=rep("2g",9), data=rep("UK",9), type_of_data=rep("sequence",9), 
+                                    type_of_model=rep("separate-slopes binomial GLMM",9), 
+                                    model_RHS=rep("(1|LTLA/OBS) + REGION * DATE",9), 
+                                    country_or_region=bGLMM_B1177_growthrates_region_model2g$nhs_name, 
+                                    variants_being_compared=c("B.1.177 vs. minority variants"), 
+                                    spatial_resolution=rep("LTLA",9), 
+                                    bGLMM_B1177_growthrates_region_model2g[, sel_cols]),
+                         data.frame(model=rep("2h",1), data=rep("UK avg.",1), type_of_data=rep("SGTF",1), 
+                                    type_of_model=rep("separate-slopes binomial spline GLMM",1), 
+                                    model_RHS=rep("(1|OBS) + REGION * ns(collection_date_num,df=3)",1), 
+                                    country_or_region=rep("UK",1), 
+                                    variants_being_compared=c("VOC vs. all other variants"), 
+                                    spatial_resolution=rep("Region",1), 
+                                    fit_ukSGTF_4_growthrates_avg_model2h[, sel_cols]),
+                         data.frame(model=rep("2h",7), data=rep("UK",7), type_of_data=rep("SGTF",7), 
+                                    type_of_model=rep("separate-slopes binomial spline GLMM",7), 
+                                    model_RHS=rep("(1|OBS) + REGION * ns(collection_date_num,df=3)",7), 
+                                    country_or_region=fit_ukSGTF_4_growthrates_region_model2i$REGION, 
+                                    variants_being_compared=rep(c("VOC vs. all other variants"),7), 
+                                    spatial_resolution=rep("Region",7), 
+                                    fit_ukSGTF_4_growthrates_region_model2i[, sel_cols] ) )
 
+sel_cols = c("logistic_growth_rate","asymp.LCL","asymp.UCL","M2","M2.LCL","M2.UCL","M1","M1.LCL","M1.UCL")
+logistic_models_intl = rbind( data.frame(model=rep("3a",1), data=rep("DK",1), type_of_data=rep("sequence",1), 
+                                    type_of_model=rep("random-intercept binomial GLMM",1), 
+                                    model_RHS=rep("(1|REGION/OBS) + DATE",1), 
+                                    country_or_region=rep("DK",1), 
+                                    variants_being_compared=c("VOC vs. all other variants"), 
+                                    spatial_resolution=rep("Region",1), 
+                                    dk_growthrates_avg_B117vsallother[, sel_cols]),
+                         data.frame(model=rep("3b",1), data=rep("CH",1), type_of_data=rep("sequence+RT-PCR rescreening",1), 
+                                    type_of_model=rep("common-slope binomial GLMM",1), 
+                                    model_RHS=rep("(1|OBS) + REGION + DATE",1), 
+                                    country_or_region=rep("CH",1), 
+                                    variants_being_compared=c("VOC vs. all other variants"), 
+                                    spatial_resolution=rep("Region",1), 
+                                    ch_growthrates_avg_B117vsallother[, sel_cols]),
+                         data.frame(model=rep("3c",1), data=rep("USA",1), type_of_data=rep("SGTF",1), 
+                                    type_of_model=rep("random-intercept binomial GLMM",1), 
+                                    model_RHS=rep("(1|STATE/OBS) + DATE",1), 
+                                    country_or_region=rep("USA",1), 
+                                    variants_being_compared=c("VOC vs. all other variants"), 
+                                    spatial_resolution=rep("State",1), 
+                                    us_growthrates_avg_B117vsallother[, sel_cols]) )
+                         
+colnames(logistic_models)[c(9,10,11)] = colnames(multinomial_models)[c(9,10,11)]
+colnames(logistic_models_intl)[c(9,10,11)] = colnames(multinomial_models)[c(9,10,11)]
 
-multinomial_models = data.frame(multinomial_models[,1], data="UK", type_of_data="sequence",
-                                )
-colnames(multinomial_models)[]
+table_S1 = rbind(multinomial_models,logistic_models,logistic_models_intl)
+table_S1$delta_r = paste0( format(round(table_S1$delta_r, 3), nsmall = 3),
+                           " (",
+                           format(round(table_S1$delta_r.lower.CL, 3), nsmall = 3),
+                           "-",
+                           format(round(table_S1$delta_r.upper.CL, 3), nsmall = 3),
+                           ")" )
+table_S1$delta_r.lower.CL = NULL
+table_S1$delta_r.upper.CL = NULL
+table_S1$M2 = paste0( round((table_S1$M2-1)*100, 0),
+                           " (",
+                           round((table_S1$M2.LCL-1)*100, 0),
+                           "-",
+                           round((table_S1$M2.UCL-1)*100, 0),
+                           ")" )
+table_S1$M2.LCL = NULL
+table_S1$M2.UCL = NULL
+table_S1$M1 = paste0( round((table_S1$M1-1)*100, 0),
+                      " (",
+                      round((table_S1$M1.LCL-1)*100, 0),
+                      "-",
+                      round((table_S1$M1.UCL-1)*100, 0),
+                      ")" )
+table_S1$M1.LCL = NULL
+table_S1$M1.UCL = NULL
 
-model 1a : mfit4 = multinom(variant~ns(sample_date_num, df=2)*nhs_name, data = data, maxit=10000) 
-model 1b : mblogitfit1_refminor = mblogit(variant ~ nhs_name+sample_date_num, data=data_refminor,
-                                          random = ~1|lad, dispersion=TRUE)
-
-model 2a : bGLMMfit2 : bGLMMfit2 = glmer(cbind(count, total-count) ~  (1|lad/obs) + 
-                                           nhs_name*scale(sample_date_num), 
-                                         family=binomial(logit), data=data_subs, control=glmersettings2)
-bGLMM_VOC_growthrates_region_model2a
-bGLMM_VOC_growthrates_avg_model2a
-
-model 2b : bGLMMfit2_vsB1177 : glmer(cbind(count, total-count) ~  (1|lad/obs) + 
-                                       nhs_name*scale(sample_date_num), 
-                                     family=binomial(logit), data=data_subs, control=glmersettings2)
-bGLMM_VOC_growthrates_avg_model2b
-bGLMM_VOC_growthrates_region_model2b
-
-
-model 2c : bGLMMfit2_vsminor : glmer(cbind(count, total-count) ~  (1|lad/obs) + 
-                                       nhs_name*scale(sample_date_num), 
-                                     family=binomial(logit), data=data_subs, control=glmersettings2)
-bGLMM_VOC_growthrates_avg_model2c
-bGLMM_VOC_growthrates_region_model2c
-
-model 2d : bGLMMfit1_B1177 : glmer(cbind(count, total-count) ~  (1|lad/obs) + 
-                                     nhs_name+scale(sample_date_num), 
-                                   family=binomial(logit), data=data_subs, control=glmersettings2)
-bGLMM_B1177_growthrates_avg_model2d
-
-model 2e : bGLMMfit2_B1177 : glmer(cbind(count, total-count) ~  (1|lad/obs) + 
-                                     nhs_name*scale(sample_date_num), 
-                                   family=binomial(logit), data=data_subs, control=glmersettings2)
-bGLMM_B1177_growthrates_region_model2e
-
-model 2f : bGLMMfit1_B1177_vsminority : glmer(cbind(count, total-count) ~  (1|lad/obs) + 
-                                                nhs_name+scale(sample_date_num), 
-                                              family=binomial(logit), data=data_subs, control=glmersettings2)
-bGLMM_B1177_growthrates_avg_vsminority_model2f
-
-model 2g : bGLMMfit2_B1177_vsminority : glmer(cbind(count, total-count) ~  (1|lad/obs) + 
-                                                nhs_name*scale(sample_date_num), 
-                                              family=binomial(logit), data=data_subs, control=glmersettings2)
-bGLMM_B1177_growthrates_region_model2g
-
-model 3a : fit_denmark3 = glmer(cbind(n_B117,total-n_B117) ~ (1|Region/obs) + scale(date_num), family=binomial(logit), data=data_denmark)
-dk_growthrates_avg_B117vsallother
-
-model 3b : fit_switerland1 = glmer(cbind(n_B117,total-n_B117) ~ (1|obs) + lab + scale(date_num), family=binomial(logit), data=data_switzerland)
-ch_growthrates_avg_B117vsallother
-
-model 3c : fit_us1 = glmer(cbind(est_n_B117, positive-est_n_B117) ~ (1|state/obs)+scale(collection_date_num), 
-                           family=binomial(logit), data=us_data) 
-us_growthrates_avg_B117vsallother
+colnames(table_S1)[c(10,11)] = c("% increase in R (3.6-day generation interval)","% increase in R (5.5-day generation interval)")
+write.csv(table_S1, file=".\\multinomial_logistic_fits\\tables\\Table S1.csv",row.names=F) # all models except Rt-analysis based ones & dynamic transmission model ones
