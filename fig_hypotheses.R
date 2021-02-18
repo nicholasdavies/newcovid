@@ -20,8 +20,7 @@ england_pops = c(1, 3, 4, 5, 6, 9, 10)
 uk_covid_data_path = "./fitting_data/";
 datapath = function(x) paste0(uk_covid_data_path, x)
 pct = function(x) as.numeric(str_replace_all(x, "%", "")) / 100
-#data_file = "processed-data-2021-01-08.qs"
-data_file = "processed-data-2021-01-15.qs"
+data_file = "processed-data-2021-01-18.qs"
 date_fitting = "2020-12-24"
 date_predict = "2021-01-07"
 
@@ -205,9 +204,13 @@ load_hyp = function(filename, check = FALSE, withvoc = TRUE)
     pv = merge(vmodel[, .(date = ymd("2020-01-01") + t, population, run, alpha, beta)], sgtf[, .(date, population = nhs_name, sgtf, other)], 
         by = c("population", "date"))
     pv = pv[, sum(dbbinom(sgtf, sgtf + other, alpha, beta, log = TRUE)), by = .(population, run)]
+    
+    # Assess growth rate / Rt
+    gr = growth_rate(test)
 
     return (list(post = post_melted, dic1 = dic1, vmodel = quants, 
-        ll_mean_theta = ll_mean_theta, pv = pv, prev_ll = prev_ll, new_ll = new_ll))
+        ll_mean_theta = ll_mean_theta, pv = pv, prev_ll = prev_ll, new_ll = new_ll,
+        dr = gr$dr, dRt = gr$dRt))
 }
 
 south_east = function(filename, keep_voc = TRUE, plot_until = "2020-12-24")
@@ -288,11 +291,10 @@ south_east = function(filename, keep_voc = TRUE, plot_until = "2020-12-24")
     test = rbindlist(dynamicsI, fill = TRUE)
     test[, population := nhs_regions[population]]
 
-    # # Visually inspect fit
-    # p = check_fit(test, parametersI, ld[date <= plot_until], sitreps[date <= plot_until], virus, sero, nhs_regions[9], death_cutoff = 0, plot_until)
-    # 
-    # return (p + geom_vline(aes(xintercept = ymd("2020-12-24")), size = 0.25, linetype = "42"))
-    return (test)
+    # Visually inspect fit
+    p = check_fit(test, parametersI, ld[date <= plot_until], sitreps[date <= plot_until], virus, sero, nhs_regions[9], death_cutoff = 0, plot_until)
+
+    return (list(dynamics = test, plot = p + geom_vline(aes(xintercept = ymd("2020-12-24")), size = 0.25, linetype = "42")))
 }
 
 predictive = function(hyp)
@@ -302,6 +304,7 @@ predictive = function(hyp)
         diff = diff + hyp$new_ll[[p]] - hyp$prev_ll[[p]]
     }
     cat("Mean", mean(diff), "sd", sd(diff), "deviance", -2 * mean(diff), "\n")
+    return (-2 * mean(diff))
 }
 
 # Plot posteriors
@@ -376,12 +379,23 @@ hyp_plots = function(h, pops, vars, lt, varnames)
             data.table(var = varnames[v], mean = ci[1], lo = ci[2], hi = ci[3])
         )
     }
-
+    
+    # For calculating delta-r
+    dr_fit = list(post = copy(h$dr))
+    dr_fit$post[, trial := run]
+    dr_fit$post[, chain := 0]
+    dr_fit$post[, variable := "dr"]
+    dr_fit$post[, value := dr * 7]
+    dr_fit$post[, pop := population]
+    dr_fit$post[, population := as.numeric(match(population, nhs_regions))]
+    
+    cidr = exp(overall(dr_fit, "dr", FALSE, c(1, 3, 9)))
     cih = exp(overall(h, "v2_hosp_rlo", FALSE, pops))
     cii = exp(overall(h, "v2_icu_rlo",  FALSE, pops))
     cid = exp(overall(h, "v2_cfr_rlo",  FALSE, pops))
 
     dv = rbind(dv,
+        data.table(var = "Growth rate", mean = cidr[1], lo = cidr[2], hi = cidr[3]),
         data.table(var = "Severe", mean = cih[1], lo = cih[2], hi = cih[3]),
         data.table(var = "Critical",  mean = cii[1], lo = cii[2], hi = cii[3]),
         data.table(var = "Fatal",  mean = cid[1], lo = cid[2], hi = cid[3])
@@ -395,19 +409,76 @@ hyp_plots = function(h, pops, vars, lt, varnames)
     return (list(ps, pp))
 }
 
-style = function(p, titl, n, yl1, max_x = 3)
+style = function(p, titl, n, yl1, region_titles, max_x = 3.1)
 {
     palette = c("#6388b4", "#ffae34", "#ef6f6a", "#8cc2ca", "#55ad89", "#c3bc3f", "#bb7693", "#baa094", "#a9b5ae", "#767676")
+
+    p1 = p[[1]] + labs(x = NULL, y = ifelse(yl1, "Frequency of S gene target failure", ""), title = titl) + ylim(0, 1) +
+            theme(plot.title = element_text(size = 9, margin = margin(0, 0, 0, 0)))
+    if (region_titles == FALSE) {
+        p1 = p1 + theme(strip.text = element_blank())
+    }
     
-    list(
-        p[[1]] + labs(x = NULL, y = ifelse(yl1, "SGTF frequency", ""), title = titl) + ylim(0, 1),
-        p[[2]] + scale_colour_manual(values = c(palette[3:1], palette[3 + n])) + theme(legend.position = "none") + 
+    p[[2]]$layers[[1]]$aes_params$size = 0.4
+    p[[2]]$layers[[1]]$aes_params$shape = 20
+    
+    p2 = p[[2]] + scale_colour_manual(values = c(palette[4:1], palette[4 + n])) + 
+            theme(legend.position = "none", axis.text.y = element_text(size = 8)) + 
             geom_vline(aes(xintercept = 1.0), linetype = "22", size = 0.25) + labs(x = NULL, y = NULL) + xlim(0, max_x)
-    )
+    
+    list(p1, p2)
 }
 
+growth_rate = function(test)
+{
+    # Extract daily growth rate
+    decnov_r = test[t %between% c(306, 353), .(incidence_1 = sum(test_o), incidence_2 = sum(test2_o)), by = .(population, run, t)]
+    decnov_r = decnov_r[, .(t = tail(t, -1), r1 = diff(log(incidence_1)), r2 = diff(log(incidence_2))), by = .(population, run)]
+    dr_df = decnov_r[, .(r1 = mean(r1), r2 = mean(r2), dr = mean(r2 - r1)), by = .(population, run)]
+    
+    # Extract difference in Rt
+    decnov_Rt = test[t %between% c(306, 353) & group %in% c(11, 12), .(population, run, t, obs0)]
+    decnov_Rt[, strain := rep_len(c("Rt1", "Rt2"), .N)]
+    decnov_Rt = dcast(decnov_Rt, population + run + t ~ strain, value.var = "obs0")
+    dRt_df = decnov_Rt[, .(Rt1 = exp(mean(log(Rt1))), Rt2 = exp(mean(log(Rt2)))), by = .(population, run)]
+    dRt_df[, dRt := Rt2 / Rt1]
+    
+    return (list(dr = dr_df, dRt = dRt_df))
+}
+
+grs = function(h, nm)
+{
+    # For calculating delta-r
+    dr_fit = list(post = rbind(
+        melt(h$dr, id.vars = c("population", "run")),
+        melt(h$dRt, id.vars = c("population", "run"))
+    ))
+    dr_fit$post[, trial := run]
+    dr_fit$post[, chain := 0]
+    dr_fit$post[, pop := population]
+    dr_fit$post[, population := as.numeric(match(population, nhs_regions))]
+    
+    ci_r1 = overall(dr_fit, "r1", FALSE, c(1, 3, 9))
+    ci_r2 = overall(dr_fit, "r2", FALSE, c(1, 3, 9))
+    ci_dr = overall(dr_fit, "dr", FALSE, c(1, 3, 9))
+    ci_Rt1 = overall(dr_fit, "Rt1", TRUE, c(1, 3, 9))
+    ci_Rt2 = overall(dr_fit, "Rt2", TRUE, c(1, 3, 9))
+    ci_dRt = overall(dr_fit, "dRt", TRUE, c(1, 3, 9))
+    
+    rpw = function(r) {
+        100 * (exp(r * 7) - 1)
+    }
+    
+    g = cbind(c("r1", "r2", "dr", "rpw1", "rpw2", "drpw", "Rt1", "Rt2", "dRt"), 
+        data.table(rbind(ci_r1, ci_r2, ci_dr, rpw(ci_r1), rpw(ci_r2), rpw(ci_dr), ci_Rt1, ci_Rt2, ci_dRt)))
+    names(g) = c("variable", "mean", "q025", "q975")
+    g[, name := nm]
+    return (g[])
+}
+
+
 sgtf2 = sgtf[date >= "2020-10-01" & nhs_name %in% nhs_regions[which_pops], .(date, population = nhs_name, sgtf, other)]
-sgtf2[, c("mean", "lo", "hi") := binom.confint(sgtf, sgtf + other, methods = "bayes", prior.shape1 = 1, prior.shape2 = 1)[, 4:6]]
+sgtf2[, c("mean", "lo", "hi") := binom.confint(sgtf, sgtf + other, methods = "bayes", prior.shape1 = 0.01, prior.shape2 = 0.01)[, 4:6]]
 
 # Determine population sizes
 nhs_regions = c("East of England", "England", "London", "Midlands", "North East and Yorkshire", "North West", "Northern Ireland", "Scotland", "South East", "South West", "United Kingdom", "Wales")
@@ -421,24 +492,55 @@ for (i in seq_along(parametersI)) {
     }
 }
 
-plot_posterior("./fits/relu12.qs", "relu", c(1, 3, 4, 5, 6, 9, 10))
-plot_posterior("./fits/immesc_ELSE8.qs", "immesc", c(1, 3, 9))
-plot_posterior("./fits/ch_u_ELSE8.qs", "ch_u", c(1, 3, 9))
-plot_posterior("./fits/infdur_ELSE8.qs", "infdur", c(1, 3, 9))
-plot_posterior("./fits/serial_ELSE8.qs", "serial", c(1, 3, 9))
-plot_posterior("./fits/combined_ELSE4.qs", "combined", c(1, 3, 9))
+plot_posterior("./fits/relu_ALL18.qs", "relu", c(1, 3, 4, 5, 6, 9, 10))
+plot_posterior("./fits/immesc_ELSE11.qs", "immesc", c(1, 3, 9))
+plot_posterior("./fits/ch_u_ELSE11.qs", "ch_u", c(1, 3, 9))
+plot_posterior("./fits/infdur_ELSE11.qs", "infdur", c(1, 3, 9))
+plot_posterior("./fits/serial_ELSE9.qs", "serial", c(1, 3, 9))
+plot_posterior("./fits/combined_ELSE5.qs", "combined", c(1, 3, 9))
 
-hu = load_hyp("./fits/relu_ELSE15.qs")
-hm = load_hyp("./fits/immesc_ELSE8.qs")
-hc = load_hyp("./fits/ch_u_ELSE8.qs")
-hi = load_hyp("./fits/infdur_ELSE10.qs")
-hs = load_hyp("./fits/serial_ELSE8.qs")
-he = load_hyp("./fits/everything_ELSE6.qs")
-hp = load_hyp("./fits/infec_profile_ELSE4.qs")
-hp2 = load_hyp("./fits/ip_test_ELSE4.qs")
+hu = load_hyp("./fits/relu_ALL18.qs")    # Note - this just loads for which_pops = c(1, 3, 9) despite the fit file having all NHSE regions
+hm = load_hyp("./fits/immesc_ELSE11.qs")
+hc = load_hyp("./fits/ch_u_ELSE11.qs")
+hi = load_hyp("./fits/infdur_ELSE11.qs")
+hs = load_hyp("./fits/serial_ELSE9.qs")
+ha = load_hyp("./fits/combined_ELSE5.qs")
 
-hu2 = load_hyp("./fits/relu12.qs")
+ggplot(hu$dRt) + geom_histogram(aes(x = dRt)) + facet_wrap(~population)
+ggplot(ha$dRt) + geom_histogram(aes(x = dRt)) + facet_wrap(~population)
 
+# Assess fit of each hypothesis
+fit_dt = data.table(
+    hypothesis = c("Transmissibility", "Duration of infectiousness", "Cross protection", 
+        "Susceptibility in children", "Generation time", "Combined"),
+    dic = c(hu$dic1, hi$dic1, hm$dic1, hc$dic1, hs$dic1, ha$dic1),
+    pred = c(predictive(hu), predictive(hi), predictive(hm), predictive(hc), predictive(hs), predictive(ha))
+)
+
+fit_dt[, Ddic := dic - min(dic)]
+fit_dt[, Dpred := pred - min(pred)]
+
+fwrite(fit_dt, "./output/model_performance.csv")
+
+# Growth rates / R
+gr = rbind(
+    grs(hu, "Increased transmissibility"),
+    grs(hi, "Increased duration of infectiousness"),
+    grs(hm, "Immune escape"),
+    grs(hc, "Increased susceptibility in children"),
+    grs(hs, "Shorter generation time"),
+    grs(ha, "Combined model")
+)
+gr[, name := factor(name, unique(name))]
+gr[, variable := factor(variable, unique(variable))]
+gr[variable %like% "R", digits := 2]
+gr[variable %like% "r", digits := 3]
+gr[variable %like% "rpw", digits := 0]
+gr[, summary := paste0(round(mean, digits), " (", round(q025, digits), "-", round(q975, digits), ")")]
+gr2 = dcast(gr, name ~ variable, value.var = "summary")
+fwrite(gr2, "./output/model_growth.csv")
+
+# Best fitting model check params
 u_u = overall(hu, "v2_relu", TRUE, c(1, 3, 9))
 u_h = overall(hu, "v2_hosp_rlo", FALSE, c(1, 3, 9))
 u_i = overall(hu, "v2_icu_rlo", FALSE, c(1, 3, 9))
@@ -448,135 +550,50 @@ exp(u_h)
 exp(u_i)
 exp(u_c)
 
-which_pops = c(1, 3, 9)
-hu3 = qread("./fits/relu_ELSE15.qs")
-post = rbindlist(hu3[[1]], idcol = "population", fill = TRUE)
-post[, pop := nhs_regions[population]]
-post = post[population %in% which_pops]
-post_melted = melt(post, id.vars = c(1:5, ncol(post)))
-hu3 = list(post = post_melted)
-overall(hu3, "v2_relu", TRUE, c(1, 3, 9))
-overall(hu3, "v2_hosp_rlo", FALSE, c(1, 3, 9))
-overall(hu3, "v2_icu_rlo", FALSE, c(1, 3, 9))
-overall(hu3, "v2_cfr_rlo", FALSE, c(1, 3, 9))
+u_u7 = overall(hu7, "v2_relu", TRUE, england_pops)
+u_h7 = overall(hu7, "v2_hosp_rlo", FALSE, england_pops)
+u_i7 = overall(hu7, "v2_icu_rlo", FALSE, england_pops)
+u_c7 = overall(hu7, "v2_cfr_rlo", FALSE, england_pops)
 
-
-which_pops = england_pops
-hu7 = qread("./fits/relu12.qs")
-post = rbindlist(hu7[[1]], idcol = "population", fill = TRUE)
-post[, pop := nhs_regions[population]]
-post = post[population %in% which_pops]
-post_melted = melt(post, id.vars = c(1:5, ncol(post)))
-hu7 = list(post = post_melted)
-
-u7_u = overall(hu7, "v2_relu", TRUE, england_pops)
-u7_h = overall(hu7, "v2_hosp_rlo", FALSE, england_pops)
-u7_i = overall(hu7, "v2_icu_rlo", FALSE, england_pops)
-u7_c = overall(hu7, "v2_cfr_rlo", FALSE, england_pops)
-
-
-overall(he, "v2_relu", TRUE, c(1, 3, 9))
-overall(he, "v2_infdur", TRUE, c(1, 3, 9))
-overall(he, "v2_immesc", TRUE, c(1, 3, 9))
-overall(he, "v2_ch_u", TRUE, c(1, 3, 9))
-overall(he, "v2_serial", TRUE, c(1, 3, 9))
+exp(u_h7)
+exp(u_i7)
+exp(u_c7)
 
 pu = hyp_plots(hu, c(1, 3, 9), "v2_relu", TRUE, "Transmissibility")
 pi = hyp_plots(hi, c(1, 3, 9), "v2_infdur", TRUE, "Duration of\ninfectiousness")
 pm = hyp_plots(hm, c(1, 3, 9), "v2_immesc", TRUE, "Cross\nprotection")
 pc = hyp_plots(hc, c(1, 3, 9), "v2_ch_u", TRUE, "Susceptibility\nin children")
 ps = hyp_plots(hs, c(1, 3, 9), "v2_serial", TRUE, "Generation\ntime")
-
-pp2 = hyp_plots(hp2, c(1, 3, 9), c("v2_relu", "v2_serial"), c(TRUE, TRUE), c("Transmissibility", "Generation\ntime"))
-ss2 = style(pp2, "Serial + transmissibility", 1:2, TRUE)
-
-cowplot::plot_grid(ss2[[1]], ss2[[2]], rel_widths = c(2, 1))
     
-su = style(pu, "Increased transmissibility", 1, FALSE)
-si = style(pi, "Increased duration of infectiousness", 2, FALSE)
-sm = style(pm, "Immune escape", 3, TRUE)
-sc = style(pc, "Increased susceptibility in children", 4, FALSE)
-ss = style(ps, "Shorter generation time", 5, FALSE)
+su = style(pu, "Increased transmissibility", 1, FALSE, TRUE)
+si = style(pi, "Increased duration of infectiousness", 2, FALSE, FALSE)
+sm = style(pm, "Immune escape", 3, TRUE, FALSE)
+sc = style(pc, "Increased susceptibility in children", 4, FALSE, FALSE)
+ss = style(ps, "Shorter generation time", 5, FALSE, FALSE)
 
 se_novoc =  south_east("./fits/novoc_ELSE4.qs", TRUE, "2020-12-31")
-se_trans0 = south_east("./fits/relu_ELSE15.qs", FALSE, "2020-12-31")
-se_trans1 = south_east("./fits/relu_ELSE15.qs", TRUE, "2020-12-31")
+se_trans0 = south_east("./fits/relu_ELSE18.qs", FALSE, "2020-12-31")
+se_trans1 = south_east("./fits/relu_ELSE18.qs", TRUE, "2020-12-31")
+
+extenders = data.table(ValueType = c("Deaths", "Hospital\nadmissions", "Hospital beds\noccupied",
+    "ICU beds\noccupied", "Infection\nincidence", "PCR\nprevalence (%)", "Seroprevalence\n(%)"), 
+    x = rep(as.Date("2020-06-01"), 7), 
+    y = c(200, 800, 6000, 500, 40000, 4, 12.5))
+
+se1 = se_trans1$plot + theme(strip.text.x = element_blank()) + geom_blank(data = extenders, aes(x, y))
+se0 = se_trans0$plot + theme(axis.title.y = element_blank(), strip.text = element_blank()) + geom_blank(data = extenders, aes(x, y))
+sen = se_novoc$plot + theme(axis.title.y = element_blank(), strip.text = element_blank()) + geom_blank(data = extenders, aes(x, y))
 
 plot_hyp = cowplot::plot_grid(
-    cowplot::plot_grid(su[[1]], si[[1]], sm[[1]], sc[[1]], ss[[1]], ncol = 1),
-    cowplot::plot_grid(su[[2]], si[[2]], sm[[2]], sc[[2]], ss[[2]], ncol = 1, align = "v"),
-    se_novoc, se_trans0, se_trans1, labels = LETTERS, nrow = 1, label_size = 10, rel_widths = c(5, 3, 3, 3, 3))
+    cowplot::plot_grid(su[[1]], si[[1]], sm[[1]], sc[[1]], ss[[1]], ncol = 1, rel_heights = c(1.15, 1, 1, 1, 1)),
+    cowplot::plot_grid(su[[2]] + labs(title = ""), si[[2]], sm[[2]], sc[[2]], ss[[2]], ncol = 1, align = "v", rel_heights = c(1.15, 1, 1, 1, 1)),
+    se1, se0, sen, 
+    labels = LETTERS, nrow = 1, label_size = 10, rel_widths = c(6, 3.6, 3.6, 3.1, 3.1))
 
-ggsave("./output/plot_hyp.pdf", plot_hyp, width = 38, height = 20, units = "cm", useDingbats = FALSE)
-ggsave("./output/plot_hyp.png", plot_hyp, width = 38, height = 20, units = "cm")
-
-hu$dic1
-hm$dic1
-hc$dic1
-hi$dic1
-hs$dic1
-he$dic1
-hp$dic1
-
-hu$pv[, mean(V1), by = population][, sum(V1)]
-hm$pv[, mean(V1), by = population][, sum(V1)]
-hc$pv[, mean(V1), by = population][, sum(V1)]
-hi$pv[, mean(V1), by = population][, sum(V1)]
-hs$pv[, mean(V1), by = population][, sum(V1)]
-he$pv[, mean(V1), by = population][, sum(V1)]
-
-hi$ll_mean_theta
-
-predictive(hu)
-predictive(hi)
-predictive(hm)
-predictive(hc)
-predictive(hs)
-
-predictive(he)
-predictive(hp)
-
-w = qread("./fits/relu_ELSE14.qs")
-w = qread("./fits/relu_ELSE15.qs")
-sapply(w[[1]], function(x) mean(x$ll))
-
-# Test of assembling...
-pa = ggplot(hu$vmodel[t > 280]) +
-    geom_ribbon(aes(x = t + ymd("2020-01-01"), ymin = `2.5%`, ymax = `97.5%`), fill = "darkorchid", alpha = 0.4) +
-    geom_line(aes(x = t + ymd("2020-01-01"), y = `50%`), colour = "darkorchid") +
-    geom_ribbon(data = sgtf2, aes(x = date, ymin = lo, ymax = hi), alpha = 0.4) +
-    geom_line(data = sgtf2, aes(x = date, y = mean)) +
-    geom_vline(aes(xintercept = ymd("2020-12-24"))) +
-    #scale_y_continuous(trans = scales::logit_trans(), breaks = c(0.01, 0.1, 0.2, 0.3, 0.5, 0.7, 0.8, 0.9, 0.99), limits = c(0.01, 0.99)) +
-    facet_wrap(~population)
-
-# Posteriors: not that interesting here . . .
+ggsave("./output/plot_hyp.pdf", plot_hyp, width = 35, height = 17, units = "cm", useDingbats = FALSE)
+ggsave("./output/plot_hyp.png", plot_hyp, width = 35, height = 17, units = "cm")
 
 
-sgtf3 = sgtf[date >= "2020-10-01", .(date, population = nhs_name, sgtf, other)]
-sgtf3[, c("mean", "lo", "hi") := binom.confint(sgtf, sgtf + other, methods = "exact")[, 4:6]]
-
-ggplot() +
-    geom_ribbon(data = sgtf3, aes(x = date, ymin = lo, ymax = hi), alpha = 0.4) +
-    geom_line(data = sgtf3, aes(x = date, y = mean)) +
-    #scale_y_continuous(trans = scales::logit_trans(), breaks = c(0.01, 0.1, 0.2, 0.3, 0.5, 0.7, 0.8, 0.9, 0.99), limits = c(0.01, 0.99)) +
-    facet_wrap(~population)
-
-w = qread("./fits/serial_ELSE3.qs")
-
-pa1 = qread("./output/cog-plot-0.qs")
-pa2 = qread("./output/post-plot-0.qs")
-pb1 = qread("./output/cog-plot-ImmEsc.qs")
-pb2 = qread("./output/post-plot-ImmEsc.qs")
-pc1 = qread("./output/cog-plot-S.qs")
-pc2 = qread("./output/post-plot-S.qs")
-pd1 = qread("./output/cog-plot-LatentPeriod.qs")
-pd2 = qread("./output/post-plot-LatentPeriod.qs")
-
-plot = cowplot::plot_grid(pa1, pa2, pb1, pb2, pc1, pc2, pd1, pd2, nrow = 4, labels = c("A", "", "B", "", "C", "", "D", ""), label_size = 10, align = "hv", axis = "bottom")
-ggsave("./output/fig-hypotheses.pdf", plot, width = 34, height = 20, units = "cm", useDingbats = FALSE)
-ggsave("./output/fig-hypotheses.png", plot, width = 34, height = 20, units = "cm")
-plot
 
 
 
@@ -593,36 +610,26 @@ for (i in seq_along(parametersI)) {
 }
 
 
-
-
-overall(hu, "v2_relu", TRUE)
-overall(hc, "v2_hosp_rlo", FALSE)
-overall(hc, "v2_icu_rlo", FALSE)
-overall(hc, "v2_cfr_rlo", FALSE)
-
-
-
-
-# Plot fits
-which_pops = c(1, 3, 9)
-p_novoc = load_hyp("./fits/novoc_ELSE4.qs", TRUE)
-
-which_pops = c(1, 3, 4, 5, 6, 9, 10)
-p_relu_novoc = load_hyp("./fits/relu12.qs", TRUE, FALSE)
-
-which_pops = c(1, 3, 4, 5, 6, 9, 10)
-p_relu = load_hyp("./fits/relu12.qs", TRUE)
-
-qsave(list(p_novoc, p_relu_novoc, p_relu), "./output/plot_fits.qs")
-
-ggsave("./output/SF_fit_novoc.pdf", p_novoc, width = 20, height = 20, units = "cm", useDingbats = FALSE)
-ggsave("./output/SF_fit_novoc.png", p_novoc, width = 20, height = 20, units = "cm")
-ggsave("./output/SF_fit_relu_novoc.pdf", p_relu_novoc, width = 40, height = 20, units = "cm", useDingbats = FALSE)
-ggsave("./output/SF_fit_relu_novoc.png", p_relu_novoc, width = 40, height = 20, units = "cm")
-ggsave("./output/SF_fit_relu.pdf", p_relu, width = 40, height = 20, units = "cm", useDingbats = FALSE)
-ggsave("./output/SF_fit_relu.png", p_relu, width = 40, height = 20, units = "cm")
-
-
 # For age plots
-testC = south_east("./fits/ch_u_ELSE8.qs")
-testU = south_east("./fits/infdur_ELSE10.qs")
+testC = south_east("./fits/ch_u_ELSE11.qs")
+testU = south_east("./fits/infdur_ELSE11.qs")
+
+
+# Test
+wu = south_east("./fits/relu_ELSE15.qs", TRUE, "2020-12-31")
+wm = south_east("./fits/immesc_ELSE11.qs", TRUE, "2020-12-31")
+wc = south_east("./fits/ch_u_ELSE11.qs", TRUE, "2020-12-31")
+wi = south_east("./fits/infdur_ELSE11.qs", TRUE, "2020-12-31")
+ws = south_east("./fits/serial_ELSE9.qs", TRUE, "2020-12-31")
+wp = south_east("./fits/infec_profile_ELSE4.qs", TRUE, "2020-12-31")
+wa = south_east("./fits/combined_ELSE5.qs", TRUE, "2020-12-31")
+
+ggplot(wm[run == 1, .(Rt = obs0[1], R0 = obs0[4], Rt1 = obs0[11], Rt2 = obs0[12]), by = t], aes(x = t)) + 
+    geom_line(aes(y = R0, colour = "R0")) + 
+    geom_line(aes(y = Rt, colour = "Rt")) + 
+    geom_line(aes(y = Rt1, colour = "Rt1")) +
+    geom_line(aes(y = Rt2, colour = "Rt2"))
+
+ggplot(wm[, .(Rt = obs0[1], R0 = obs0[4], Rt1 = obs0[11], Rt2 = obs0[12]), by = .(run, t)], aes(x = t)) + 
+    geom_line(aes(y = Rt2/Rt1, colour = "Rt2/Rt1", group = run))
+

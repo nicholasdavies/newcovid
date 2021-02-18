@@ -1,5 +1,9 @@
+library(data.table)
+library(ggplot2)
+library(cowplot)
 library(colourpal)
 library(zoo)
+library(lubridate)
 
 ll = fread("~/Documents/uk_covid_data_sensitive/phe/20210118/Anonymised Combined Line List 20210118.csv")
 sgtf = fread("~/Documents/uk_covid_data_sensitive/phe/20210118/SGTF_linelist_20210118.csv")
@@ -53,92 +57,38 @@ plotby(d, "ethnicity_final")
 plotby(d, "sex")
 plotby(d, "UTLA_name") + theme(legend.position = "none")
 
-en = rev(names(sort(d[, table(ethnicity_final)])))
-d[, eth_let := LETTERS[match(ethnicity_final, en)]]
 
-lev = rev(d[!is.na(NHSER_name) & NHSER_name != "", .(sgtf = sum(sgtf_under30CT == 1, na.rm = T), oth = sum(sgtf_under30CT == 0, na.rm = T)), by = NHSER_name][, .(f = sgtf / (sgtf + oth)), by = NHSER_name][order(f), NHSER_name])
-d[, nhs := factor(NHSER_name, levels = lev)]
-
-pl1 = plotby2(d, "agegroup", "London", c(0.01, 0.98)) + labs(x = "Age", y = "SGTF frequency", colour = "Time") + theme(legend.position = "none")
+# DEMOGRAPHICS PLOTS
+pl1 = plotby2(d, "agegroup", "London", c(0.01, 0.98)) + labs(x = NULL, y = "Frequency of\nS gene target failure", colour = "Time") + 
+    theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1))
 pl2 = plotby2(d, "imd_decile", "London", c(0.01, 0.98)) + scale_x_continuous(breaks = 1:10) + 
     labs(x = "Index of multiple deprivation decile", y = NULL, colour = "Time") + theme(legend.position = "none")
-pl3 = plotby2(d, "sex", "London", c(0.01, 0.98)) + labs(x = "Sex", y = NULL, colour = "Period starting")
+pl3 = plotby2(d, "sex", "London", c(0.01, 0.98)) + labs(x = NULL, y = NULL, colour = "Period starting") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 qsave(pl1, "./output/plot_demographics_london_1.qs")
 qsave(pl2, "./output/plot_demographics_london_2.qs")
 qsave(pl3, "./output/plot_demographics_london_3.qs")
 
-p1 = plotby2(d, "imd_decile") + scale_x_continuous(breaks = 1:10) + 
-    labs(x = "Index of multiple deprivation decile", y = "SGTF frequency", colour = "Time") + theme(legend.position = "none")
-p2 = plotby2(d, "agegroup") + labs(x = "Age", y = NULL, colour = "Time") + theme(legend.position = "none")
-p3 = plotby2(d, "sex") + labs(x = "Sex", y = NULL, colour = "Week starting")
-plot_demographics = cowplot::plot_grid(p1, p2, p3, nrow = 1, rel_widths = c(10, 10, 6), align = "v", axis = "bottom")
-qsave(plot_demographics, "./output/plot_demographics.qs")
-
-# IMD
-ggplot(d[specimen_date > "2020-10-01" & !is.na(imd_decile), 
-    .(voc = sum(sgtf_under30CT == 1, na.rm = T), other = sum(sgtf_under30CT == 0, na.rm = T)), 
-    keyby = .(date = specimen_date, imd_decile)]) + 
-    geom_line(aes(x = date, y = voc / (voc + other), colour = imd_decile, group = imd_decile))
-
-# Ethnicity
-ggplot(d[specimen_date > "2020-10-01" & !is.na(ethnicity_final), 
-    .(voc = sum(sgtf_under30CT == 1, na.rm = T), other = sum(sgtf_under30CT == 0, na.rm = T)), 
-    keyby = .(date = specimen_date, ethnicity_final)]) + 
-    geom_line(aes(x = date, y = voc / (voc + other), colour = ethnicity_final, group = ethnicity_final))
-
-# Sex
-ggplot(d[specimen_date > "2020-10-01" & !is.na(sex), 
-    .(voc = sum(sgtf_under30CT == 1, na.rm = T), other = sum(sgtf_under30CT == 0, na.rm = T)), 
-    keyby = .(date = specimen_date, sex)]) + 
-    geom_line(aes(x = date, y = voc / (voc + other), colour = sex, group = sex))
-
-# Age
-ggplot(d[specimen_date > "2020-10-01" & !is.na(age), 
-    .(voc = sum(sgtf_under30CT == 1, na.rm = T), other = sum(sgtf_under30CT == 0, na.rm = T)), 
-    keyby = .(date = specimen_date, agegroup = cut(age, seq(0, 100, by = 10)))]) + 
-    geom_line(aes(x = date, y = voc / (voc + other), colour = agegroup, group = agegroup)) +
-    scale_y_continuous(trans = scales::logit_trans())
 
 # MAKE OUTPUT
 dd = d[!is.na(specimen_date) & !is.na(NHSER_name) & NHSER_name != "", 
     .(sgtf = sum(sgtf_under30CT == 1, na.rm = T), other = sum(sgtf_under30CT == 0, na.rm = T)), 
     keyby = .(date = specimen_date, pillar, nhs_name = NHSER_name)]
 
-ggplot(dd[date > "2020-10-01"]) +
-    #geom_ribbon(data = raw[sample_date > "2020-10-01"], aes(x = sample_date, ymin = lower, ymax = upper), fill = "darkorchid", alpha = 0.4) +
-    geom_line(aes(x = date, y = sgtf / (other + sgtf), colour = pillar)) + 
+ggplot() +
+    geom_line(data = dd[date > "2020-10-01" & pillar == "Pillar 2"], aes(x = date, y = sgtf / (other + sgtf))) + 
     facet_wrap(~nhs_name)
 
 fwrite(dd[pillar == "Pillar 2" & date >= "2020-10-01", .(date, nhs_name, sgtf, other)], "./fitting_data/sgtf-2021-01-18.csv")
 
-output = d[!is.na(specimen_date) & !is.na(NHSER_name) & NHSER_name != "" & pillar == "Pillar 2" & specimen_date >= "2020-09-01", 
-    .(sgtf = sum(sgtf_under30CT == 1, na.rm = T), other = sum(sgtf_under30CT == 0, na.rm = T)), 
-    keyby = .(date = specimen_date, nhser_name = NHSER_name, utla_name = UTLA_name, ltla_name = LTLA_name, nhser_code = NHSER_code, utla_code = UTLA_code, ltla_code = LTLA_code)]
 
-saveRDS(output, "~/Desktop/sgtf.rds")
-
-# Relative overrepresentation in under-20s
-d[, age_group := ifelse(age < 20, "under_20", "20_plus")]
-dage = d[pillar == "Pillar 2" & !is.na(sgtf_under30CT) & !is.na(age_group) & !is.na(specimen_date) & NHSER_name != "", 
-    .(under_20_sgtf = sum(age_group == "under_20" & sgtf_under30CT == 1), over_20_sgtf = sum(age_group == "20_plus" & sgtf_under30CT == 1),
-      under_20_other = sum(age_group == "under_20" & sgtf_under30CT == 0), over_20_other = sum(age_group == "20_plus" & sgtf_under30CT == 0)), 
-    keyby = .(specimen_date, NHSER_name)]
-
-ggplot(dage) +
-    geom_line(aes(x = specimen_date, y = log((under_20_sgtf/over_20_sgtf) / (under_20_other/over_20_other)))) +
-    facet_wrap(~NHSER_name)
-
-# Relative overrepresentation in over-70s
-d[, age_group := ifelse(age < 70, "under_70", "70_plus")]
-dage = d[pillar == "Pillar 2" & !is.na(sgtf_under30CT) & !is.na(age_group) & !is.na(specimen_date) & NHSER_name != "", 
-    .(under_70_sgtf = sum(age_group == "under_70" & sgtf_under30CT == 1), over_70_sgtf = sum(age_group == "70_plus" & sgtf_under30CT == 1),
-      under_70_other = sum(age_group == "under_70" & sgtf_under30CT == 0), over_70_other = sum(age_group == "70_plus" & sgtf_under30CT == 0)), 
-    keyby = .(specimen_date = floor_date(specimen_date, "week"), london = NHSER_name == "London")]
-
-ggplot(dage) +
-    geom_line(aes(x = specimen_date, y = log((over_70_sgtf/under_70_sgtf) / (over_70_other/under_70_other)), colour = london))
-
+# RASTER PLOT
+ll = fread("~/Documents/uk_covid_data_sensitive/phe/20210208/Anonymised Combined Line List 20210208.csv")
+sgtf = fread("~/Documents/uk_covid_data_sensitive/phe/20210208/SGTF_linelist_20210208.csv")
+ll[, specimen_date := dmy(specimen_date)]
+sgtf[, specimen_date := ymd(specimen_date)]
+d = merge(ll, sgtf, by = c("FINALID", "specimen_date"), all = TRUE)
 
 # by UTLA (LTLA also avail), pillar 2 only
 dd = d[!is.na(specimen_date) & !is.na(NHSER_name) & UTLA_name != "" & pillar == "Pillar 2", 
@@ -163,22 +113,18 @@ dd[, lat_rank := frank(lat, ties.method = "dense")]
 dd = dd[order(lat_rank)]
 dd[, utla_name := factor(utla_name, levels = unique(utla_name))]
 
-ggplot(dd[date >= "2020-10-01"]) +
-    geom_line(aes(x = date, y = sgtf/(sgtf+other), colour = lat, group = lat)) +
-    theme(legend.position = "none")
-
-ggplot(dd[date >= "2020-10-01"]) +
-    geom_smooth(aes(x = date, y = sgtf/(sgtf+other), colour = lat, group = lat), se = FALSE) +
-    scale_y_continuous(trans = scales::logit_trans(), breaks = c(0.01, 0.1, 0.2, 0.5, 0.7, 0.9, 0.99), limits = c(0.01, 0.99)) +
-    theme(legend.position = "none")
+library(ogwrangler)
+CreateCache()
+dd[, nhser := ogwhat(utla_code, "nhser")]
+dd[, nhser_name := ogwhat(nhser)]
 
 library(colourpal)
 
-plotRaster = ggplot(dd[date >= "2020-10-01" & date <= "2021-01-15" & !is.na(sgtf) & sgtf + other > 0]) +
+plotRaster = ggplot(dd[date >= "2020-10-15" & date <= "2021-02-01" & !is.na(sgtf) & sgtf + other > 0]) +
     geom_tile(aes(x = date, y = utla_name, fill = sgtf/(sgtf+other))) +
     theme_cowplot(font_size = 10) +
-    theme(axis.text.y = element_text(size = unit(6, "pt")), panel.background = element_rect(fill = "#888888"), 
-        legend.position = c(-0.21, 0.96), legend.background = element_rect(fill = "#ffffff"), legend.margin = margin(2,2,5,2)) +
+    theme(axis.text.y = element_text(size = unit(5, "pt")), panel.background = element_rect(fill = "#888888"), 
+        legend.position = c(-0.24, 0.94), legend.background = element_rect(fill = "#ffffff"), legend.margin = margin(2,2,5,2)) +
     labs(x = NULL, y = NULL, fill = NULL) +
     scale_x_date(expand = expansion(0)) +
     ggpal("ocean.thermal")
@@ -187,46 +133,4 @@ plotRaster
 ggsave("./output/utla_raster.pdf", plotRaster, width = 24, height = 30, units = "cm", useDingbats = FALSE)
 ggsave("./output/utla_raster.png", plotRaster, width = 24, height = 30, units = "cm")
 qsave(plotRaster, "./output/fig_raster.qs")
-
-ggplot(dd[date >= "2020-10-01"]) +
-    geom_smooth(aes(x = date, y = sgtf/(sgtf+other), colour = lat, group = lat), se = FALSE, method = "glm", method.args = list(family = "binomial")) +
-    theme(legend.position = "none")
-
-library(ogwrangler)
-CreateCache()
-dd2 = dd[date >= "2020-11-02" & date < "2020-12-28"][order(date)]
-dd2[, pop2019 := ogwhat(utla_code, "pop2019")]
-dd2[, week := isoweek(date)]
-
-dd3 = dd2[, .(sgtf = sum(sgtf), other = sum(other)), by = .(utla_code, utla_name, week, lat, long)]
-
-plotXy = ggplot(dd3) +
-    geom_line(aes(x = week, y = sgtf/(sgtf + other), group = utla_code, colour = lat)) +
-    theme_cowplot(font_size = 10) +
-    ggpal("ocean.thermal") +
-    scale_y_continuous(trans = scales::logit_trans(), breaks = c(0.01, 0.1, 0.2, 0.5, 0.7, 0.9, 0.99), limits = c(0.01, 0.99)) +
-    labs(x = "Week of 2020", y = "Relative frequency of S gene target failure", colour = "Latitude")
-
-ggsave("./output/utla_xy.pdf", plotXy, width = 16, height = 12, units = "cm", useDingbats = FALSE)
-ggsave("./output/utla_xy.png", plotXy, width = 16, height = 12, units = "cm")
-
-ggplot(d[!is.na(sgtf_under30CT) & !is.na(imd_decile), .N, keyby = .(imd_decile, specimen_date, sgtf_under30CT)]) +
-    geom_line(aes(x = specimen_date, y = N, colour = as.factor(imd_decile), group = as.factor(imd_decile))) +
-    facet_wrap(~as.factor(sgtf_under30CT)) +
-    scale_y_log10() +
-    labs(colour = "IMD decile")
-
-ggplot(d[!is.na(sgtf_under30CT) & NHSER_name != "", .N, keyby = .(NHSER_name, specimen_date, sgtf_under30CT)]) +
-    geom_line(aes(x = specimen_date, y = N, colour = NHSER_name)) +
-    facet_wrap(~as.factor(sgtf_under30CT)) +
-    scale_y_log10() +
-    labs(colour = "NHS region")
-
-ggplot(d[specimen_date > "2020-10-01" & NHSER_name != "" & pillar == "Pillar 2", .N, keyby = .(NHSER_name, specimen_date)]) +
-    geom_line(aes(x = specimen_date, y = rollmean(N, 7, fill = NA), colour = NHSER_name)) +
-    #scale_y_log10() +
-    facet_wrap(~NHSER_name) +
-    labs(colour = "NHS region") +
-    scale_x_date(date_breaks = "1 week", date_label = "%b %d") +
-    theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1))
 

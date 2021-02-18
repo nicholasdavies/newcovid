@@ -17,15 +17,15 @@ theme_set(cowplot::theme_cowplot(font_size = 10) + theme(strip.background = elem
 N_THREADS = 46
 REP_START = 1
 REP_END = 2
-BURN_IN = 2500
-ITER = 500
-BURN_IN_FINAL = 2500
-ITER_FINAL = 500
+BURN_IN = 3000
+ITER = 5000
+BURN_IN_FINAL = 3000
+ITER_FINAL = 5000
 
 which_pops = c(1, 3, 4, 5, 6, 9, 10)
 set_id = ""
 
-data_file = "processed-data-2021-01-08.qs"
+data_file = "processed-data-2021-01-18.qs"
 mobility_file = "schedule3-2021-01-07.rds"
 date_fitting = "2020-12-24"
 # data_file = "processed-data-2021-01-15.qs"
@@ -253,7 +253,6 @@ if (opt_v2) {
     priorsI = c(priorsI, list(
         v2_when = "U 144 365",
         v2_sgtf0 = "B 1.5 15",
-        #v2_conc = "E 0.1 0.1 T 2 1000",
         v2_disp = "E 10 10 T 0 0.7",
         v2_hosp_rlo = "N 0 0.1 T -4 4",
         v2_icu_rlo = "N 0 0.1 T -4 4",
@@ -393,7 +392,7 @@ for (replic in REP_START:REP_END)
             seed = 0, 
             burn_in = ifelse(replic == REP_END, BURN_IN_FINAL, BURN_IN), 
             iterations = ifelse(replic == REP_END, ITER_FINAL, ITER), 
-            n_threads = N_THREADS, classic_gamma = T);
+            n_threads = N_THREADS, classic_gamma = F);
         setDT(postI)
         posteriorsI[[p]] = postI
     

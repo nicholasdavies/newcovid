@@ -247,7 +247,6 @@ cpp_likI_voc = function(params, ld, sitreps, sero, virus, sgtfd, popid, max_date
             double s2 = dyn("test2_o", sgtf_t[i], {}, {});
             double p2 = (s1 + s2) > 0 ? s2 / (s1 + s2) : 0;
             double model_sgtf = p2 + (1 - p2) * x_v2_sgtf0;
-            // ll += 10 * bbinom(sgtf_s[i], sgtf_s[i] + sgtf_o[i], model_sgtf, x_v2_conc);
             ll += 10 * bbinom(sgtf_s[i], sgtf_s[i] + sgtf_o[i], model_sgtf, size_param(x_v2_disp));
         }'
         } else '',
@@ -281,6 +280,8 @@ cpp_obsI_voc = function(concentration, v2, P.death, P.critical, priors)
 
         'dyn.Obs(t, 0, 0, 0) = estimate_Rt(P, dyn, t, 0, 50);',
         'dyn.Obs(t, 0, 3, 0) = estimate_R0(P, dyn, t, 0, 50);',
+        'dyn.Obs(t, 0, 10, 0) = estimate_Rt_1(P, dyn, t, 0, 50);',
+        'dyn.Obs(t, 0, 11, 0) = estimate_Rt_2(P, dyn, t, 0, 50);',
         
         # increase in young person mobility
         if (concentration) {

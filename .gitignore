@@ -10,9 +10,11 @@ output/*
 fits/*
 fits/other/*
 other/*
+ms/*
 
 upload
 upload2
 download
 download2
+put
 

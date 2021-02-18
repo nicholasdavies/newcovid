@@ -41,9 +41,9 @@ arrange_projection = function(proj, from_date = NULL, england = FALSE)
     w[, admissions_lo := quants(admissions, 0.025, disp_hosp_inc)]
     w[, admissions_md := quants(admissions, 0.500, disp_hosp_inc)]
     w[, admissions_hi := quants(admissions, 0.975, disp_hosp_inc)]
-    w[, bedsK_lo := quants(beds / 1000, 0.025, disp_hosp_prev)]
-    w[, bedsK_md := quants(beds / 1000, 0.500, disp_hosp_prev)]
-    w[, bedsK_hi := quants(beds / 1000, 0.975, disp_hosp_prev)]
+    w[, bedsK_lo := quants(beds, 0.025, disp_hosp_prev) / 1000]
+    w[, bedsK_md := quants(beds, 0.500, disp_hosp_prev) / 1000]
+    w[, bedsK_hi := quants(beds, 0.975, disp_hosp_prev) / 1000]
     w[, icu_lo := quants(icu, 0.025, disp_icu_prev)]
     w[, icu_md := quants(icu, 0.500, disp_icu_prev)]
     w[, icu_hi := quants(icu, 0.975, disp_icu_prev)]
@@ -181,72 +181,72 @@ plot_projection_2parts = function(proj_list, proj_names, from_date, colours, reg
     cowplot::plot_grid(plotA, plotB, nrow = 1, rel_widths = c(0.48, 0.52), labels = LETTERS, label_size = 10)
 }
 
-plot_cum_deaths = function(proj_list, proj_names, from_date, ystart = 26, ydiff = -1.2, titl = "Cumulative deaths")
-{
-    stop("Check for both virus strains.")
-    p = NULL
-    for (i in seq_along(proj_list)) {
-        w = arrange_projection(proj_list[[i]], cumulative_deaths = TRUE, from_date = from_date, england = TRUE)
-        p = rbind(p,
-            cbind(w[variable == "Cumulative deaths" | variable == "cb"], name = proj_names[i])
-        )
-    }
-    
-    p[, name := factor(name, levels = unique(name))]
-    
-    cbs = p[variable == "cb", .(t = ymd("2020-01-01") + t[`50%` > 0.5]), by = .(population, name)][, 
-        .(tmin = min(t), tmax = max(t)), by = .(population, name)]
-    
-    plot = ggplot(p[variable != "cb"]) +
-        geom_ribbon(aes(x = ymd("2020-01-01") + t, ymin = `2.5%` / 1000, ymax = `97.5%` / 1000, fill = name), alpha = 0.5) +
-        geom_line(aes(x = ymd("2020-01-01") + t, y = `50%` / 1000, colour = name), size = 0.2) +
-        facet_wrap(~population, scales = "free") +
-        theme(strip.background = element_blank(), strip.text = element_blank(), legend.position = c(0.02, 0.8),
-            panel.background = element_rect(fill = "#f4f4f4"),
-            panel.grid.major = element_line(colour = "#ffffff", size = 0.2)) +
-        labs(x = NULL, y = "Cumulative deaths\n(thousands)", colour = NULL, fill = NULL, title = titl) +
-        scale_x_date(date_breaks = "1 month", date_labels = "%b")
-    
-    if (nrow(cbs) > 0) {
-        yy = ystart
-        for (nm in cbs[, unique(name)]) {
-            plot = plot +
-                geom_linerange(data = cbs[name == nm], aes(xmin = tmin, xmax = tmax, colour = name), y = yy, show.legend = FALSE, linetype = "32", size = 0.2) +
-                geom_linerange(data = cbs[name == nm], aes(x = tmin, colour = name), ymin = yy - (ydiff * 0.2), ymax = yy + (ydiff * 0.2), show.legend = FALSE, size = 0.2) +
-                geom_linerange(data = cbs[name == nm], aes(x = tmax, colour = name), ymin = yy - (ydiff * 0.2), ymax = yy + (ydiff * 0.2), show.legend = FALSE, size = 0.2)
-            yy = yy + ydiff
-        }
-    }
+# plot_cum_deaths = function(proj_list, proj_names, from_date, ystart = 26, ydiff = -1.2, titl = "Cumulative deaths")
+# {
+#     stop("Check for both virus strains.")
+#     p = NULL
+#     for (i in seq_along(proj_list)) {
+#         w = arrange_projection(proj_list[[i]], cumulative_deaths = TRUE, from_date = from_date, england = TRUE)
+#         p = rbind(p,
+#             cbind(w[variable == "Cumulative deaths" | variable == "cb"], name = proj_names[i])
+#         )
+#     }
+#     
+#     p[, name := factor(name, levels = unique(name))]
+#     
+#     cbs = p[variable == "cb", .(t = ymd("2020-01-01") + t[`50%` > 0.5]), by = .(population, name)][, 
+#         .(tmin = min(t), tmax = max(t)), by = .(population, name)]
+#     
+#     plot = ggplot(p[variable != "cb"]) +
+#         geom_ribbon(aes(x = ymd("2020-01-01") + t, ymin = `2.5%` / 1000, ymax = `97.5%` / 1000, fill = name), alpha = 0.5) +
+#         geom_line(aes(x = ymd("2020-01-01") + t, y = `50%` / 1000, colour = name), size = 0.2) +
+#         facet_wrap(~population, scales = "free") +
+#         theme(strip.background = element_blank(), strip.text = element_blank(), legend.position = c(0.02, 0.8),
+#             panel.background = element_rect(fill = "#f4f4f4"),
+#             panel.grid.major = element_line(colour = "#ffffff", size = 0.2)) +
+#         labs(x = NULL, y = "Cumulative deaths\n(thousands)", colour = NULL, fill = NULL, title = titl) +
+#         scale_x_date(date_breaks = "1 month", date_labels = "%b")
+#     
+#     if (nrow(cbs) > 0) {
+#         yy = ystart
+#         for (nm in cbs[, unique(name)]) {
+#             plot = plot +
+#                 geom_linerange(data = cbs[name == nm], aes(xmin = tmin, xmax = tmax, colour = name), y = yy, show.legend = FALSE, linetype = "32", size = 0.2) +
+#                 geom_linerange(data = cbs[name == nm], aes(x = tmin, colour = name), ymin = yy - (ydiff * 0.2), ymax = yy + (ydiff * 0.2), show.legend = FALSE, size = 0.2) +
+#                 geom_linerange(data = cbs[name == nm], aes(x = tmax, colour = name), ymin = yy - (ydiff * 0.2), ymax = yy + (ydiff * 0.2), show.legend = FALSE, size = 0.2)
+#             yy = yy + ydiff
+#         }
+#     }
+# 
+#     return (plot)
+# }
 
-    return (plot)
-}
-
-plot_icu = function(proj_list, proj_names, from_date)
-{
-    stop("Check for both virus strains.")
-
-    p = NULL
-    for (i in seq_along(proj_list)) {
-        w = arrange_projection(proj_list[[i]], cumulative_deaths = TRUE, from_date = from_date, england = TRUE)
-        p = rbind(p,
-            cbind(w[variable == "ICU beds"], name = proj_names[i])
-        )
-    }
-    
-    p[, name := factor(name, levels = unique(name))]
-    
-    plot = ggplot(p) +
-        geom_ribbon(aes(x = ymd("2020-01-01") + t, ymin = `2.5%`, ymax = `97.5%`, fill = name), alpha = 0.5) +
-        geom_line(aes(x = ymd("2020-01-01") + t, y = `50%`, colour = name), size = 0.2) +
-        facet_wrap(~population, scales = "free") +
-        theme(strip.background = element_blank(), strip.text = element_blank(), legend.position = "none",
-            panel.background = element_rect(fill = "#f4f4f4"),
-            panel.grid.major = element_line(colour = "#ffffff", size = 0.2)) +
-        labs(x = NULL, y = "ICU beds occupied", colour = NULL, fill = NULL) +
-        scale_x_date(date_breaks = "1 month", date_labels = "%b")
-
-    return (plot)
-}
+# plot_icu = function(proj_list, proj_names, from_date)
+# {
+#     stop("Check for both virus strains.")
+# 
+#     p = NULL
+#     for (i in seq_along(proj_list)) {
+#         w = arrange_projection(proj_list[[i]], cumulative_deaths = TRUE, from_date = from_date, england = TRUE)
+#         p = rbind(p,
+#             cbind(w[variable == "ICU beds"], name = proj_names[i])
+#         )
+#     }
+#     
+#     p[, name := factor(name, levels = unique(name))]
+#     
+#     plot = ggplot(p) +
+#         geom_ribbon(aes(x = ymd("2020-01-01") + t, ymin = `2.5%`, ymax = `97.5%`, fill = name), alpha = 0.5) +
+#         geom_line(aes(x = ymd("2020-01-01") + t, y = `50%`, colour = name), size = 0.2) +
+#         facet_wrap(~population, scales = "free") +
+#         theme(strip.background = element_blank(), strip.text = element_blank(), legend.position = "none",
+#             panel.background = element_rect(fill = "#f4f4f4"),
+#             panel.grid.major = element_line(colour = "#ffffff", size = 0.2)) +
+#         labs(x = NULL, y = "ICU beds occupied", colour = NULL, fill = NULL) +
+#         scale_x_date(date_breaks = "1 month", date_labels = "%b")
+# 
+#     return (plot)
+# }
 
 
 summarize_projection = function(proj, from_date, popsize, to_date = NULL, wh = "after")
@@ -324,122 +324,122 @@ nicepc = function(x)
     paste0(f(q[2]), "% (", f(q[1]), " - ", f(q[3]), "%)")
 }
 
-combine_R = function(R_ldN4o, R_ldN4c) {
-    R_ldN4 = cbind(R_ldN4o[, 1:3], R_ldN4c[, 3], R_ldN4o[, 4], R_ldN4c[, 4])
-    names(R_ldN4)[c(3,5)] = paste0(names(R_ldN4)[c(3,5)], ", schools open")
-    names(R_ldN4)[c(4,6)] = paste0(names(R_ldN4)[c(4,6)], ", schools closed")
-    R_ldN4
-}
+# combine_R = function(R_ldN4o, R_ldN4c) {
+#     R_ldN4 = cbind(R_ldN4o[, 1:3], R_ldN4c[, 3], R_ldN4o[, 4], R_ldN4c[, 4])
+#     names(R_ldN4)[c(3,5)] = paste0(names(R_ldN4)[c(3,5)], ", schools open")
+#     names(R_ldN4)[c(4,6)] = paste0(names(R_ldN4)[c(4,6)], ", schools closed")
+#     R_ldN4
+# }
 
-plot_indicator = function(series, indicator_name)
-{
-    ggplot(series[indicator == indicator_name]) +
-        geom_pointrange(aes(x = population, ymin = lo, y = mid, ymax = hi, colour = scenario), position = position_dodge(width = 0.8), shape = 20, size = 0.0) +
-        geom_linerange(aes(x = population, ymin = lo, y = mid, ymax = hi, colour = scenario), position = position_dodge(width = 0.8), size = 0.2) +
-        labs(x = NULL, y = indicator_name) + ylim(0, NA)
-}
-
-plot_indicators_england = function(series, indicator_names, y_axis_title, unit = 1, legpos = "none", pal = "Dark2")
-{
-    ggplot(series[population == "England" & indicator %in% indicator_names]) +
-        geom_ribbon(aes(x = scenario, ymin = lo / unit, ymax = hi / unit, fill = indicator, group = indicator), alpha = 0.5) +
-        geom_line(aes(x = scenario, y = mid / unit, colour = indicator, group = indicator), size = 0.2) +
-        labs(x = NULL, y = y_axis_title, fill = NULL, colour = NULL) + ylim(0, NA) +
-        theme(panel.background = element_rect(fill = "#f4f4f4"),
-            panel.grid.major = element_line(colour = "#ffffff", size = 0.2),
-            legend.position = legpos) +
-        scale_color_brewer(aesthetics = c("colour", "fill"), palette = pal)
-}
-
-plot_indicators_england2 = function(series, indicator_names, y_axis_title, unit = 1, legpos = "none", pal = "Accent")
-{
-    ggplot(series[population == "England" & indicator %in% indicator_names]) +
-        geom_linerange(aes(x = scenario, ymin = lo / unit, ymax = hi / unit, colour = indicator, group = indicator),
-            position = position_dodge(width = 0.5), size = 0.4) +
-        geom_point(aes(x = scenario, y = mid / unit, colour = indicator, group = indicator),
-            position = position_dodge(width = 0.5), size = 0.2, shape = 3) +
-        labs(x = NULL, y = y_axis_title, colour = NULL) + ylim(0, NA) +
-        theme(panel.background = element_rect(fill = "#f4f4f4"),
-            panel.grid.major = element_line(colour = "#ffffff", size = 0.4),
-            legend.position = legpos) +
-        scale_color_brewer(aesthetics = c("colour", "fill"), palette = pal)
-}
-
-plot_indicators_england3 = function(series, indicator_names, y_axis_title, unit = 1, legpos = "none", pal = "Accent")
-{
-    ggplot(series[population == "England" & indicator %in% indicator_names]) +
-        geom_col(aes(x = scenario, y = mid / unit, fill = indicator, group = indicator), 
-            position = position_dodge(width = 0.6), size = 0.25, colour = "black", width = 0.4) +
-        geom_linerange(aes(x = scenario, ymin = lo / unit, ymax = hi / unit, group = indicator),
-            position = position_dodge(width = 0.6), size = 0.25) +
-        labs(x = NULL, y = y_axis_title, fill = NULL) + ylim(0, NA) +
-        theme(panel.background = element_rect(fill = "#f4f4f4"),
-            panel.grid.major = element_line(colour = "#ffffff", size = 0.4),
-            legend.position = legpos) +
-        scale_color_brewer(aesthetics = c("colour", "fill"), palette = pal)
-}
-
-plot_indicators_england_stack2 = function(series, indicator_names, y_axis_title, stack_order, legpos = "none", pal = "Set2")
-{
-    ser2 = copy(series[population == "England" & indicator %in% indicator_names])
-    ser2[, indicator := factor(indicator, stack_order)]
-    ser3 = copy(ser2)
-    ser3 = ser3[order(scenario, rev(indicator))]
-    ser3[, lo := lo - mid]
-    ser3[, hi := hi - mid]
-    ser3[, mid := cumsum(mid), by = scenario]
-    ser3[, lo := mid + lo]
-    ser3[, hi := mid + hi]
-    
-    ggplot() +
-        geom_col(data = ser2, aes(x = scenario, y = mid, fill = indicator), position = "stack", colour = "black", size = 0.25, width = 0.5) +
-        geom_linerange(data = ser3, aes(x = scenario, ymin = lo, ymax = hi), size = 0.25) +
-        labs(x = NULL, y = y_axis_title, fill = NULL, colour = NULL) + ylim(0, NA) +
-        theme(panel.background = element_rect(fill = "#f4f4f4"),
-            panel.grid.major = element_line(colour = "#ffffff", size = 0.2),
-            legend.position = legpos) +
-        scale_color_brewer(aesthetics = c("colour", "fill"), palette = pal)
-}
-
-plot_indicators_england_stack = function(series, indicator_names, y_axis_title, stack_order, legpos = "none", pal = "Set2")
-{
-    ser2 = rlang::duplicate(series[population == "England" & indicator %in% indicator_names])
-    ser2[, indicator := factor(indicator, stack_order)]
-    ser3 = rlang::duplicate(ser2)
-    ser3 = ser3[order(scenario, rev(indicator))]
-    ser3[, lo := lo - mid]
-    ser3[, hi := hi - mid]
-    ser3[, mid := cumsum(mid), by = scenario]
-    ser3[, lo := mid + lo]
-    ser3[, hi := mid + hi]
-
-    ggplot() +
-        geom_area(data = ser2, aes(x = scenario, y = mid, fill = indicator, group = indicator)) +
-        geom_ribbon(data = ser3, aes(x = scenario, ymin = lo, ymax = hi, group = indicator), alpha = 0.25) +
-        labs(x = NULL, y = y_axis_title, fill = NULL, colour = NULL) + ylim(0, NA) +
-        theme(panel.background = element_rect(fill = "#f4f4f4"),
-            panel.grid.major = element_line(colour = "#ffffff", size = 0.2),
-            legend.position = legpos) +
-        scale_color_brewer(aesthetics = c("colour", "fill"), palette = pal)
-}
-
-plot_indicator_regions = function(series, indicator_name, label = indicator_name, suffix = "\n(Thousands)", unit = 1000, legpos = "none", bigtitle = NULL)
-{
-    ser2 = rlang::duplicate(series[population != "England" & indicator == indicator_name])
-    ser2[population == "East of England", population := "EE"]
-    ser2[population == "London", population := "Ldn"]
-    ser2[population == "Midlands", population := "Mlds"]
-    ser2[population == "North East and Yorkshire", population := "NE&Y"]
-    ser2[population == "North West", population := "NW"]
-    ser2[population == "South East", population := "SE"]
-    ser2[population == "South West", population := "SW"]
-    ggplot(ser2) +
-        geom_point(aes(x = population, y = mid / unit, colour = scenario), position = position_dodge(width = 0.8), shape = 20, size = 0.5) +
-        geom_linerange(aes(x = population, ymin = lo / unit, ymax = hi / unit, colour = scenario), position = position_dodge(width = 0.8), size = 0.3) +
-        labs(x = NULL, y = paste0(label, suffix), colour = NULL, title = bigtitle) + 
-        ylim(0, NA) +
-        theme(legend.position = legpos)
-}
+# plot_indicator = function(series, indicator_name)
+# {
+#     ggplot(series[indicator == indicator_name]) +
+#         geom_pointrange(aes(x = population, ymin = lo, y = mid, ymax = hi, colour = scenario), position = position_dodge(width = 0.8), shape = 20, size = 0.0) +
+#         geom_linerange(aes(x = population, ymin = lo, y = mid, ymax = hi, colour = scenario), position = position_dodge(width = 0.8), size = 0.2) +
+#         labs(x = NULL, y = indicator_name) + ylim(0, NA)
+# }
+# 
+# plot_indicators_england = function(series, indicator_names, y_axis_title, unit = 1, legpos = "none", pal = "Dark2")
+# {
+#     ggplot(series[population == "England" & indicator %in% indicator_names]) +
+#         geom_ribbon(aes(x = scenario, ymin = lo / unit, ymax = hi / unit, fill = indicator, group = indicator), alpha = 0.5) +
+#         geom_line(aes(x = scenario, y = mid / unit, colour = indicator, group = indicator), size = 0.2) +
+#         labs(x = NULL, y = y_axis_title, fill = NULL, colour = NULL) + ylim(0, NA) +
+#         theme(panel.background = element_rect(fill = "#f4f4f4"),
+#             panel.grid.major = element_line(colour = "#ffffff", size = 0.2),
+#             legend.position = legpos) +
+#         scale_color_brewer(aesthetics = c("colour", "fill"), palette = pal)
+# }
+# 
+# plot_indicators_england2 = function(series, indicator_names, y_axis_title, unit = 1, legpos = "none", pal = "Accent")
+# {
+#     ggplot(series[population == "England" & indicator %in% indicator_names]) +
+#         geom_linerange(aes(x = scenario, ymin = lo / unit, ymax = hi / unit, colour = indicator, group = indicator),
+#             position = position_dodge(width = 0.5), size = 0.4) +
+#         geom_point(aes(x = scenario, y = mid / unit, colour = indicator, group = indicator),
+#             position = position_dodge(width = 0.5), size = 0.2, shape = 3) +
+#         labs(x = NULL, y = y_axis_title, colour = NULL) + ylim(0, NA) +
+#         theme(panel.background = element_rect(fill = "#f4f4f4"),
+#             panel.grid.major = element_line(colour = "#ffffff", size = 0.4),
+#             legend.position = legpos) +
+#         scale_color_brewer(aesthetics = c("colour", "fill"), palette = pal)
+# }
+# 
+# plot_indicators_england3 = function(series, indicator_names, y_axis_title, unit = 1, legpos = "none", pal = "Accent")
+# {
+#     ggplot(series[population == "England" & indicator %in% indicator_names]) +
+#         geom_col(aes(x = scenario, y = mid / unit, fill = indicator, group = indicator), 
+#             position = position_dodge(width = 0.6), size = 0.25, colour = "black", width = 0.4) +
+#         geom_linerange(aes(x = scenario, ymin = lo / unit, ymax = hi / unit, group = indicator),
+#             position = position_dodge(width = 0.6), size = 0.25) +
+#         labs(x = NULL, y = y_axis_title, fill = NULL) + ylim(0, NA) +
+#         theme(panel.background = element_rect(fill = "#f4f4f4"),
+#             panel.grid.major = element_line(colour = "#ffffff", size = 0.4),
+#             legend.position = legpos) +
+#         scale_color_brewer(aesthetics = c("colour", "fill"), palette = pal)
+# }
+# 
+# plot_indicators_england_stack2 = function(series, indicator_names, y_axis_title, stack_order, legpos = "none", pal = "Set2")
+# {
+#     ser2 = copy(series[population == "England" & indicator %in% indicator_names])
+#     ser2[, indicator := factor(indicator, stack_order)]
+#     ser3 = copy(ser2)
+#     ser3 = ser3[order(scenario, rev(indicator))]
+#     ser3[, lo := lo - mid]
+#     ser3[, hi := hi - mid]
+#     ser3[, mid := cumsum(mid), by = scenario]
+#     ser3[, lo := mid + lo]
+#     ser3[, hi := mid + hi]
+#     
+#     ggplot() +
+#         geom_col(data = ser2, aes(x = scenario, y = mid, fill = indicator), position = "stack", colour = "black", size = 0.25, width = 0.5) +
+#         geom_linerange(data = ser3, aes(x = scenario, ymin = lo, ymax = hi), size = 0.25) +
+#         labs(x = NULL, y = y_axis_title, fill = NULL, colour = NULL) + ylim(0, NA) +
+#         theme(panel.background = element_rect(fill = "#f4f4f4"),
+#             panel.grid.major = element_line(colour = "#ffffff", size = 0.2),
+#             legend.position = legpos) +
+#         scale_color_brewer(aesthetics = c("colour", "fill"), palette = pal)
+# }
+# 
+# plot_indicators_england_stack = function(series, indicator_names, y_axis_title, stack_order, legpos = "none", pal = "Set2")
+# {
+#     ser2 = rlang::duplicate(series[population == "England" & indicator %in% indicator_names])
+#     ser2[, indicator := factor(indicator, stack_order)]
+#     ser3 = rlang::duplicate(ser2)
+#     ser3 = ser3[order(scenario, rev(indicator))]
+#     ser3[, lo := lo - mid]
+#     ser3[, hi := hi - mid]
+#     ser3[, mid := cumsum(mid), by = scenario]
+#     ser3[, lo := mid + lo]
+#     ser3[, hi := mid + hi]
+# 
+#     ggplot() +
+#         geom_area(data = ser2, aes(x = scenario, y = mid, fill = indicator, group = indicator)) +
+#         geom_ribbon(data = ser3, aes(x = scenario, ymin = lo, ymax = hi, group = indicator), alpha = 0.25) +
+#         labs(x = NULL, y = y_axis_title, fill = NULL, colour = NULL) + ylim(0, NA) +
+#         theme(panel.background = element_rect(fill = "#f4f4f4"),
+#             panel.grid.major = element_line(colour = "#ffffff", size = 0.2),
+#             legend.position = legpos) +
+#         scale_color_brewer(aesthetics = c("colour", "fill"), palette = pal)
+# }
+# 
+# plot_indicator_regions = function(series, indicator_name, label = indicator_name, suffix = "\n(Thousands)", unit = 1000, legpos = "none", bigtitle = NULL)
+# {
+#     ser2 = rlang::duplicate(series[population != "England" & indicator == indicator_name])
+#     ser2[population == "East of England", population := "EE"]
+#     ser2[population == "London", population := "Ldn"]
+#     ser2[population == "Midlands", population := "Mlds"]
+#     ser2[population == "North East and Yorkshire", population := "NE&Y"]
+#     ser2[population == "North West", population := "NW"]
+#     ser2[population == "South East", population := "SE"]
+#     ser2[population == "South West", population := "SW"]
+#     ggplot(ser2) +
+#         geom_point(aes(x = population, y = mid / unit, colour = scenario), position = position_dodge(width = 0.8), shape = 20, size = 0.5) +
+#         geom_linerange(aes(x = population, ymin = lo / unit, ymax = hi / unit, colour = scenario), position = position_dodge(width = 0.8), size = 0.3) +
+#         labs(x = NULL, y = paste0(label, suffix), colour = NULL, title = bigtitle) + 
+#         ylim(0, NA) +
+#         theme(legend.position = legpos)
+# }
 
 make_vaccine_schedule = function(parametersI, ymd_start, weekly_v, targeting, popset)
 {

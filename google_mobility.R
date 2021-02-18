@@ -18,7 +18,7 @@ matricesUK = readRDS(datapath("matricesNHS.rds"));
 # Google visits data
 # We don't upload full Google Mobility Report files to the repo because they are 200+ MB, 
 # but if you download the "global CSV" from https://www.google.com/covid19/mobility/, that's it.
-googmo = fread("~/Dropbox/uk_covid_data/fitting/data/Global_Mobility_Report-2021-01-14.csv");
+googmo = fread("~/Dropbox/uk_covid_data/fitting/data/Global_Mobility_Report-2021-02-07.csv");
 googmo = googmo[country_region_code == "GB" & sub_region_1 != "" & sub_region_2 == "" & metro_area == ""];
 
 # Melt mobility data

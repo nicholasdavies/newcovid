@@ -6,7 +6,7 @@ library(zoo)
 library(ggplot2)
 library(ggpubr)
 
-ncores=7
+ncores <- 7
 n_lagging_zeroes <- 7
 min_obs_total <- 10
 min_obs_of_IPO_week <- 3
@@ -138,7 +138,7 @@ g_rel <- ggplot(IPOs[start_date<as.Date('2020-11-13')],aes(start_date,initial_rt
     geom_point(data=IPOs[lineage=='VOC'],aes(col=lineage),cex=8)+
     theme_bw(base_size=15)+
     geom_hline(yintercept = 0)+
-    scale_x_continuous('IPO date',breaks=as.Date(c('2020-03-01','2020-05-01','2020-07-01','2020-09-01','2020-11-01')),
+    scale_x_date('IPO date',breaks=as.Date(c('2020-03-01','2020-05-01','2020-07-01','2020-09-01','2020-11-01')),
                        labels=c('March','May','July','Sept','Nov'))+
     scale_y_continuous(expression(paste('<',rho,'(t)>',sep='')),limits = c(-3,3))+
     geom_smooth(data=IPOs[!lineage %in% top_lineages & start_date<as.Date('2020-11-13')],col='black',fill='black',alpha=0.2)+

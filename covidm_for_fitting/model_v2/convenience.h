@@ -50,6 +50,10 @@ double estimate_R0(Parameters& P, Reporter& rep, double t, unsigned int p, unsig
 // estimate the effective reproduction number
 double estimate_Rt(Parameters& P, Reporter& rep, double t, unsigned int p, unsigned int iter);
 
+// estimate the strain-specific effective reproduction number
+double estimate_Rt_1(Parameters& P, Reporter& rep, double t, unsigned int p, unsigned int iter);
+double estimate_Rt_2(Parameters& P, Reporter& rep, double t, unsigned int p, unsigned int iter);
+
 // clamp a number between two limits
 double clamp(double x, double x0 = 0.0, double x1 = 1.0);
 

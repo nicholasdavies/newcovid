@@ -1,4 +1,0 @@
-#!/bin/sh
-
-sudo scp -i ~/Documents/AWS/ngd-aws.pem $1 ec2-user@ec2-18-134-139-157.eu-west-2.compute.amazonaws.com:$2
-sudo scp -i ~/Documents/AWS/ngd-aws.pem $1 ec2-user@ec2-35-177-183-76.eu-west-2.compute.amazonaws.com:$2

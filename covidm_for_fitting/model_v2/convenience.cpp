@@ -115,9 +115,12 @@ double estimate_R0(Parameters& P, Reporter& dyn, double t, unsigned int p, unsig
     vector<double> inf(P.pop[p].size.size(), 1.0);
     vector<double> inf2 = inf;
 
-    double dIp = P.pop[p].dIp.Mean() * P.time_step;
-    double dIs = P.pop[p].dIs.Mean() * P.time_step;
-    double dIa = P.pop[p].dIa.Mean() * P.time_step;
+    double dIp1 = P.pop[p].dIp.Mean() * P.time_step;
+    double dIs1 = P.pop[p].dIs.Mean() * P.time_step;
+    double dIa1 = P.pop[p].dIa.Mean() * P.time_step;
+    double dIp2 = (P.pop[p].dIp2.weights.size() > 1 ? P.pop[p].dIp2.Mean() : P.pop[p].dIp.Mean()) * P.time_step;
+    double dIs2 = (P.pop[p].dIs2.weights.size() > 1 ? P.pop[p].dIs2.Mean() : P.pop[p].dIs.Mean()) * P.time_step;
+    double dIa2 = (P.pop[p].dIa2.weights.size() > 1 ? P.pop[p].dIa2.Mean() : P.pop[p].dIa.Mean()) * P.time_step;
 
     double n_inf = P.pop[p].size.size();
     double n_inf2 = 0;
@@ -142,10 +145,15 @@ double estimate_R0(Parameters& P, Reporter& dyn, double t, unsigned int p, unsig
             inf2[a] = 0;
             for (unsigned int b = 0; b < inf.size(); ++b)
             {
-                inf2[a] += inf[b] * P.pop[p].cm(a, b) * ((1 - f2[a]) * P.pop[p].u[a] + f2[a] * P.pop[p].u2[a]) * seas * (
-                    P.pop[p].y[b] * (P.pop[p].fIp[b] * dIp + P.pop[p].fIs[b] * dIs) +
-                    (1 - P.pop[p].y[b]) * P.pop[p].fIa[b] * dIa
-                );
+                inf2[a] += 
+                    (1 - f2[a]) * inf[b] * P.pop[p].cm(a, b) * P.pop[p].u[a] * seas * (
+                        P.pop[p].y[b] * (P.pop[p].fIp[b] * dIp1 + P.pop[p].fIs[b] * dIs1) +
+                        (1 - P.pop[p].y[b]) * P.pop[p].fIa[b] * dIa1
+                    ) +
+                    f2[a]       * inf[b] * P.pop[p].cm(a, b) * P.pop[p].u2[a] * seas * (
+                        P.pop[p].y2[b] * (P.pop[p].fIp[b] * dIp2 + P.pop[p].fIs[b] * dIs2) +
+                        (1 - P.pop[p].y2[b]) * P.pop[p].fIa[b] * dIa2
+                    );
             }
             n_inf2 += inf2[a];
         }
@@ -155,30 +163,124 @@ double estimate_R0(Parameters& P, Reporter& dyn, double t, unsigned int p, unsig
         swap(n_inf2, n_inf);
         swap(inf2, inf);
     }
-
+    
     return R0;
 }
+
+// // estimate the effective reproduction number: two strains
+// double estimate_Rt(Parameters& P, Reporter& dyn, double t, unsigned int p, unsigned int iter)
+// {
+//     vector<double> inf(P.pop[p].size.size(), 1.0);
+//     vector<double> inf2 = inf;
+//     vector<double> S(P.pop[p].size.size(), 0.0);
+// 
+//     for (unsigned int a = 0; a < S.size(); ++a)
+//         S[a] = dyn(t, p, a, 0) / P.pop[p].size[a];
+// 
+//     double dIp1 = P.pop[p].dIp.Mean() * P.time_step;
+//     double dIs1 = P.pop[p].dIs.Mean() * P.time_step;
+//     double dIa1 = P.pop[p].dIa.Mean() * P.time_step;
+//     double dIp2 = (P.pop[p].dIp2.weights.size() > 1 ? P.pop[p].dIp2.Mean() : P.pop[p].dIp.Mean()) * P.time_step;
+//     double dIs2 = (P.pop[p].dIs2.weights.size() > 1 ? P.pop[p].dIs2.Mean() : P.pop[p].dIs.Mean()) * P.time_step;
+//     double dIa2 = (P.pop[p].dIa2.weights.size() > 1 ? P.pop[p].dIa2.Mean() : P.pop[p].dIa.Mean()) * P.time_step;
+// 
+//     double n_inf = P.pop[p].size.size();
+//     double n_inf2 = 0;
+//     double Rt = 1;
+// 
+//     double seas = 1.0 + P.pop[p].season_A[0] * cos(2. * M_PI * (t - P.pop[p].season_phi[0]) / P.pop[p].season_T[0]);
+// 
+//     vector<double> f2(P.pop[p].size.size(), 0);
+//     for (unsigned int a = 0; a < f2.size(); ++a)
+//     {
+//         double e1 = dyn(t, p, a, 1);
+//         double e2 = dyn(t, p, a, 6);
+//         if (e1 + e2 > 0)
+//             f2[a] = e2 / (e1 + e2);
+//     }
+// 
+//     for (unsigned int i = 0; i < iter; ++i)
+//     {
+//         n_inf2 = 0;
+//         for (unsigned int a = 0; a < inf.size(); ++a)
+//         {
+//             inf2[a] = 0;
+//             for (unsigned int b = 0; b < inf.size(); ++b)
+//             {
+//                 inf2[a] += 
+//                     S[a] * (1 - f2[a]) * inf[b] * P.pop[p].cm(a, b) * P.pop[p].u[a] * seas * (
+//                         P.pop[p].y[b] * (P.pop[p].fIp[b] * dIp1 + P.pop[p].fIs[b] * dIs1) +
+//                         (1 - P.pop[p].y[b]) * P.pop[p].fIa[b] * dIa1
+//                     ) +
+//                     S[a] * f2[a]       * inf[b] * P.pop[p].cm(a, b) * P.pop[p].u2[a] * seas * (
+//                         P.pop[p].y2[b] * (P.pop[p].fIp[b] * dIp2 + P.pop[p].fIs[b] * dIs2) +
+//                         (1 - P.pop[p].y2[b]) * P.pop[p].fIa[b] * dIa2
+//                     );
+//             }
+//             n_inf2 += inf2[a];
+//         }
+// 
+//         Rt = n_inf2 / n_inf;
+// 
+//         swap(n_inf2, n_inf);
+//         swap(inf2, inf);
+//     }
+//     
+//     return Rt;
+// }
 
 // estimate the effective reproduction number: two strains
 double estimate_Rt(Parameters& P, Reporter& dyn, double t, unsigned int p, unsigned int iter)
 {
-    vector<double> inf(P.pop[p].size.size(), 1.0);
-    vector<double> inf2 = inf;
-    vector<double> S(P.pop[p].size.size(), 0.0);
+    vector<double> E(P.pop[p].size.size(), 1.0);
+    vector<double> L(P.pop[p].size.size(), 1.0);
+    vector<double> Ef = E;
+    vector<double> Lf = L;
 
-    for (unsigned int a = 0; a < S.size(); ++a)
-        S[a] = dyn(t, p, a, 0) / P.pop[p].size[a];
+    vector<double> SE(P.pop[p].size.size(), 0.0);
+    vector<double> SL(P.pop[p].size.size(), 0.0);
+    vector<double> SE2(P.pop[p].size.size(), 0.0);
+    vector<double> SL2(P.pop[p].size.size(), 0.0);
 
-    double dIp = P.pop[p].dIp.Mean() * P.time_step;
-    double dIs = P.pop[p].dIs.Mean() * P.time_step;
-    double dIa = P.pop[p].dIa.Mean() * P.time_step;
+    // Calculate effective susceptible fraction
+    for (unsigned int a = 0; a < SE.size(); ++a) {
+        SE[a] = (dyn(t, p, a, 0) +                              // E-susceptible to strain 1 in S compartment
+            dyn(t, p, a, 5)  * (1.0 - P.pop[p].pi_r[a]) +       // E-susceptible to strain 1 in R compartment
+            dyn(t, p, a, 10) * (1.0 - P.pop[p].pi_r2[a]) +      // E-susceptible to strain 1 in R2 compartment
+            dyn(t, p, a, 11) * (1.0 - P.pop[p].ei_v[a]) * 
+                (1.0 - P.pop[p].ed_vi[a])                       // E-susceptible to strain 1 in V compartment 
+            ) / P.pop[p].size[a];
+        SL[a] = (
+            dyn(t, p, a, 11) * (1.0 - P.pop[p].ei_v[a]) * 
+                P.pop[p].ed_vi[a]                               // L-susceptible to strain 1 in V compartment 
+            ) / P.pop[p].size[a];
+        SE2[a] = (dyn(t, p, a, 0) +                             // E-susceptible to strain 2 in S compartment
+            dyn(t, p, a, 5)  * (1.0 - P.pop[p].pi2_r[a]) +      // E-susceptible to strain 2 in R compartment
+            dyn(t, p, a, 10) * (1.0 - P.pop[p].pi2_r2[a]) +     // E-susceptible to strain 2 in R2 compartment
+            dyn(t, p, a, 11) * (1.0 - P.pop[p].ei2_v[a]) * 
+                (1.0 - P.pop[p].ed_vi2[a])                      // E-susceptible to strain 2 in V compartment 
+            ) / P.pop[p].size[a];
+        SL2[a] = (
+            dyn(t, p, a, 11) * (1.0 - P.pop[p].ei2_v[a]) * 
+                P.pop[p].ed_vi2[a]                              // L-susceptible to strain 2 in V compartment 
+            ) / P.pop[p].size[a];
+    }
+    
+    double dIp  = P.pop[p].dIp.Mean() * P.time_step;
+    double dIs  = P.pop[p].dIs.Mean() * P.time_step;
+    double dIa  = P.pop[p].dIa.Mean() * P.time_step;
+    double dIp2 = (P.pop[p].dIp2.weights.size() > 1 ? P.pop[p].dIp2.Mean() : P.pop[p].dIp.Mean()) * P.time_step;
+    double dIs2 = (P.pop[p].dIs2.weights.size() > 1 ? P.pop[p].dIs2.Mean() : P.pop[p].dIs.Mean()) * P.time_step;
+    double dIa2 = (P.pop[p].dIa2.weights.size() > 1 ? P.pop[p].dIa2.Mean() : P.pop[p].dIa.Mean()) * P.time_step;
 
-    double n_inf = P.pop[p].size.size();
-    double n_inf2 = 0;
+    double nE  = P.pop[p].size.size();
+    double nL  = P.pop[p].size.size();
+    double nEf = 0;
+    double nLf = 0;
     double Rt = 1;
 
     double seas = 1.0 + P.pop[p].season_A[0] * cos(2. * M_PI * (t - P.pop[p].season_phi[0]) / P.pop[p].season_T[0]);
-
+    
     vector<double> f2(P.pop[p].size.size(), 0);
     for (unsigned int a = 0; a < f2.size(); ++a)
     {
@@ -190,28 +292,210 @@ double estimate_Rt(Parameters& P, Reporter& dyn, double t, unsigned int p, unsig
 
     for (unsigned int i = 0; i < iter; ++i)
     {
-        n_inf2 = 0;
-        for (unsigned int a = 0; a < inf.size(); ++a)
+        nEf = nLf = 0;
+        for (unsigned int a = 0; a < E.size(); ++a)
         {
-            inf2[a] = 0;
-            for (unsigned int b = 0; b < inf.size(); ++b)
+            Ef[a] = 0;
+            Lf[a] = 0;
+            for (unsigned int b = 0; b < E.size(); ++b)
             {
-                inf2[a] += S[a] * inf[b] * P.pop[p].cm(a, b) * ((1 - f2[a]) * P.pop[p].u[a] + f2[a] * P.pop[p].u2[a]) * seas * (
-                    P.pop[p].y[b] * (P.pop[p].fIp[b] * dIp + P.pop[p].fIs[b] * dIs) +
-                    (1 - P.pop[p].y[b]) * P.pop[p].fIa[b] * dIa
-                );
+                Ef[a] += 
+                    (1 - f2[a]) * SE[a] * P.pop[p].u[a] * seas * (
+                        E[b] * P.pop[p].cm(a, b) * (
+                            P.pop[p].y[b] * (P.pop[p].fIp[b] * dIp + P.pop[p].fIs[b] * dIs) +
+                            (1 - P.pop[p].y[b]) * P.pop[p].fIa[b] * dIa
+                        ) +
+                        L[b] * P.pop[p].cm(a, b) * (P.pop[p].fIa[b] * dIa)
+                    ) +
+                    f2[a] * SE2[a] * P.pop[p].u2[a] * seas * (
+                        E[b] * P.pop[p].cm(a, b) * (
+                            P.pop[p].y2[b] * (P.pop[p].fIp[b] * dIp2 + P.pop[p].fIs[b] * dIs2) +
+                            (1 - P.pop[p].y2[b]) * P.pop[p].fIa[b] * dIa2
+                        ) +
+                        L[b] * P.pop[p].cm(a, b) * (P.pop[p].fIa[b] * dIa2)
+                    );
+                
+                Lf[a] += 
+                    (1 - f2[a]) * SL[a] * P.pop[p].u[a] * seas * (
+                        E[b] * P.pop[p].cm(a, b) * (
+                            P.pop[p].y[b] * (P.pop[p].fIp[b] * dIp + P.pop[p].fIs[b] * dIs) +
+                            (1 - P.pop[p].y[b]) * P.pop[p].fIa[b] * dIa
+                        ) +
+                        L[b] * P.pop[p].cm(a, b) * (P.pop[p].fIa[b] * dIa)
+                    ) +
+                    f2[a] * SL2[a] * P.pop[p].u2[a] * seas * (
+                        E[b] * P.pop[p].cm(a, b) * (
+                            P.pop[p].y2[b] * (P.pop[p].fIp[b] * dIp2 + P.pop[p].fIs[b] * dIs2) +
+                            (1 - P.pop[p].y2[b]) * P.pop[p].fIa[b] * dIa2
+                        ) +
+                        L[b] * P.pop[p].cm(a, b) * (P.pop[p].fIa[b] * dIa2)
+                    );
             }
-            n_inf2 += inf2[a];
+            nEf += Ef[a];
+            nLf += Lf[a];
         }
 
-        Rt = n_inf2 / n_inf;
+        Rt = (nEf + nLf) / (nE + nL);
 
-        swap(n_inf2, n_inf);
-        swap(inf2, inf);
+        swap(nEf, nE);
+        swap(nLf, nL);
+        swap(Ef, E);
+        swap(Lf, L);
     }
 
     return Rt;
 }
+
+
+// estimate the effective reproduction number: strain 1
+double estimate_Rt_1(Parameters& P, Reporter& dyn, double t, unsigned int p, unsigned int iter)
+{
+    vector<double> E(P.pop[p].size.size(), 1.0);
+    vector<double> L(P.pop[p].size.size(), 1.0);
+    vector<double> E2 = E;
+    vector<double> L2 = L;
+    vector<double> SE(P.pop[p].size.size(), 0.0);
+    vector<double> SL(P.pop[p].size.size(), 0.0);
+
+    // Calculate effective susceptible fraction
+    for (unsigned int a = 0; a < SE.size(); ++a) {
+        SE[a] = (dyn(t, p, a, 0) +                              // E-susceptible to strain 1 in S compartment
+            dyn(t, p, a, 5)  * (1.0 - P.pop[p].pi_r[a]) +       // E-susceptible to strain 1 in R compartment
+            dyn(t, p, a, 10) * (1.0 - P.pop[p].pi_r2[a]) +      // E-susceptible to strain 1 in R2 compartment
+            dyn(t, p, a, 11) * (1.0 - P.pop[p].ei_v[a]) * 
+                (1.0 - P.pop[p].ed_vi[a])                       // E-susceptible to strain 1 in V compartment 
+            ) / P.pop[p].size[a];
+        SL[a] = (
+            dyn(t, p, a, 11) * (1.0 - P.pop[p].ei_v[a]) * 
+                P.pop[p].ed_vi[a]                               // L-susceptible to strain 1 in V compartment 
+            ) / P.pop[p].size[a];
+    }
+    
+    double dIp  = P.pop[p].dIp.Mean() * P.time_step;
+    double dIs  = P.pop[p].dIs.Mean() * P.time_step;
+    double dIa  = P.pop[p].dIa.Mean() * P.time_step;
+
+    double nE = P.pop[p].size.size();
+    double nL = P.pop[p].size.size();
+    double nE2 = 0;
+    double nL2 = 0;
+    double Rt = 1;
+
+    double seas = 1.0 + P.pop[p].season_A[0] * cos(2. * M_PI * (t - P.pop[p].season_phi[0]) / P.pop[p].season_T[0]);
+
+    for (unsigned int i = 0; i < iter; ++i)
+    {
+        nE2 = nL2 = 0;
+        for (unsigned int a = 0; a < E.size(); ++a)
+        {
+            E2[a] = 0;
+            L2[a] = 0;
+            for (unsigned int b = 0; b < E.size(); ++b)
+            {
+                E2[a] += SE[a] * P.pop[p].u[a] * seas * (
+                    E[b] * P.pop[p].cm(a, b) * (
+                        P.pop[p].y[b] * (P.pop[p].fIp[b] * dIp + P.pop[p].fIs[b] * dIs) +
+                        (1 - P.pop[p].y[b]) * P.pop[p].fIa[b] * dIa
+                    ) +
+                    L[b] * P.pop[p].cm(a, b) * (P.pop[p].fIa[b] * dIa)
+                );
+                L2[a] += SL[a] * P.pop[p].u[a] * seas * (
+                    E[b] * P.pop[p].cm(a, b) * (
+                        P.pop[p].y[b] * (P.pop[p].fIp[b] * dIp + P.pop[p].fIs[b] * dIs) +
+                        (1 - P.pop[p].y[b]) * P.pop[p].fIa[b] * dIa
+                    ) +
+                    L[b] * P.pop[p].cm(a, b) * (P.pop[p].fIa[b] * dIa)
+                );
+            }
+            nE2 += E2[a];
+            nL2 += L2[a];
+        }
+
+        Rt = (nE2 + nL2) / (nE + nL);
+
+        swap(nE2, nE);
+        swap(nL2, nL);
+        swap(E2, E);
+        swap(L2, L);
+    }
+
+    return Rt;
+}
+
+// estimate the effective reproduction number: strain 2
+double estimate_Rt_2(Parameters& P, Reporter& dyn, double t, unsigned int p, unsigned int iter)
+{
+    vector<double> E(P.pop[p].size.size(), 1.0);
+    vector<double> L(P.pop[p].size.size(), 1.0);
+    vector<double> E2 = E;
+    vector<double> L2 = L;
+    vector<double> SE(P.pop[p].size.size(), 0.0);
+    vector<double> SL(P.pop[p].size.size(), 0.0);
+
+    // Calculate effective susceptibles    
+    for (unsigned int a = 0; a < SE.size(); ++a) {
+        SE[a] = (dyn(t, p, a, 0) +                              // E-susceptible to strain 2 in S compartment
+            dyn(t, p, a, 5)  * (1.0 - P.pop[p].pi2_r[a]) +      // E-susceptible to strain 2 in R compartment
+            dyn(t, p, a, 10) * (1.0 - P.pop[p].pi2_r2[a]) +     // E-susceptible to strain 2 in R2 compartment
+            dyn(t, p, a, 11) * (1.0 - P.pop[p].ei2_v[a]) * 
+                (1.0 - P.pop[p].ed_vi2[a])                      // E-susceptible to strain 2 in V compartment 
+            ) / P.pop[p].size[a];
+        SL[a] = (
+            dyn(t, p, a, 11) * (1.0 - P.pop[p].ei2_v[a]) * 
+                P.pop[p].ed_vi2[a]                              // L-susceptible to strain 2 in V compartment 
+            ) / P.pop[p].size[a];
+    }
+
+    double dIp = (P.pop[p].dIp2.weights.size() > 1 ? P.pop[p].dIp2.Mean() : P.pop[p].dIp.Mean()) * P.time_step;
+    double dIs = (P.pop[p].dIs2.weights.size() > 1 ? P.pop[p].dIs2.Mean() : P.pop[p].dIs.Mean()) * P.time_step;
+    double dIa = (P.pop[p].dIa2.weights.size() > 1 ? P.pop[p].dIa2.Mean() : P.pop[p].dIa.Mean()) * P.time_step;
+
+    double nE = P.pop[p].size.size();
+    double nL = P.pop[p].size.size();
+    double nE2 = 0;
+    double nL2 = 0;
+    double Rt = 1;
+
+    double seas = 1.0 + P.pop[p].season_A[0] * cos(2. * M_PI * (t - P.pop[p].season_phi[0]) / P.pop[p].season_T[0]);
+
+    for (unsigned int i = 0; i < iter; ++i)
+    {
+        nE2 = nL2 = 0;
+        for (unsigned int a = 0; a < E.size(); ++a)
+        {
+            E2[a] = 0;
+            L2[a] = 0;
+            for (unsigned int b = 0; b < E.size(); ++b)
+            {
+                E2[a] += SE[a] * P.pop[p].u2[a] * seas * (
+                    E[b] * P.pop[p].cm(a, b) * (
+                        P.pop[p].y2[b] * (P.pop[p].fIp[b] * dIp + P.pop[p].fIs[b] * dIs) +
+                        (1 - P.pop[p].y2[b]) * P.pop[p].fIa[b] * dIa
+                    ) +
+                    L[b] * P.pop[p].cm(a, b) * (P.pop[p].fIa[b] * dIa)
+                );
+                L2[a] += SL[a] * P.pop[p].u2[a] * seas * (
+                    E[b] * P.pop[p].cm(a, b) * (
+                        P.pop[p].y2[b] * (P.pop[p].fIp[b] * dIp + P.pop[p].fIs[b] * dIs) +
+                        (1 - P.pop[p].y2[b]) * P.pop[p].fIa[b] * dIa
+                    ) +
+                    L[b] * P.pop[p].cm(a, b) * (P.pop[p].fIa[b] * dIa)
+                );
+            }
+            nE2 += E2[a];
+            nL2 += L2[a];
+        }
+
+        Rt = (nE2 + nL2) / (nE + nL);
+
+        swap(nE2, nE);
+        swap(nL2, nL);
+        swap(E2, E);
+        swap(L2, L);
+    }
+
+    return Rt;}
+
 
 // clamp a number between two limits
 double clamp(double x, double x0, double x1)

@@ -201,7 +201,7 @@ void DEMCMC_Priors(Randomizer& R, Likelihood& likelihood, MCMCReporter& report,
                 if (classic_gamma)
                     random_gammas[c] = (i % 10 == 0 ? 1.0 : .238 / sqrt(2 * n_theta));
                 else
-                    random_gammas[c] = R.LogNormal(-0.5, 0.5) * adjusted_stepsize; //R.Uniform(0.5, 1.0) * adjusted_stepsize;
+                    random_gammas[c] = R.Uniform(0.5, 1.0) * adjusted_stepsize;
                 do random_chains[c][0] = R.Discrete(n_chains); while (random_chains[c][0] == c);
                 do random_chains[c][1] = R.Discrete(n_chains); while (random_chains[c][1] == c || random_chains[c][1] == random_chains[c][0]);
             }

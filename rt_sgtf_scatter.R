@@ -6,6 +6,7 @@ library(lemon)
 library(dplyr)
 library(cowplot)
 library(lubridate)
+library(stringr)
 # devtools::install_github("epiforecasts/covidregionaldata")
 library(covidregionaldata)
 # Get data ----------------------------------------------------------------
@@ -29,21 +30,26 @@ target_rt <- utla_rt %>%
   filter(as.character(week_infection) %in% c("2020-10-26", "2020-11-09",
                                              "2020-11-23", "2020-12-07",
                                              "2020-12-21"))
+
+target_rt$week_infection = str_replace_all(format(target_rt$week_infection, "%b %e %Y"), "  ", " ")
+target_rt$week_infection = factor(target_rt$week_infection, levels = unique(target_rt$week_infection))
+target_rt$nhser_name[target_rt$nhser_name == "North East and Yorkshire"] = "North East\nand Yorkshire"
+
 p_rt_sgtf <- ggplot(target_rt, aes(x = prop_sgtf, y = rt_mean,
                               fill = nhser_name, size = cases)) +
   geom_jitter(pch = 21) +
   facet_rep_wrap(. ~ week_infection, ncol = 2, repeat.tick.labels = "all") +
   scale_fill_brewer("", palette = "Set1") +
-  xlab("Proportion SGTF") +
+  xlab("Frequency of S gene target failure") +
   ylab("Mean reproduction number") +
   theme_cowplot(font_size = 10) +
   geom_hline(yintercept = 1, linetype = "dashed") +
   labs(size = paste("Cases")) +
   guides(fill = guide_legend(title = "NHS region", ncol = 1),
          size = guide_legend(ncol = 1)) +
-  theme(legend.position = c(0.6, 0.125),
+  theme(legend.position = c(0.5, 0.15),
         legend.direction = "vertical",
         legend.box = "horizontal",
+        legend.key.height = unit(0.45, "cm"),
         strip.background = element_blank())
-saveRDS(plot, here("output", "rt_sgtf_scatter.rds"))
-ggsave(here("output", "rt_sgtf_scatter.pdf"), plot, height = 7, width = 7)
+p_rt_sgtf
