@@ -102,6 +102,8 @@ data$sample_date = as.Date(data$sample_date)
 data$sample_date_num = as.numeric(data$sample_date)
 # we do not consider data from Northern Ireland due to low nr of sequences there & absence of new VOC
 data = data[data$nhs_name!="Northern Ireland",] 
+range(data[data$nhs_name!="Northern Ireland","sample_date"]) 
+
 data$nhs_name = factor(data$nhs_name, levels=levels_nhs_name) # NHS region
 data$lad = as.factor(data$lad) # local authority district
 unique(data[data$n501y == "Y","lineage"]) # lineages where at least some samples have n501y mutation
