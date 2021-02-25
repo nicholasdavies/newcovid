@@ -92,7 +92,7 @@ void DEMCMC_Priors(Randomizer& R, Likelihood& likelihood, MCMCReporter& report,
     int burn_in, int iterations, int n_chains, vector<Distribution>& priors,
     bool verbose, vector<string> param_names,
     bool reeval_likelihood, bool in_parallel, int n_threads, 
-    bool classic_gamma, 
+    bool classic_gamma, bool do_migration,
     vector<vector<double>> init, int init_iter)
 {
     #ifdef _OPENMP
@@ -116,7 +116,7 @@ void DEMCMC_Priors(Randomizer& R, Likelihood& likelihood, MCMCReporter& report,
     vector<vector<double>> chains(n_chains, vector<double>(n_theta, 0.0));
     vector<double> p(n_chains, 0.0);    // log probability for each chain
     vector<double> l(n_chains, 0.0);    // log likelihood for each chain
-    double b = 0.001;
+    double b = 1e-5;
     double adjusted_stepsize = 1.0;     // TODO - experimental
 
     // Storage for calls to Randomizer - to make thread-safe
@@ -183,7 +183,7 @@ void DEMCMC_Priors(Randomizer& R, Likelihood& likelihood, MCMCReporter& report,
         }
 
         // Prepare storage and random variates
-        bool migration = (i < burn_in * 0.75 && ((i / 100) & 1) == 0) ? R.Bernoulli(0.0375) : false;
+        bool migration = (i < burn_in * (do_migration ? 0.75 : 0.25) && ((i / 100) & 1) == 0) ? R.Bernoulli(0.0375) : false;
         vector<int> migration_indices(n_chains, 0);
         if (migration)
         {

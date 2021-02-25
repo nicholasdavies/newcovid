@@ -114,9 +114,13 @@ if (POP_SET == "else") {
     pop_letter = "MNSW"
 } else if (POP_SET == "all") {
     which_pops = c(1, 3, 4, 5, 6, 9, 10)
-    pop_letter = ""
+    pop_letter = "ALL"
 } else {
-    stop("POP_SET must be else or all.");
+    which_pops = as.numeric(POP_SET)
+    pop_letter = paste0(POP_SET, "p")
+    if (is.na(which_pops)) {
+        stop("POP_SET must be else or all.");
+    }
 }
 
 set_id = paste0(FIT_TYPE, "_", pop_letter);
@@ -376,7 +380,7 @@ for (replic in REP_START:REP_END)
             for (k in seq_along(priorsI2)) {
                 pname = names(priorsI2)[k];
                 if (length(posteriorsI) >= p && pname %in% names(posteriorsI[[p]])) {
-                    init_values = quantile(posteriorsI[[p]][[pname]], c(0.025, 0.975));
+                    init_values = quantile(posteriorsI[[p]][trial > mean(trial), get(pname)], c(0.025, 0.975));
                     cat(paste0("Using 95% CI ", init_values[1], " - ", init_values[2], " for initial values of parameter ", pname, 
                         " with probability ", init_previous_amount, "\n"));
                     priorsI2[[pname]] = paste0(priorsI2[[pname]], " I ", init_values[1], " ", init_values[2], " ", init_previous_amount);
@@ -392,7 +396,7 @@ for (replic in REP_START:REP_END)
             seed = 0, 
             burn_in = ifelse(replic == REP_END, BURN_IN_FINAL, BURN_IN), 
             iterations = ifelse(replic == REP_END, ITER_FINAL, ITER), 
-            n_threads = N_THREADS, classic_gamma = F);
+            n_threads = N_THREADS, classic_gamma = F, do_migration = T);
         setDT(postI)
         posteriorsI[[p]] = postI
     

@@ -343,7 +343,7 @@ overall = function(fit, varname, log_transform, pops)
                 mu = wtd.mean(value, weights = population_size, normwt = TRUE),
                 sd = sqrt(wtd.var(value, weights = population_size, normwt = TRUE))
             ), by = .(trial, chain)];
-    
+        samples = samples[!is.nan(sd)];
         samples[, y := rnorm(.N, mu, sd)];
         
         if (log_transform) {
@@ -409,7 +409,7 @@ hyp_plots = function(h, pops, vars, lt, varnames)
     return (list(ps, pp))
 }
 
-style = function(p, titl, n, yl1, region_titles, max_x = 3.1)
+style = function(p, titl, n, yl1, region_titles, max_x = 3.25)
 {
     palette = c("#6388b4", "#ffae34", "#ef6f6a", "#8cc2ca", "#55ad89", "#c3bc3f", "#bb7693", "#baa094", "#a9b5ae", "#767676")
 
@@ -482,7 +482,7 @@ sgtf2[, c("mean", "lo", "hi") := binom.confint(sgtf, sgtf + other, methods = "ba
 
 # Determine population sizes
 nhs_regions = c("East of England", "England", "London", "Midlands", "North East and Yorkshire", "North West", "Northern Ireland", "Scotland", "South East", "South West", "United Kingdom", "Wales")
-parametersI = qread("./fits/relu_ALL18.qs")[[2]]
+parametersI = qread("./fits/final/relu.qs")[[2]]
 popsize = NULL
 for (i in seq_along(parametersI)) {
     if (!is.null(parametersI[[i]])) {
@@ -492,22 +492,23 @@ for (i in seq_along(parametersI)) {
     }
 }
 
-plot_posterior("./fits/relu_ALL18.qs", "relu", c(1, 3, 4, 5, 6, 9, 10))
-plot_posterior("./fits/immesc_ELSE11.qs", "immesc", c(1, 3, 9))
-plot_posterior("./fits/ch_u_ELSE11.qs", "ch_u", c(1, 3, 9))
-plot_posterior("./fits/infdur_ELSE11.qs", "infdur", c(1, 3, 9))
-plot_posterior("./fits/serial_ELSE9.qs", "serial", c(1, 3, 9))
-plot_posterior("./fits/combined_ELSE5.qs", "combined", c(1, 3, 9))
+plot_posterior("./fits/final/relu.qs", "relu", c(1, 3, 4, 5, 6, 9, 10))
+plot_posterior("./fits/final/immesc.qs", "immesc", c(1, 3, 9))
+plot_posterior("./fits/final/ch_u.qs", "ch_u", c(1, 3, 9))
+plot_posterior("./fits/final/infdur.qs", "infdur", c(1, 3, 9))
+plot_posterior("./fits/final/serial.qs", "serial", c(1, 3, 9))
+plot_posterior("./fits/final/combined.qs", "combined", c(1, 3, 9))
 
-hu = load_hyp("./fits/relu_ALL18.qs")    # Note - this just loads for which_pops = c(1, 3, 9) despite the fit file having all NHSE regions
-hm = load_hyp("./fits/immesc_ELSE11.qs")
-hc = load_hyp("./fits/ch_u_ELSE11.qs")
-hi = load_hyp("./fits/infdur_ELSE11.qs")
-hs = load_hyp("./fits/serial_ELSE9.qs")
-ha = load_hyp("./fits/combined_ELSE5.qs")
+which_pops = england_pops
+hu7 = load_hyp("./fits/final/relu.qs")
+which_pops = c(1, 3, 9)
 
-ggplot(hu$dRt) + geom_histogram(aes(x = dRt)) + facet_wrap(~population)
-ggplot(ha$dRt) + geom_histogram(aes(x = dRt)) + facet_wrap(~population)
+hu = load_hyp("./fits/final/relu.qs")    # Note - this just loads for which_pops = c(1, 3, 9) despite the fit file having all NHSE regions
+hm = load_hyp("./fits/final/immesc.qs")
+hc = load_hyp("./fits/final/ch_u.qs")
+hi = load_hyp("./fits/final/infdur.qs")
+hs = load_hyp("./fits/final/serial.qs")
+ha = load_hyp("./fits/final/combined.qs")
 
 # Assess fit of each hypothesis
 fit_dt = data.table(
@@ -524,6 +525,7 @@ fwrite(fit_dt, "./output/model_performance.csv")
 
 # Growth rates / R
 gr = rbind(
+    grs(hu7, "Increased transmissibility (all England)"),
     grs(hu, "Increased transmissibility"),
     grs(hi, "Increased duration of infectiousness"),
     grs(hm, "Immune escape"),
@@ -572,8 +574,8 @@ sc = style(pc, "Increased susceptibility in children", 4, FALSE, FALSE)
 ss = style(ps, "Shorter generation time", 5, FALSE, FALSE)
 
 se_novoc =  south_east("./fits/novoc_ELSE4.qs", TRUE, "2020-12-31")
-se_trans0 = south_east("./fits/relu_ELSE18.qs", FALSE, "2020-12-31")
-se_trans1 = south_east("./fits/relu_ELSE18.qs", TRUE, "2020-12-31")
+se_trans0 = south_east("./fits/final/relu.qs", FALSE, "2020-12-31")
+se_trans1 = south_east("./fits/final/relu.qs", TRUE, "2020-12-31")
 
 extenders = data.table(ValueType = c("Deaths", "Hospital\nadmissions", "Hospital beds\noccupied",
     "ICU beds\noccupied", "Infection\nincidence", "PCR\nprevalence (%)", "Seroprevalence\n(%)"), 
@@ -599,7 +601,7 @@ ggsave("./output/plot_hyp.png", plot_hyp, width = 35, height = 17, units = "cm")
 
 # Determine population sizes by age group
 nhs_regions = c("East of England", "England", "London", "Midlands", "North East and Yorkshire", "North West", "Northern Ireland", "Scotland", "South East", "South West", "United Kingdom", "Wales")
-parametersI = qread("./fits/relu12.qs")[[2]]
+parametersI = qread("./fits/final/relu.qs")[[2]]
 popsize2 = NULL
 for (i in seq_along(parametersI)) {
     if (!is.null(parametersI[[i]])) {
@@ -611,9 +613,7 @@ for (i in seq_along(parametersI)) {
 
 
 # For age plots
-testC = south_east("./fits/ch_u_ELSE11.qs")
-testU = south_east("./fits/infdur_ELSE11.qs")
-
+testC = south_east("./fits/final/ch_u.qs")
+testU = south_east("./fits/final/infdur.qs")
 
 a_u = overall(ha, "v2_relu", TRUE, c(1, 3, 9))
-

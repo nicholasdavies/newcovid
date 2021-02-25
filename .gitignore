@@ -12,9 +12,15 @@ fits/other/*
 other/*
 ms/*
 
+aws
 upload
 upload2
+upload3
 download
 download2
+download3
+go
+go2
+go3
 put
 

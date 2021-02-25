@@ -181,7 +181,7 @@ Rcpp::DataFrame cm_evaluate_distribution_v2(string dist_code, unsigned int steps
 
 // [[Rcpp::export]]
 Rcpp::DataFrame cm_backend_mcmc_test(Rcpp::List R_base_parameters, Rcpp::List params_priors, unsigned long int seed, 
-    unsigned int burn_in, unsigned int iterations, unsigned int n_threads, bool classic_gamma)
+    unsigned int burn_in, unsigned int iterations, unsigned int n_threads, bool classic_gamma, bool do_migration = true)
 {
     // Initialise parameters for this simulation
     // TODO Rand also used for setting parameters -- is it actually used? this may cause issues with seeds for sample fit etc
@@ -207,7 +207,7 @@ Rcpp::DataFrame cm_backend_mcmc_test(Rcpp::List R_base_parameters, Rcpp::List pa
     MCMCReporter rep(iterations, n_chains, param_names);
 
     DEMCMC_Priors(Rand, lik, rep, burn_in, iterations, n_chains, priors, verbose, param_names, 
-        reeval_likelihood, in_parallel, n_threads, classic_gamma);
+        reeval_likelihood, in_parallel, n_threads, classic_gamma, do_migration);
 
     // Get data.frame as a data.table and return
     Rcpp::DataFrame df = Rcpp::DataFrame::create();

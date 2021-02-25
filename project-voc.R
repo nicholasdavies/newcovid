@@ -330,7 +330,7 @@ project = function(FIT_TYPE, FIT_FILE, SCH_FILE, VAX_TYPE, forced_seasonality = 
 
 # Determine population sizes
 popsize = NULL
-parametersI = qread("./fits/relu_ALL18.qs")[[2]]
+parametersI = qread("./fits/final/relu.qs")[[2]]
 for (i in seq_along(parametersI)) {
     if (!is.null(parametersI[[i]])) {
         popsize = rbind(popsize,
@@ -355,10 +355,10 @@ max_deaths_w1_england = ld[name == "England" & date <= "2020-09-01", max(N, na.r
 
 for (VAX in c("0", "v200k", "v2M")) {
 
-    p1 = project("relu", "./fits/relu_ALL18.qs", "scenario1.rds", VAX)
-    p2 = project("relu", "./fits/relu_ALL18.qs", "scenario2.rds", VAX)
-    p3 = project("relu", "./fits/relu_ALL18.qs", "scenario3.rds", VAX)
-    p5 = project("relu", "./fits/relu_ALL18.qs", "scenario5.rds", VAX)
+    p1 = project("relu", "./fits/final/relu.qs", "scenario1.rds", VAX)
+    p2 = project("relu", "./fits/final/relu.qs", "scenario2.rds", VAX)
+    p3 = project("relu", "./fits/final/relu.qs", "scenario3.rds", VAX)
+    p5 = project("relu", "./fits/final/relu.qs", "scenario5.rds", VAX)
     
     plot_england = plot_projection(list(p1, p2, p3, p5), 
         c("Moderate (October 2020)", "High (November 2020) with schools open", "High with schools closed", "Very high (March 2020)"), 
@@ -397,7 +397,7 @@ pe_v2M = qread("./output/plot_england_v2M.qs")
 
 data_blank = data.table(variable = 
         factor(c("Hospital beds\noccupied (thousands)", "Deaths"), 
-            levels = c("Rt", "Hospital beds\noccupied (thousands)", "Deaths")), x = ymd("2021-01-01"), y = c(145, 4000))
+            levels = c("Rt", "Hospital beds\noccupied (thousands)", "Deaths")), x = ymd("2021-01-01"), y = c(145, 5000))
 
 plot_e = cowplot::plot_grid(
     pe_0 + geom_blank(data = data_blank, aes(x, y)) + 
@@ -435,10 +435,10 @@ ggsave("./output/projections_regions_v2M.png", pr_v2M, width = 38, height = 22, 
 
 for (VAX in c("0", "v200k", "v2M")) {
 
-    p1 = project("relu", "./fits/relu_ALL18.qs", "scenario1.rds", VAX, 0.1)
-    p2 = project("relu", "./fits/relu_ALL18.qs", "scenario2.rds", VAX, 0.1)
-    p3 = project("relu", "./fits/relu_ALL18.qs", "scenario3.rds", VAX, 0.1)
-    p5 = project("relu", "./fits/relu_ALL18.qs", "scenario5.rds", VAX, 0.1)
+    p1 = project("relu", "./fits/final/relu.qs", "scenario1.rds", VAX, 0.1)
+    p2 = project("relu", "./fits/final/relu.qs", "scenario2.rds", VAX, 0.1)
+    p3 = project("relu", "./fits/final/relu.qs", "scenario3.rds", VAX, 0.1)
+    p5 = project("relu", "./fits/final/relu.qs", "scenario5.rds", VAX, 0.1)
     
     plot_england = plot_projection(list(p1, p2, p3, p5), 
         c("Moderate (October 2020)", "High (November 2020) with schools open", "High with schools closed", "Very high (March 2020)"), 
@@ -508,57 +508,6 @@ ggsave("./output/seas_projections_regions_v2M.png", pr_v2M, width = 30, height =
 
 
 
-#####################
-# Infectious period #
-#####################
-
-which_pops = c(1, 3, 9)
-
-plot_projection(list(p1), 
-        c("Moderate (October 2020)"), 
-        "2020-12-01", england = FALSE, reduced = FALSE, pal = "Dark2")
-
-for (VAX in c("0", "v200k", "v2M")) {
-
-    p1 = project("infdur", "./fits/infdur_ELSE11.qs", "scenario1.rds", VAX)
-    p2 = project("infdur", "./fits/infdur_ELSE11.qs", "scenario2.rds", VAX)
-    p3 = project("infdur", "./fits/infdur_ELSE11.qs", "scenario3.rds", VAX)
-    p5 = project("infdur", "./fits/infdur_ELSE11.qs", "scenario5.rds", VAX)
-    
-    plot_regions = plot_projection(list(p1, p2, p3, p5), 
-        c("Moderate (October 2020)", "High (November 2020) with schools open", "High with schools closed", "Very high (March 2020)"), 
-        "2020-12-01", england = FALSE, reduced = FALSE, pal = "Dark2")
-    
-    tb_1 = summarize_projection(p1, "2020-12-15", popsize)
-    tb_2 = summarize_projection(p2, "2020-12-15", popsize)
-    tb_3 = summarize_projection(p3, "2020-12-15", popsize)
-    tb_5 = summarize_projection(p5, "2020-12-15", popsize)
-    
-    plot_regions$plot_env$proj_list = NULL
-    
-    qsave(plot_regions, paste0("./output/infdur_plot_regions_", VAX, ".qs"))
-    fwrite(tb_1, paste0("./output/infdur_table_1_", VAX, ".csv"));
-    fwrite(tb_2, paste0("./output/infdur_table_2_", VAX, ".csv"));
-    fwrite(tb_3, paste0("./output/infdur_table_3_", VAX, ".csv"));
-    fwrite(tb_5, paste0("./output/infdur_table_5_", VAX, ".csv"));
-}
-
-
-# Assemble plots
-pr_0 = qread("./output/infdur_plot_regions_0.qs")
-pr_v200k = qread("./output/infdur_plot_regions_v200k.qs")
-pr_v2M = qread("./output/infdur_plot_regions_v2M.qs")
-
-ggsave("./output/infdur_projections_regions_0.pdf", pr_0, width = 38, height = 22, units = "cm", useDingbats = FALSE)
-ggsave("./output/infdur_projections_regions_0.png", pr_0, width = 38, height = 22, units = "cm")
-ggsave("./output/infdur_projections_regions_v200k.pdf", pr_v200k, width = 38, height = 22, units = "cm", useDingbats = FALSE)
-ggsave("./output/infdur_projections_regions_v200k.png", pr_v200k, width = 38, height = 22, units = "cm")
-ggsave("./output/infdur_projections_regions_v2M.pdf", pr_v2M, width = 38, height = 22, units = "cm", useDingbats = FALSE)
-ggsave("./output/infdur_projections_regions_v2M.png", pr_v2M, width = 38, height = 22, units = "cm")
-
-
-
-
 ###############
 # Without VOC #
 ###############
@@ -567,10 +516,10 @@ which_pops = england_pops
 
 for (VAX in c("0", "v200k", "v2M")) {
 
-    p1 = project("relu", "./fits/relu_ALL18.qs", "scenario1.rds", VAX, 0.1, include_voc = FALSE)
-    p2 = project("relu", "./fits/relu_ALL18.qs", "scenario2.rds", VAX, 0.1, include_voc = FALSE)
-    p3 = project("relu", "./fits/relu_ALL18.qs", "scenario3.rds", VAX, 0.1, include_voc = FALSE)
-    p5 = project("relu", "./fits/relu_ALL18.qs", "scenario5.rds", VAX, 0.1, include_voc = FALSE)
+    p1 = project("relu", "./fits/final/relu.qs", "scenario1.rds", VAX, 0.1, include_voc = FALSE)
+    p2 = project("relu", "./fits/final/relu.qs", "scenario2.rds", VAX, 0.1, include_voc = FALSE)
+    p3 = project("relu", "./fits/final/relu.qs", "scenario3.rds", VAX, 0.1, include_voc = FALSE)
+    p5 = project("relu", "./fits/final/relu.qs", "scenario5.rds", VAX, 0.1, include_voc = FALSE)
     
     plot_england = plot_projection(list(p1, p2, p3, p5), 
         c("Moderate (October 2020)", "High (November 2020) with schools open", "High with schools closed", "Very high (March 2020)"), 

@@ -47,7 +47,7 @@ void DEMCMC_Priors(Randomizer& R, Likelihood& likelihood, MCMCReporter& report,
     int burn_in, int iterations, int n_chains, std::vector<Distribution>& priors,
     bool verbose = true, std::vector<std::string> param_names = std::vector<std::string>(),
     bool reeval_likelihood = false, bool in_parallel = false, int n_threads = -1, 
-    bool classic_gamma = false, 
+    bool classic_gamma = false, bool do_migration = true,
     std::vector<std::vector<double>> init = std::vector<std::vector<double>>(), int init_iter = 0);
 
 void Optimize_Priors(Randomizer& R, Likelihood& likelihood, MCMCReporter& report, std::vector<Distribution>& priors,

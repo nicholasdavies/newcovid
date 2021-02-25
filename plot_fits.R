@@ -1,5 +1,5 @@
 
-plot_fits = function(fit_filename, FIT_TYPE, which_pops, FLAG = "")
+plot_fits = function(fit_filename, FIT_TYPE, which_pops, FLAG = "", plot_width = 20)
 {
     opt_conc = TRUE;
     opt_seas = FALSE;
@@ -149,11 +149,11 @@ plot_fits = function(fit_filename, FIT_TYPE, which_pops, FLAG = "")
     # Visually inspect fit
     plot = check_fit(test, parametersI, ld, sitreps, virus, sero, nhs_regions[which_pops], death_cutoff = 0, "2020-12-31")
     plot = plot + geom_vline(aes(xintercept = ymd("2020-12-24")), size = 0.25, linetype = "42")
-    ggsave(paste0("./output/check_fit_", FIT_TYPE, FLAG, ".pdf"), plot, width = 20, height = 25, units = "cm", useDingbats = FALSE)
+    ggsave(paste0("./output/check_fit_", FIT_TYPE, FLAG, ".pdf"), plot, width = plot_width, height = 25, units = "cm", useDingbats = FALSE)
 }
 
-plot_fits("./fits/relu_ALL18.qs", "relu", england_pops)
-plot_fits("./fits/relu_ALL18.qs", "novoc", england_pops, "_removed")
-plot_fits("./fits/novoc_ELSE4.qs", "novoc", c(1, 3, 9), "_never_present")
+plot_fits("./fits/final/relu.qs", "relu", england_pops, plot_width = 40)
+plot_fits("./fits/final/relu.qs", "novoc", england_pops, "_removed", plot_width = 40)
+plot_fits("./fits/novoc_ELSE4.qs", "novoc", c(1, 3, 9), "_never_present", plot_width = 20)
 
 
